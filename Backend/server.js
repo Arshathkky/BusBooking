@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import busRoutes from "./routes/busRoutes.js";
+import conductorRoutes from "./routes/conductorRoutes.js";
+import routeRoutes from "./routes/routeRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -15,6 +17,8 @@ connectDB();
 
 // Routes
 app.use("/api/buses", busRoutes);
+app.use("/api/conductors", conductorRoutes);
+app.use("/api/routes", routeRoutes);
 
 // Health check
 app.get("/", (req, res) => res.json({ message: "✅ API is running" }));

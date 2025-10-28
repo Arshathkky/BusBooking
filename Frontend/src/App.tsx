@@ -2,7 +2,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
-import { BusProvider } from './contexts/busDataContexts'; // ✅ import BusProvider
+import { BusProvider } from './contexts/busDataContexts';
+import { ConductorProvider } from './contexts/conductorDataContext';
+import { RouteProvider } from './contexts/RouteDataContext';
+import { SearchProvider } from './contexts/searchContext'; // ✅ import SearchProvider
+
 import Header from './components/Header';
 import AgentDashboard from './pages/AgentDashboard';
 import OwnerDashboard from './pages/OwnerDashboard';
@@ -67,10 +71,16 @@ function App() {
     <ThemeProvider>
       <DataProvider>
         <AuthProvider>
-          <BusProvider> {/* ✅ Wrap with BusProvider */}
-            <Router>
-              <AppContent />
-            </Router>
+          <BusProvider> 
+            <ConductorProvider>
+              <RouteProvider>
+                <SearchProvider> {/* ✅ Added here */}
+                  <Router>
+                    <AppContent />
+                  </Router>
+                </SearchProvider>
+              </RouteProvider>
+            </ConductorProvider>
           </BusProvider>
         </AuthProvider>
       </DataProvider>

@@ -1,9 +1,10 @@
 import React, { useState, FormEvent, useEffect } from "react";
 import { X, Bus, Users, DollarSign, LayoutGrid as Layout } from "lucide-react";
 import { useBus, BusType } from "../contexts/busDataContexts";
-import { useData } from "../contexts/DataContext";
+//import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
 import BusLayoutDesigner from "./BusLayoutDesigner";
+import { useRouteData } from "../contexts/RouteDataContext";
 
 interface AddBusModalProps {
   onClose: () => void;
@@ -28,7 +29,7 @@ interface FormData {
 
 const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   const { addBus, updateBus } = useBus();
-  const { routes } = useData();
+  const { routes } = useRouteData();
   const { user } = useAuth();
 
   const [formData, setFormData] = useState<FormData>({
@@ -52,7 +53,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   // Populate form if editing
   useEffect(() => {
     if (editingBus) {
-      const routeObj = routes.find((r) => r.id === editingBus.routeId);
+      const routeObj = routes?.find((r) => r.id === editingBus.routeId);
       setFormData({
         busName: editingBus.name,
         companyName: editingBus.companyName,
@@ -89,7 +90,10 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     "blanket",
   ];
 
-  const handleInputChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
+  const handleInputChange = <K extends keyof FormData>(
+    field: K,
+    value: FormData[K]
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -110,7 +114,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     e.preventDefault();
     if (!user) return alert("Please log in first.");
 
-    const selectedRoute = routes.find((r) => r.name === formData.route);
+    const selectedRoute = routes?.find((r) => r.name === formData.route);
     if (!selectedRoute) {
       alert("Please select a valid route.");
       return;
@@ -178,7 +182,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                 {editingBus ? "Edit Bus" : "Add New Bus"}
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mt-2">
-                {editingBus ? "Update your bus details" : "Register a new bus to your fleet"}
+                {editingBus
+                  ? "Update your bus details"
+                  : "Register a new bus to your fleet"}
               </p>
             </div>
 
@@ -198,7 +204,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   type="text"
                   placeholder="Company Name"
                   value={formData.companyName}
-                  onChange={(e) => handleInputChange("companyName", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("companyName", e.target.value)
+                  }
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
                   required
                 />
@@ -250,7 +258,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     type="number"
                     placeholder="Total Seats"
                     value={formData.totalSeats}
-                    onChange={(e) => handleInputChange("totalSeats", Number(e.target.value))}
+                    onChange={(e) =>
+                      handleInputChange("totalSeats", Number(e.target.value))
+                    }
                     className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
                     min={20}
                     max={60}
@@ -267,7 +277,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     type="number"
                     placeholder="Price per seat (LKR)"
                     value={formData.pricePerSeat}
-                    onChange={(e) => handleInputChange("pricePerSeat", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("pricePerSeat", e.target.value)
+                    }
                     className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
                     required
                   />
@@ -280,7 +292,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   required
                 >
                   <option value="">Select Route</option>
-                  {routes.map((route) => (
+                  {routes?.map((route) => (
                     <option key={route.id} value={route.name}>
                       {route.name} ({route.startPoint} → {route.endPoint})
                     </option>
@@ -316,7 +328,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   <input
                     type="checkbox"
                     checked={formData.isSpecialBus}
-                    onChange={(e) => handleInputChange("isSpecialBus", e.target.checked)}
+                    onChange={(e) =>
+                      handleInputChange("isSpecialBus", e.target.checked)
+                    }
                     className="rounded border-gray-300 text-[#fdc106]"
                   />
                   <span className="text-sm font-semibold">Special Bus</span>
@@ -326,7 +340,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     <input
                       type="time"
                       value={formData.specialTime}
-                      onChange={(e) => handleInputChange("specialTime", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("specialTime", e.target.value)
+                      }
                       className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
                     />
                   </div>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Users, Bus, CheckCircle, XCircle, CreditCard as Edit, Trash2, Plus, DollarSign, Calendar,  } from 'lucide-react';
-import { useData } from '../contexts/DataContext';
+import { useRouteData } from '../contexts/RouteDataContext';
 import AddRouteModal from '../components/AddRouteModal';
 import AddUserModal from '../components/AddUserModal';
 
 import { useBus } from '../contexts/busDataContexts';
+import { useData } from '../contexts/DataContext';
 
 const AdminDashboard: React.FC = () => {
   type TabKey = 'overview' | 'owners' | 'buses' | 'routes' | 'users';
@@ -13,7 +14,8 @@ const AdminDashboard: React.FC = () => {
 
   const [showAddRouteModal, setShowAddRouteModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const { routes,  users, bookings, updateUser, deleteUser, deleteRoute, getTodayStats } = useData();
+  const { routes,   deleteRoute } = useRouteData();
+  const {  users, bookings, updateUser, deleteUser, getTodayStats } = useData();
 const {buses} = useBus();
   const pendingOwners = users.filter(u => u.role === 'owner' && u.status === 'pending');
   const allOwners = users.filter(u => u.role === 'owner');

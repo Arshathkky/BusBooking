@@ -74,7 +74,9 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const API_URL = "http://localhost:5000/api/buses";
 
+  // --------------------
   // Fetch all buses
+  // --------------------
   const fetchBuses = async (): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -97,7 +99,9 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // --------------------
   // Add new bus
+  // --------------------
   const addBus = async (bus: Omit<BusType, "id">): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -117,14 +121,22 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Update bus
+  // --------------------
+  // Update bus (instant UI update)
+  // --------------------
   const updateBus = async (id: string, bus: Partial<BusType>): Promise<void> => {
-    setLoading(true);
     setError(null);
     try {
-      const response = await axios.put<BusFromDB>(`${API_URL}/${id}`, bus);
-      const updatedBus: BusType = { ...response.data, id: response.data._id };
-      setBuses((prev) => prev.map((b) => (b.id === id ? updatedBus : b)));
+      const response = await axios.put(`${API_URL}/${id}`, bus);
+      const updatedBusData: BusFromDB = response.data.bus || response.data;
+      const updatedBus: BusType = { ...updatedBusData, id: updatedBusData._id };
+
+      // ✅ Instant UI update (no refresh)
+      setBuses((prevBuses) =>
+        prevBuses.map((b) => (b.id === id ? updatedBus : b))
+      );
+
+      console.log("Bus updated successfully:", updatedBus);
     } catch (err) {
       const errorMessage =
         axios.isAxiosError(err) && err.response
@@ -132,12 +144,12 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           : "Failed to update bus";
       setError(errorMessage);
       console.error("Update bus error:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
+  // --------------------
   // Delete bus
+  // --------------------
   const deleteBus = async (id: string): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -156,23 +168,45 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // --------------------
   // Toggle bus status (active/inactive)
+  // --------------------
   const toggleBusStatus = async (id: string): Promise<void> => {
     const bus = buses.find((b) => b.id === id);
     if (!bus) return;
 
-    const newStatus: BusType["status"] = bus.status === "active" ? "inactive" : "active";
-    await updateBus(id, { status: newStatus });
+    const newStatus: BusType["status"] =
+      bus.status === "active" ? "inactive" : "active";
+
+    try {
+      await updateBus(id, { status: newStatus });
+    } catch (error) {
+      console.error("Toggle status error:", error);
+    }
   };
 
+  // --------------------
   // Auto-fetch on mount
+  // --------------------
   useEffect(() => {
     fetchBuses();
   }, []);
 
+  // --------------------
+  // Context value
+  // --------------------
   return (
     <BusContext.Provider
-      value={{ buses, fetchBuses, addBus, updateBus, deleteBus, toggleBusStatus, loading, error }}
+      value={{
+        buses,
+        fetchBuses,
+        addBus,
+        updateBus,
+        deleteBus,
+        toggleBusStatus,
+        loading,
+        error,
+      }}
     >
       {children}
     </BusContext.Provider>

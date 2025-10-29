@@ -1,7 +1,6 @@
 import React, { useState, FormEvent, useEffect } from "react";
 import { X, Bus, Users, DollarSign, LayoutGrid as Layout } from "lucide-react";
 import { useBus, BusType } from "../contexts/busDataContexts";
-//import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
 import BusLayoutDesigner from "./BusLayoutDesigner";
 import { useRouteData } from "../contexts/RouteDataContext";
@@ -126,24 +125,26 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
     }));
 
-    const busPayload: Omit<BusType, "id"> = {
-      name: formData.busName || "",
-      companyName: formData.companyName || "",
-      type: formData.busType || "AC Sleeper",
-      routeId: selectedRoute.id,
-      departureTime: formData.startTime || "",
-      arrivalTime: formData.endTime || "",
-      duration: formData.duration || "",
-      totalSeats: formData.totalSeats || 45,
-      ladiesOnlySeats: formData.ladiesOnlySeats || [],
-      price: parseFloat(formData.pricePerSeat) || 0,
-      status: "active",
-      amenities: formData.amenities || [],
-      isSpecial: formData.isSpecialBus || false,
-      specialTime: formData.specialTime || "",
-      ownerId: user.id,
-      seats,
-    };
+    // Correct payload to match backend expectations
+   const busPayload: Omit<BusType, "id"> = {
+  name: formData.busName,
+  companyName: formData.companyName,
+  type: formData.busType,
+  routeId: selectedRoute.id,         // link to Route
+  departureTime: formData.startTime,
+  arrivalTime: formData.endTime,
+  duration: formData.duration,
+  totalSeats: formData.totalSeats,
+  ladiesOnlySeats: formData.ladiesOnlySeats,
+  price: parseFloat(formData.pricePerSeat),
+  status: "active",                  // matches BusType
+  amenities: formData.amenities,
+  isSpecial: formData.isSpecialBus,
+  specialTime: formData.specialTime,
+  ownerId: user.id,
+  seats: seats,                      // array of SeatType
+};
+
 
     try {
       if (editingBus) {

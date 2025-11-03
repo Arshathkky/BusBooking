@@ -26,14 +26,14 @@ export const addBus = async (req, res) => {
       ladiesOnlySeats = [],
     } = req.body;
 
-    // Validate required fields
+    // ✅ Validate required fields
     if (!name || !companyName || !type || (!routeId && (!startPoint || !endPoint))) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
     let route;
 
-    // Find or create route
+    // ✅ Find or create route
     if (routeId) {
       route = await Route.findById(routeId);
       if (!route) return res.status(404).json({ message: "Route not found" });
@@ -57,14 +57,14 @@ export const addBus = async (req, res) => {
       }
     }
 
-    // Initialize seats
+    // ✅ Initialize seats
     const seats = Array.from({ length: totalSeats }, (_, i) => ({
       seatNumber: i + 1,
       isLadiesOnly: ladiesOnlySeats.includes(i + 1),
       isOccupied: false,
     }));
 
-    // Create Bus
+    // ✅ Create Bus
     const bus = await Bus.create({
       name,
       companyName,
@@ -144,9 +144,12 @@ export const updateSeatLayout = async (req, res) => {
       return res.status(400).json({ message: "Seats must be an array" });
     }
 
-    // Validate seat structure
+    // ✅ Validate seat structure
     const validSeats = seats.every(
-      (s) => typeof s.seatNumber === "number" && typeof s.isLadiesOnly === "boolean" && typeof s.isOccupied === "boolean"
+      (s) =>
+        typeof s.seatNumber === "number" &&
+        typeof s.isLadiesOnly === "boolean" &&
+        typeof s.isOccupied === "boolean"
     );
 
     if (!validSeats) {

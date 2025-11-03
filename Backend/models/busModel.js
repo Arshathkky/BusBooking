@@ -23,12 +23,12 @@ const busSchema = new mongoose.Schema(
     totalSeats: { type: Number, required: true },
     price: { type: Number, required: true },
     routeId: { type: String, required: true },
-    ladiesOnlySeats: { type: [Number], default: [] },
+    ladiesOnlySeats: { type: [Number], default: [] }, // ✅ store seat numbers reserved for ladies
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     amenities: { type: [String], default: [] },
     isSpecial: { type: Boolean, default: false },
     specialTime: { type: String },
-    seats: { type: [seatSchema], default: [] }, // ✅ array of seats
+    seats: { type: [seatSchema], default: [] }, // ✅ seat details
     ownerId: { type: String, required: true },
   },
   { timestamps: true }

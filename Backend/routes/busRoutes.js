@@ -7,25 +7,37 @@ import {
   updateSeatLayout,
   deleteBus,
   toggleBusStatus,
-  getSeatLayout
+  getSeatLayout,
 } from "../controllers/busController.js";
 
 const router = express.Router();
 
 // --------------------
-// Bus CRUD
+// Bus Routes
 // --------------------
-router.post("/", addBus);                  // Add a new bus
-router.get("/", getBuses);                 // Get all buses
-router.get("/:id", getBusById);            // Get bus by ID
-router.put("/:id", updateBus);             // Update bus details
-router.delete("/:id", deleteBus);          // Delete bus
-router.put("/:id/toggle", toggleBusStatus); // Toggle bus active/inactive
 
-// --------------------
-// Seat layout
-// --------------------
-router.get("/:id/layout", getSeatLayout);  // Fetch seat layout
-router.put("/:id/layout", updateSeatLayout); // Update seat layout
+// ✅ Add new bus
+router.post("/", addBus);
+
+// ✅ Get all buses
+router.get("/", getBuses);
+
+// ✅ Get bus by ID
+router.get("/:id", getBusById);
+
+// ✅ Update bus details
+router.put("/:id", updateBus);
+
+// ✅ Update only seat layout
+router.put("/:id/seats", updateSeatLayout);
+
+// ✅ Delete bus
+router.delete("/:id", deleteBus);
+
+// ✅ Toggle bus status (active/inactive)
+router.patch("/:id/status", toggleBusStatus);
+
+// ✅ Get seat layout only (for frontend seat selection)
+router.get("/:id/seats", getSeatLayout);
 
 export default router;

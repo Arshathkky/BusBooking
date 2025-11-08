@@ -7,9 +7,11 @@ export interface ConductorType {
   name: string;
   phone: string;
   email: string;
+  password?: string;   // ✅ NEW
   assignedBusId?: string;
   ownerId: string;
   status: "active" | "inactive";
+  role: "conductor" | "agent";
 }
 
 interface ConductorFromDB extends Omit<ConductorType, "id"> {

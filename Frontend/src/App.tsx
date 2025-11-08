@@ -74,7 +74,7 @@ function App() {
   return (
     <ThemeProvider>
       <DataProvider>
-        <AuthProvider>
+       
           <BusProvider>
             <ConductorProvider>
               <RouteProvider>
@@ -83,9 +83,12 @@ function App() {
                   <SeatProvider>
                     <BookingProvider>
                       <OwnerProvider>
+                         <AuthProvider>
+
                        <Router>
                         <AppContent />
                       </Router>
+                         </AuthProvider>
                       </OwnerProvider>
                     </BookingProvider>
                   </SeatProvider>
@@ -93,7 +96,7 @@ function App() {
               </RouteProvider>
             </ConductorProvider>
           </BusProvider>
-        </AuthProvider>
+        
       </DataProvider>
     </ThemeProvider>
   );

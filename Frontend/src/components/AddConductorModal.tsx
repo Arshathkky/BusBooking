@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { X, User, Phone, Mail, Bus } from "lucide-react";
+import { X, User, Phone, Mail, Bus, Lock } from "lucide-react";
 import { useBus } from "../contexts/busDataContexts";
 import { useConductor, ConductorType } from "../contexts/conductorDataContext";
 import { useAuth } from "../contexts/AuthContext";
 
 interface AddConductorModalProps {
   onClose: () => void;
-  editingConductor?: ConductorType | null; // optional for update
+  editingConductor?: ConductorType | null;
 }
 
 const AddConductorModal: React.FC<AddConductorModalProps> = ({
@@ -21,29 +21,31 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
     name: "",
     phone: "",
     email: "",
+    password: "", // ✅ NEW password field
     assignedBusId: "",
     status: "active" as "active" | "inactive",
+    role: "conductor" as "conductor" | "agent",
   });
 
   const [error, setError] = useState<string | null>(null);
 
-  // Filter buses that belong only to the logged-in owner
   const ownerBuses = buses.filter((bus) => bus.ownerId === user?.id);
 
-  // Prefill form if editing
+  // Prefill except password
   useEffect(() => {
     if (editingConductor) {
       setFormData({
         name: editingConductor.name,
         phone: editingConductor.phone,
         email: editingConductor.email,
+        password: "", // ✅ remain blank on edit
         assignedBusId: editingConductor.assignedBusId || "",
         status: editingConductor.status,
+        role: editingConductor.role,
       });
     }
   }, [editingConductor]);
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -57,25 +59,32 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       return;
     }
 
+    if (!editingConductor && !formData.password.trim()) {
+      setError("Password is required.");
+      return;
+    }
+
     try {
       if (editingConductor) {
-        // ✅ Update conductor
         await updateConductor(editingConductor.id, {
           name: formData.name,
           phone: formData.phone,
           email: formData.email,
           assignedBusId: formData.assignedBusId || undefined,
           status: formData.status,
+          role: formData.role,
+          ...(formData.password.trim() && { password: formData.password }), // ✅ update only if typed
         });
       } else {
-        // ✅ Add new conductor
         await addConductor({
           name: formData.name,
           phone: formData.phone,
           email: formData.email,
+          password: formData.password, // ✅ send password
           assignedBusId: formData.assignedBusId || undefined,
           ownerId: user.id,
           status: formData.status,
+          role: formData.role,
         });
       }
 
@@ -93,17 +102,15 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md relative transition-colors">
-        {/* Close Button */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <X className="w-6 h-6" />
         </button>
 
         <div className="p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="bg-[#fdc106] p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
               <User className="w-8 h-8 text-gray-900" />
@@ -114,18 +121,16 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               {editingConductor
                 ? "Update details of your conductor"
-                : "Add a conductor to your team"}
+                : "Add a conductor or agent to your team"}
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-100 text-red-700 p-2 rounded-md mb-4 text-sm">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name */}
             <div className="relative">
@@ -135,8 +140,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
                 placeholder="Full Name"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
                 required
               />
             </div>
@@ -149,8 +153,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
                 placeholder="Phone Number"
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
                 required
               />
             </div>
@@ -163,9 +166,23 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
                 placeholder="Email Address"
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
                 required
+              />
+            </div>
+
+            {/* Password */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+              <input
+                type="password"
+                placeholder={
+                  editingConductor ? "New Password (optional)" : "Password"
+                }
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+                required={!editingConductor}
               />
             </div>
 
@@ -175,48 +192,50 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
               <select
                 value={formData.assignedBusId}
                 onChange={(e) => handleInputChange("assignedBusId", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
               >
                 <option value="">Select Bus (Optional)</option>
-                {ownerBuses.length > 0 ? (
-                  ownerBuses.map((bus) => (
-                    <option key={bus.id} value={bus.id}>
-                      {bus.name}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No buses available</option>
-                )}
+                {ownerBuses.map((bus) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.name}
+                  </option>
+                ))}
               </select>
             </div>
 
+            {/* Role */}
+            <select
+              value={formData.role}
+              onChange={(e) => handleInputChange("role", e.target.value)}
+              className="w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+              required
+            >
+              <option value="conductor">Conductor</option>
+              <option value="agent">Agent</option>
+            </select>
+
             {/* Status */}
-            <div className="relative">
-              <select
-                value={formData.status}
-                onChange={(e) => handleInputChange("status", e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+            <select
+              value={formData.status}
+              onChange={(e) => handleInputChange("status", e.target.value)}
+              className="w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
 
             {/* Buttons */}
             <div className="flex space-x-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 
-                text-gray-700 dark:text-gray-300 font-bold py-3 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-gray-300 dark:bg-gray-600 py-3 rounded-lg"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold py-3 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-[#fdc106] py-3 rounded-lg font-bold"
               >
                 {editingConductor ? "Update Conductor" : "Add Conductor"}
               </button>

@@ -1,81 +1,154 @@
-import Conductor from "../models/conductorModel.js";
+const Conductor = require("../models/conductorModel");
 
-// ✅ Create a new conductor
-export const createConductor = async (req, res) => {
+// ------------------------------------------------------
+// Create a new conductor
+// ------------------------------------------------------
+exports.createConductor = async (req, res) => {
   try {
-    const conductor = new Conductor(req.body);
-    const savedConductor = await conductor.save();
-    res.status(201).json(savedConductor);
-  } catch (error) {
-    res.status(400).json({ message: error.message || "Failed to add conductor" });
+    const { name, phone, email, assignedBusId, ownerId, status, role, password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const conductor = new Conductor({
+      name,
+      phone,
+      email,
+      assignedBusId: assignedBusId || null,
+      ownerId,
+      status: status || "active",
+      role: role || "conductor",
+      password,
+    });
+
+    const saved = await conductor.save();
+
+    // Remove password before sending the response
+    const conductorData = saved.toObject();
+    delete conductorData.password;
+
+    res.status(201).json(conductorData);
+  } catch (err) {
+    res.status(400).json({ message: err.message || "Failed to add conductor" });
   }
 };
 
-export const getAllConductors = async (req, res) => {
+// ------------------------------------------------------
+// Get all conductors
+// ------------------------------------------------------
+exports.getAllConductors = async (req, res) => {
   try {
-    const conductors = await Conductor.find();
+    const conductors = await Conductor.find().select("-password");
     res.status(200).json(conductors);
-  } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to fetch conductors" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-
-// ✅ Get all conductors for a specific owner
-export const getConductorsByOwner = async (req, res) => {
+// ------------------------------------------------------
+// Get conductors by owner
+// ------------------------------------------------------
+exports.getConductorsByOwner = async (req, res) => {
   try {
-    const { ownerId } = req.params;
-    const conductors = await Conductor.find({ ownerId });
+    const conductors = await Conductor.find({ ownerId: req.params.ownerId }).select("-password");
     res.status(200).json(conductors);
-  } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to fetch conductors" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// ✅ Get single conductor by ID
-export const getConductorById = async (req, res) => {
+// ------------------------------------------------------
+// Get conductor by ID
+// ------------------------------------------------------
+exports.getConductorById = async (req, res) => {
   try {
-    const conductor = await Conductor.findById(req.params.id);
+    const conductor = await Conductor.findById(req.params.id).select("-password");
     if (!conductor) return res.status(404).json({ message: "Conductor not found" });
     res.status(200).json(conductor);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// ✅ Update conductor
-export const updateConductor = async (req, res) => {
+// ------------------------------------------------------
+// Update conductor
+// ------------------------------------------------------
+exports.updateConductor = async (req, res) => {
   try {
-    const updated = await Conductor.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = {};
+
+    const fields = ["name", "phone", "email", "assignedBusId", "status", "role", "password"];
+
+    fields.forEach((field) => {
+      if (req.body[field] !== undefined && req.body[field] !== "") {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    const updated = await Conductor.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
     if (!updated) return res.status(404).json({ message: "Conductor not found" });
+
     res.status(200).json(updated);
-  } catch (error) {
-    res.status(400).json({ message: error.message || "Failed to update conductor" });
+  } catch (err) {
+    res.status(400).json({ message: err.message || "Failed to update conductor" });
   }
 };
 
-// ✅ Delete conductor
-export const deleteConductor = async (req, res) => {
+// ------------------------------------------------------
+// Delete conductor
+// ------------------------------------------------------
+exports.deleteConductor = async (req, res) => {
   try {
     const deleted = await Conductor.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Conductor not found" });
     res.status(200).json({ message: "Conductor deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to delete conductor" });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to delete conductor" });
   }
 };
 
-// ✅ Toggle status (active/inactive)
-export const toggleConductorStatus = async (req, res) => {
+// ------------------------------------------------------
+// Toggle active/inactive status
+// ------------------------------------------------------
+exports.toggleConductorStatus = async (req, res) => {
   try {
     const conductor = await Conductor.findById(req.params.id);
     if (!conductor) return res.status(404).json({ message: "Conductor not found" });
 
     conductor.status = conductor.status === "active" ? "inactive" : "active";
-    const updated = await conductor.save();
+    await conductor.save();
 
-    res.status(200).json(updated);
-  } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to toggle status" });
+    const responseData = conductor.toObject();
+    delete responseData.password;
+
+    res.status(200).json(responseData);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to toggle status" });
+  }
+};
+// Login conductor
+// ------------------------------------------------------
+exports.loginConductor = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const conductor = await Conductor.findOne({ email });
+    if (!conductor) return res.status(404).json({ message: "Conductor not found" });
+
+    if (conductor.password !== password) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    const responseData = conductor.toObject();
+    delete responseData.password; // Remove password from response
+
+    res.status(200).json(responseData);
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Server error" });
   }
 };

@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm run dev --prefix frontend\" \"npm start --prefix backend\""
+    "start": "concurrently \"npm run dev --prefix frontend\" \"npm start --prefix backend\"",
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "deploy": "netlify deploy --prod --dir=dist"
   },
   "keywords": [],
   "author": "",

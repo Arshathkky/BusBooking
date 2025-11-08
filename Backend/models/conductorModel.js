@@ -5,12 +5,21 @@ const conductorSchema = new mongoose.Schema(
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
+    password: { type: String, required: true },  // ✅ NEW FIELD
+
     assignedBusId: { type: String, default: null },
-    ownerId: { type: String, required: true }, // ✅ identifies which owner this conductor belongs to
+    ownerId: { type: String, required: true },
+
     status: {
       type: String,
       enum: ["active", "inactive"],
       default: "active",
+    },
+
+    role: {
+      type: String,
+      enum: ["conductor", "agent"],
+      default: "conductor",
     },
   },
   { timestamps: true }

@@ -1,118 +1,101 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+//import { useOwner } from './OwnerContext';
+import { useConductor } from '../contexts/conductorDataContext';
 
+// -------------------- Types --------------------
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'agent' | 'owner' | 'conductor' | 'admin';
-  phone?: string;
-  address?: string;
-  approved?: boolean;
+  role: 'admin' | 'owner' | 'agent' | 'conductor';
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (userData: Partial<User> & { password: string }) => Promise<boolean>;
   loading: boolean;
 }
 
+// -------------------- Context --------------------
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
 };
 
-// Mock users for demonstration
-const mockUsers: (User & { password: string })[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@touchmeplus.com',
-    password: 'admin123',
-    role: 'admin'
-  },
-  {
-    id: '2',
-    name: 'Bus Owner',
-    email: 'owner@touchmeplus.com',
-    password: 'owner123',
-    role: 'owner',
-    approved: true
-  },
-  {
-    id: '3',
-    name: 'Conductor',
-    email: 'conductor@touchmeplus.com',
-    password: 'conductor123',
-    role: 'conductor'
-  },
-  {
-    id: '4',
-    name: 'Agent',
-    email: 'agent@touchmeplus.com',
-    password: 'agent123',
-    role: 'agent'
-  }
-];
-
+// -------------------- Provider --------------------
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { conductors } = useConductor();
+  //const { owners } = useOwner();
+
+  // Load user from localStorage on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const saved = localStorage.getItem('user');
+    if (saved) setUser(JSON.parse(saved));
     setLoading(false);
   }, []);
 
+  // -------------------- Login Logic --------------------
   const login = async (email: string, password: string): Promise<boolean> => {
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password);
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      return true;
+    try {
+      // ✅ Admin login hardcoded
+      if (email === 'admin@touchmeplus.com' && password === 'admin123') {
+        const adminUser: User = { id: '1', name: 'Admin', email, role: 'admin' };
+        setUser(adminUser);
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        return true;
+      }
+
+      // ✅ Owner login via backend
+      const ownerResponse = await axios.post('http://localhost:5000/api/owner/login', { email, password });
+      if (ownerResponse.data) {
+        const ownerUser: User = {
+          id: ownerResponse.data._id,
+          name: ownerResponse.data.name,
+          email: ownerResponse.data.email,
+          role: 'owner'
+        };
+        setUser(ownerUser);
+        localStorage.setItem('user', JSON.stringify(ownerUser));
+        return true;
+      }
+
+      // ✅ Conductor login (if you have a backend endpoint, replace this with axios call)
+      const conductor = conductors.find(c => c.email === email && c.password === password);
+      if (conductor) {
+        const conductorUser: User = {
+          id: conductor.id,
+          name: conductor.name,
+          email,
+          role: conductor.role
+        };
+        setUser(conductorUser);
+        localStorage.setItem('user', JSON.stringify(conductorUser));
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Login error:', err);
+      return false;
     }
-    return false;
   };
 
+  // -------------------- Logout --------------------
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
   };
 
-  const register = async (userData: Partial<User> & { password: string }): Promise<boolean> => {
-    // Mock registration - in real app, this would call an API
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userData.name || '',
-      email: userData.email || '',
-      role: userData.role || 'agent',
-      phone: userData.phone,
-      address: userData.address,
-      approved: userData.role === 'agent' ? true : false
-    };
-    
-    mockUsers.push({ ...newUser, password: userData.password });
-    
-    if (userData.role === 'agent') {
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
-    }
-    
-    return true;
-  };
-
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

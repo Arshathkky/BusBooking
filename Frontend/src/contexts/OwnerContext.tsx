@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 
+// -------------------- Types --------------------
 export interface Owner {
   _id: string;
   name: string;
@@ -17,11 +18,11 @@ export interface Owner {
 
 interface OwnerContextType {
   owners: Owner[];
-  owner: Owner | null; // ✅ Add current owner
+  owner: Owner | null;
   loading: boolean;
   error: string | null;
   fetchOwners: () => Promise<void>;
-  setOwner: (owner: Owner | null) => void; // ✅ Add setter
+  setOwner: (owner: Owner | null) => void;
   addOwner: (data: Omit<Owner, "_id" | "status">) => Promise<void>;
   updateOwner: (id: string, data: Partial<Owner>) => Promise<void>;
   deleteOwner: (id: string) => Promise<void>;
@@ -29,6 +30,7 @@ interface OwnerContextType {
   rejectOwner: (id: string) => Promise<void>;
 }
 
+// -------------------- Context --------------------
 const OwnerContext = createContext<OwnerContextType | undefined>(undefined);
 
 export const useOwner = (): OwnerContextType => {
@@ -37,65 +39,86 @@ export const useOwner = (): OwnerContextType => {
   return context;
 };
 
+// -------------------- Provider --------------------
 export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [owners, setOwners] = useState<Owner[]>([]);
-  const [owner, setOwner] = useState<Owner | null>(null); // ✅ current logged owner
+  const [owner, setOwner] = useState<Owner | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = "http://localhost:5000/api/owner";
 
-  const fetchOwners = async () => {
+  // -------------------- Error handler --------------------
+  const handleError = (err: unknown, defaultMessage: string) => {
+    if (axios.isAxiosError(err)) {
+      setError(err.response?.data?.message || defaultMessage);
+    } else if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError(defaultMessage);
+    }
+    console.error(err);
+  };
+
+  // -------------------- CRUD operations --------------------
+  const fetchOwners = async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
       const { data } = await axios.get<Owner[]>(API_URL);
       setOwners(data);
     } catch (err) {
-      console.error("Failed to fetch owners", err);
-      setError("Failed to fetch owners");
+      handleError(err, "Failed to fetch owners");
     } finally {
       setLoading(false);
     }
   };
 
-  const addOwner = async (data: Omit<Owner, "_id" | "status">) => {
+  const addOwner = async (data: Omit<Owner, "_id" | "status">): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
       const { data: newOwner } = await axios.post<Owner>(API_URL, data);
-      setOwners((prev) => [...prev, newOwner]);
-      setOwner(newOwner); // ✅ Automatically set newly added owner
+      setOwners(prev => [...prev, newOwner]);
+      setOwner(newOwner);
     } catch (err) {
-      console.error("Failed to add owner", err);
-      setError("Failed to add owner");
+      handleError(err, "Failed to add owner");
     } finally {
       setLoading(false);
     }
   };
 
-  const updateOwner = async (id: string, data: Partial<Owner>) => {
+  const updateOwner = async (id: string, data: Partial<Owner>): Promise<void> => {
+    setLoading(true);
+    setError(null);
     try {
-      const { data: updated } = await axios.put<Owner>(`${API_URL}/${id}`, data);
-      setOwners((prev) => prev.map((o) => (o._id === id ? updated : o)));
-      if (owner?._id === id) setOwner(updated); // ✅ keep current owner in sync
+      const updateData = { ...data };
+      const { data: updatedOwner } = await axios.put<Owner>(`${API_URL}/${id}`, updateData);
+      setOwners(prev => prev.map(o => (o._id === id ? updatedOwner : o)));
+      if (owner?._id === id) setOwner(updatedOwner);
     } catch (err) {
-      console.error("Failed to update owner", err);
+      handleError(err, "Failed to update owner");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const approveOwner = async (id: string) => updateOwner(id, { status: "active" });
-  const rejectOwner = async (id: string) => updateOwner(id, { status: "suspended" });
-
-  const deleteOwner = async (id: string) => {
+  const deleteOwner = async (id: string): Promise<void> => {
+    setLoading(true);
+    setError(null);
     try {
       await axios.delete(`${API_URL}/${id}`);
-      setOwners((prev) => prev.filter((o) => o._id !== id));
+      setOwners(prev => prev.filter(o => o._id !== id));
       if (owner?._id === id) setOwner(null);
     } catch (err) {
-      console.error("Failed to delete owner", err);
+      handleError(err, "Failed to delete owner");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const approveOwner = async (id: string): Promise<void> => updateOwner(id, { status: "active" });
+  const rejectOwner = async (id: string): Promise<void> => updateOwner(id, { status: "suspended" });
 
   useEffect(() => {
     fetchOwners();
@@ -103,19 +126,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <OwnerContext.Provider
-      value={{
-        owners,
-        owner,       // ✅ include
-        setOwner,    // ✅ include
-        loading,
-        error,
-        fetchOwners,
-        addOwner,
-        updateOwner,
-        deleteOwner,
-        approveOwner,
-        rejectOwner,
-      }}
+      value={{ owners, owner, setOwner, loading, error, fetchOwners, addOwner, updateOwner, deleteOwner, approveOwner, rejectOwner }}
     >
       {children}
     </OwnerContext.Provider>

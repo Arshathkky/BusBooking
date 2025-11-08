@@ -140,34 +140,29 @@ export const updateBus = async (req, res) => {
 export const updateSeatLayout = async (req, res) => {
   try {
     const { seats } = req.body;
-    if (!Array.isArray(seats)) {
-      return res.status(400).json({ message: "Seats must be an array" });
-    }
-
-    // ✅ Validate seat structure
-    const validSeats = seats.every(
-      (s) =>
-        typeof s.seatNumber === "number" &&
-        typeof s.isLadiesOnly === "boolean" &&
-        typeof s.isOccupied === "boolean"
-    );
-
-    if (!validSeats) {
-      return res.status(400).json({ message: "Invalid seat structure" });
-    }
+    if (!Array.isArray(seats)) return res.status(400).json({ message: "Seats must be an array" });
 
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ message: "Bus not found" });
 
-    bus.seats = seats;
-    const updated = await bus.save();
+    // Update only seats provided in request
+    for (let updatedSeat of seats) {
+      const seat = bus.seats.find((s) => s.seatNumber === updatedSeat.seatNumber);
+      if (!seat) continue;
+      if (updatedSeat.isOccupied && seat.isOccupied) {
+        return res.status(400).json({ message: `Seat ${seat.seatNumber} is already occupied` });
+      }
+      seat.isOccupied = updatedSeat.isOccupied;
+    }
 
-    res.status(200).json(updated);
+    await bus.save();
+    res.status(200).json({ success: true, seats: bus.seats });
   } catch (error) {
     console.error("Update Seat Layout Error:", error);
     res.status(500).json({ message: error.message || "Failed to update seat layout" });
   }
 };
+
 
 // --------------------
 // Delete bus

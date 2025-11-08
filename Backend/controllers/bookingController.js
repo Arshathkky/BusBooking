@@ -1,0 +1,48 @@
+import Booking from "../models/bookingModel.js";
+
+// ✅ Create a new booking
+export const createBooking = async (req, res) => {
+  try {
+    const booking = await Booking.create(req.body);
+    res.status(201).json({ success: true, booking });
+  } catch (error) {
+    console.error("❌ Booking creation failed:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Get all bookings
+export const getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+    res.status(200).json({ success: true, bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Get a booking by ID
+export const getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking)
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Update payment status
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { paymentStatus: req.body.paymentStatus },
+      { new: true }
+    );
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

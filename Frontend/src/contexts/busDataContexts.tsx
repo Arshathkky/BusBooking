@@ -3,20 +3,21 @@ import React, {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  ReactNode
 } from "react";
 import axios from "axios";
 
-// --------------------
+// ------------------------------
 // Types
-// --------------------
+// ------------------------------
 export interface SeatType {
   seatNumber: number;
   isLadiesOnly: boolean;
+  isOccupied?: boolean;       // ✅ ADD THIS if missing
 }
 
 export interface BusType {
-  id: string; // frontend-friendly
+  id: string;
   name: string;
   type: string;
   companyName: string;
@@ -35,28 +36,44 @@ export interface BusType {
   seats: SeatType[];
 }
 
-// Raw data from backend (_id)
 interface BusFromDB extends Omit<BusType, "id"> {
   _id: string;
 }
 
-// --------------------
+// ✅ seats coming from PassengerDetails update
+export interface SeatUpdate {
+  seatNumber: number;
+  isOccupied: boolean;
+}
+
+// ------------------------------
 // Context Type
-// --------------------
+// ------------------------------
 interface BusContextType {
   buses: BusType[];
+
   fetchBuses: () => Promise<void>;
   addBus: (bus: Omit<BusType, "id">) => Promise<void>;
   updateBus: (id: string, bus: Partial<Omit<BusType, "id">>) => Promise<void>;
   deleteBus: (id: string) => Promise<void>;
   toggleBusStatus: (id: string) => Promise<void>;
+
+  // Seat selection (frontend UI)
+  selectedSeats: number[];
+  selectSeat: (seatNumber: number) => void;
+  deselectSeat: (seatNumber: number) => void;
+  clearSelectedSeats: () => void;
+
+  // ✅ Backend seat update
+  updateSeats: (busId: string, seats: SeatUpdate[]) => Promise<void>;
+
   loading: boolean;
   error: string | null;
 }
 
-// --------------------
+// ------------------------------
 // Context Setup
-// --------------------
+// ------------------------------
 const BusContext = createContext<BusContextType | undefined>(undefined);
 
 export const useBus = (): BusContextType => {
@@ -65,42 +82,49 @@ export const useBus = (): BusContextType => {
   return context;
 };
 
-// --------------------
+// ------------------------------
 // Provider
-// --------------------
+// ------------------------------
 export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [buses, setBuses] = useState<BusType[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const API_URL = "http://localhost:5000/api/buses";
 
+  // ------------------------------
   // Fetch all buses
-  const fetchBuses = async (): Promise<void> => {
+  // ------------------------------
+  const fetchBuses = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await axios.get<BusFromDB[]>(API_URL);
-      const mappedBuses: BusType[] = response.data.map((bus) => ({
-        ...bus,
-        id: bus._id,
+
+      const mapped = response.data.map((b) => ({
+        ...b,
+        id: b._id
       }));
-      setBuses(mappedBuses);
+
+      setBuses(mapped);
     } catch (err) {
-      setError("Failed to fetch buses");
       console.error(err);
+      setError("Failed to fetch buses");
     } finally {
       setLoading(false);
     }
   };
 
-  // Add bus
-  const addBus = async (bus: Omit<BusType, "id">): Promise<void> => {
+  // ------------------------------
+  // Add Bus
+  // ------------------------------
+  const addBus = async (bus: Omit<BusType, "id">) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post<BusFromDB>(API_URL, bus);
-      setBuses((prev) => [...prev, { ...response.data, id: response.data._id }]);
+      const res = await axios.post<BusFromDB>(API_URL, bus);
+      setBuses((prev) => [...prev, { ...res.data, id: res.data._id }]);
     } catch (err) {
       setError("Failed to add bus");
       console.error(err);
@@ -109,24 +133,29 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Update bus
+  // ------------------------------
+  // Update Bus
+  // ------------------------------
   const updateBus = async (
     id: string,
     bus: Partial<Omit<BusType, "id">>
-  ): Promise<void> => {
+  ) => {
     setError(null);
     try {
-      const response = await axios.put(`${API_URL}/${id}`, bus);
-      const updatedBus: BusType = { ...response.data, id: response.data._id };
-      setBuses((prev) => prev.map((b) => (b.id === id ? updatedBus : b)));
+      const res = await axios.put(`${API_URL}/${id}`, bus);
+      const updated: BusType = { ...res.data, id: res.data._id };
+
+      setBuses((prev) => prev.map((b) => (b.id === id ? updated : b)));
     } catch (err) {
       setError("Failed to update bus");
       console.error(err);
     }
   };
 
-  // Delete bus
-  const deleteBus = async (id: string): Promise<void> => {
+  // ------------------------------
+  // Delete Bus
+  // ------------------------------
+  const deleteBus = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -140,12 +169,63 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  // Toggle bus status
-  const toggleBusStatus = async (id: string): Promise<void> => {
+  // ------------------------------
+  // Toggle bus active status
+  // ------------------------------
+  const toggleBusStatus = async (id: string) => {
     const bus = buses.find((b) => b.id === id);
     if (!bus) return;
-    const newStatus: BusType["status"] = bus.status === "active" ? "inactive" : "active";
+
+    const newStatus = bus.status === "active" ? "inactive" : "active";
+
     await updateBus(id, { status: newStatus });
+  };
+
+  // ------------------------------
+  // ✅ FRONTEND Seat Selection Logic
+  // ------------------------------
+  const selectSeat = (seatNumber: number) => {
+    setSelectedSeats((prev) =>
+      prev.includes(seatNumber) ? prev : [...prev, seatNumber]
+    );
+  };
+
+  const deselectSeat = (seatNumber: number) => {
+    setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
+  };
+
+  const clearSelectedSeats = () => setSelectedSeats([]);
+
+  // ------------------------------
+  // ✅ BACKEND Seat Update Logic
+  // ------------------------------
+  const updateSeats = async (busId: string, seatUpdates: SeatUpdate[]) => {
+    try {
+      await axios.put(`${API_URL}/${busId}/update-seats`, {
+        seats: seatUpdates
+      });
+
+      // ✅ update local state so UI updates instantly
+      setBuses((prev) =>
+        prev.map((bus) =>
+          bus.id === busId
+            ? {
+                ...bus,
+                seats: bus.seats.map((s) => {
+                  const update = seatUpdates.find(
+                    (u) => u.seatNumber === s.seatNumber
+                  );
+                  return update ? { ...s, isOccupied: update.isOccupied } : s;
+                })
+              }
+            : bus
+        )
+      );
+    } catch (err) {
+      console.error("Seat update failed", err);
+      setError("Failed to update seats");
+      throw err;
+    }
   };
 
   useEffect(() => {
@@ -161,8 +241,13 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateBus,
         deleteBus,
         toggleBusStatus,
+        selectedSeats,
+        selectSeat,
+        deselectSeat,
+        clearSelectedSeats,
+        updateSeats,        // ✅ EXPORTED
         loading,
-        error,
+        error
       }}
     >
       {children}

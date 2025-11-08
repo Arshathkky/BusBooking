@@ -20,6 +20,7 @@ import BookingConfirmation from './pages/BookingConfirmation';
 import PassengerDetails from './pages/PassengerDetails';
 import Payment from './pages/Payment';
 import './index.css';
+import { BookingProvider } from './contexts/BookingContext';
 
 // Helper to get correct dashboard route
 const getDashboardRoute = (role: string) => {
@@ -79,9 +80,11 @@ function App() {
                 <SearchProvider>
                   {/* ✅ Move Router INSIDE SeatProvider */}
                   <SeatProvider>
-                    <Router>
-                      <AppContent />
-                    </Router>
+                    <BookingProvider>
+                      <Router>
+                        <AppContent />
+                      </Router>
+                    </BookingProvider>
                   </SeatProvider>
                 </SearchProvider>
               </RouteProvider>

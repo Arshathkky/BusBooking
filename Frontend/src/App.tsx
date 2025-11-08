@@ -21,6 +21,7 @@ import PassengerDetails from './pages/PassengerDetails';
 import Payment from './pages/Payment';
 import './index.css';
 import { BookingProvider } from './contexts/BookingContext';
+import { OwnerProvider } from './contexts/OwnerContext';
 
 // Helper to get correct dashboard route
 const getDashboardRoute = (role: string) => {
@@ -81,9 +82,11 @@ function App() {
                   {/* ✅ Move Router INSIDE SeatProvider */}
                   <SeatProvider>
                     <BookingProvider>
-                      <Router>
+                      <OwnerProvider>
+                       <Router>
                         <AppContent />
                       </Router>
+                      </OwnerProvider>
                     </BookingProvider>
                   </SeatProvider>
                 </SearchProvider>

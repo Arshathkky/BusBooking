@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Users, Bus, CheckCircle, XCircle, CreditCard as Edit, Trash2, Plus, DollarSign, Calendar,  } from 'lucide-react';
+import { Users, CheckCircle, XCircle, CreditCard as Edit, Trash2, Plus,  } from 'lucide-react';
 import { useRouteData } from '../contexts/RouteDataContext';
 import AddRouteModal from '../components/AddRouteModal';
 import AddUserModal from '../components/AddUserModal';
-
+import Overview from '../contexts/OverView';
 import { useBus } from '../contexts/busDataContexts';
 import { useData } from '../contexts/DataContext';
 
@@ -15,22 +15,22 @@ const AdminDashboard: React.FC = () => {
   const [showAddRouteModal, setShowAddRouteModal] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const { routes,   deleteRoute } = useRouteData();
-  const {  users, bookings, updateUser, deleteUser, getTodayStats } = useData();
+  const {  users, updateUser, deleteUser, } = useData();
 const {buses} = useBus();
-  const pendingOwners = users.filter(u => u.role === 'owner' && u.status === 'pending');
+  //const pendingOwners = users.filter(u => u.role === 'owner' && u.status === 'pending');
   const allOwners = users.filter(u => u.role === 'owner');
-  const todayStats = getTodayStats();
-  const today = new Date().toISOString().split('T')[0];
-  const todayBookings = bookings.filter(b => b.bookingDate === today);
+  //const todayStats = getTodayStats();
+  //const today = new Date().toISOString().split('T')[0];
+  //const todayBookings = bookings.filter(b => b.bookingDate === today);
 
-  const stats = {
-    totalUsers: users.length,
-    totalOwners: allOwners.length,
-    pendingApprovals: pendingOwners.length,
-    totalBuses: buses.length,
-    activeBuses: buses.filter(b => b.status === 'active').length,
-    ...todayStats
-  };
+  // const stats = {
+  //   totalUsers: users.length,
+  //   totalOwners: allOwners.length,
+  //   pendingApprovals: pendingOwners.length,
+  //   totalBuses: buses.length,
+  //   activeBuses: buses.filter(b => b.status === 'active').length,
+  //   ...todayStats
+  // };
 
   const handleApproveOwner = (userId: string) => {
     updateUser(userId, { status: 'active' });
@@ -83,220 +83,7 @@ const {buses} = useBus();
       </div>
 
       {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Today's Bookings</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalBookings}</p>
-                </div>
-                <Calendar className="w-12 h-12 text-blue-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Today's Earnings</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    LKR {stats.totalEarnings.toLocaleString()}
-                  </p>
-                </div>
-                <DollarSign className="w-12 h-12 text-green-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Active Buses</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.activeBuses}</p>
-                </div>
-                <Bus className="w-12 h-12 text-[#fdc106]" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Today's Passengers</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalPassengers}</p>
-                </div>
-                <Users className="w-12 h-12 text-purple-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* Additional Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalUsers}</p>
-                </div>
-                <Users className="w-12 h-12 text-indigo-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Bus Owners</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalOwners}</p>
-                </div>
-                <Users className="w-12 h-12 text-teal-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Pending Approvals</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.pendingApprovals}</p>
-                </div>
-                <CheckCircle className="w-12 h-12 text-yellow-500" />
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Buses</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalBuses}</p>
-                </div>
-                <Bus className="w-12 h-12 text-orange-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* Today's Bookings */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Today's Bookings</h3>
-            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{todayBookings.length}</p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">Total Bookings</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                    LKR {todayBookings.reduce((sum, b) => sum + b.totalAmount, 0).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-green-800 dark:text-green-200">Today's Revenue</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                    {todayBookings.reduce((sum, b) => sum + b.selectedSeats.length, 0)}
-                  </p>
-                  <p className="text-sm text-purple-800 dark:text-purple-200">Passengers</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-[#fdc106]">
-                    {buses.filter(b => b.status === 'active').length}
-                  </p>
-                  <p className="text-sm text-gray-800 dark:text-gray-200">Active Buses</p>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {todayBookings.slice(0, 5).map((booking) => {
-                const bus = buses.find(b => b.id === booking.busId);
-                const route = routes.find(r => r.id === booking.routeId);
-                return (
-                  <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white">{booking.passengerName}</h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {bus?.name} • {route?.startPoint} → {route?.endPoint}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Seats: {booking.selectedSeats.join(', ')} • {booking.bookingId}
-                      </p>
-                      {booking.pickupLocation && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400">
-                          Pickup: {booking.pickupLocation}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600 dark:text-green-400">
-                        LKR {booking.totalAmount.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {booking.selectedSeats.length} passengers
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {booking.passengerPhone}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-              {todayBookings.length === 0 && (
-                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No bookings today</p>
-              )}
-            </div>
-          </div>
-
-          {/* Pending Approvals */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Pending Owner Approvals</h3>
-            <div className="space-y-4">
-              {pendingOwners.slice(0, 3).map((owner) => (
-                <div key={owner.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">{owner.name}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{owner.email} • {owner.phone}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Registered: {new Date(owner.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleApproveOwner(owner.id)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleRejectOwner(owner.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent System Activity</h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <p className="text-gray-700 dark:text-gray-300">New bus owner registration: Rajesh Kumar</p>
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-auto">2 hours ago</span>
-              </div>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <p className="text-gray-700 dark:text-gray-300">Bus "Express Luxury" approved for operation</p>
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-auto">4 hours ago</span>
-              </div>
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <p className="text-gray-700 dark:text-gray-300">Route modification request submitted</p>
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-auto">6 hours ago</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === 'overview' &&  <Overview/> }
 
       {/* Bus Owners Tab */}
       {activeTab === 'owners' && (

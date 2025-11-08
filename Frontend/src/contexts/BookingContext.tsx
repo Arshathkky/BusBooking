@@ -17,7 +17,7 @@ export interface BusInfo {
 export interface SearchData {
   from: string;
   to: string;
-  date: string;
+  date: string; // YYYY-MM-DD
 }
 
 export type PaymentStatus = "Pending" | "Paid" | "Cancelled";
@@ -43,6 +43,10 @@ interface BookingContextType {
   addBooking: (booking: Omit<Booking, "_id">) => Promise<Booking | null>;
   updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
   getBookingById: (id: string) => Promise<Booking | null>;
+  // ---- Today-specific helper functions ----
+  todayBookings: Booking[];
+  totalPassengersToday: number;
+  totalEarningsToday: number;
 }
 
 // -------------------- Context --------------------
@@ -141,6 +145,18 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  // -------------------- Today bookings helpers --------------------
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const todayBookings = bookings.filter((b) => b.searchData.date === today);
+  const totalPassengersToday = todayBookings.reduce(
+    (sum, b) => sum + b.selectedSeats.length,
+    0
+  );
+  const totalEarningsToday = todayBookings.reduce(
+    (sum, b) => sum + b.totalAmount,
+    0
+  );
+
   // -------------------- Fetch bookings on mount --------------------
   useEffect(() => {
     fetchBookings();
@@ -156,6 +172,9 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
         addBooking,
         updatePaymentStatus,
         getBookingById,
+        todayBookings,
+        totalPassengersToday,
+        totalEarningsToday,
       }}
     >
       {children}

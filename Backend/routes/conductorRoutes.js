@@ -1,29 +1,26 @@
 import express from "express";
 import {
   createConductor,
+  getAllConductors,
   getConductorsByOwner,
   getConductorById,
   updateConductor,
   deleteConductor,
   toggleConductorStatus,
-  getAllConductors,
   loginConductor,
-} from "../controllers/conductorController.js";
-
-
+} from "../controllers/conductorController.js"; // <-- Must include `.js`
 
 const router = express.Router();
 
-// Auth route
-router.post("/login", loginConductor);
-
-// CRUD routes
+// Routes
 router.post("/", createConductor);
-router.get("/owner/:ownerId", getConductorsByOwner);
 router.get("/", getAllConductors);
+router.get("/owner/:ownerId", getConductorsByOwner);
 router.get("/:id", getConductorById);
 router.put("/:id", updateConductor);
 router.delete("/:id", deleteConductor);
-router.patch("/:id/toggle-status", toggleConductorStatus);
+router.patch("/:id/toggle", toggleConductorStatus);
+router.post("/login", loginConductor);
 
 export default router;
+    

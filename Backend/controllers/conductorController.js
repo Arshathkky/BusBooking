@@ -1,9 +1,9 @@
-const Conductor = require("../models/conductorModel");
+import Conductor from "../models/conductorModel.js";
 
 // ------------------------------------------------------
 // Create a new conductor
 // ------------------------------------------------------
-exports.createConductor = async (req, res) => {
+export const createConductor = async (req, res) => {
   try {
     const { name, phone, email, assignedBusId, ownerId, status, role, password } = req.body;
 
@@ -24,7 +24,6 @@ exports.createConductor = async (req, res) => {
 
     const saved = await conductor.save();
 
-    // Remove password before sending the response
     const conductorData = saved.toObject();
     delete conductorData.password;
 
@@ -37,7 +36,7 @@ exports.createConductor = async (req, res) => {
 // ------------------------------------------------------
 // Get all conductors
 // ------------------------------------------------------
-exports.getAllConductors = async (req, res) => {
+export const getAllConductors = async (req, res) => {
   try {
     const conductors = await Conductor.find().select("-password");
     res.status(200).json(conductors);
@@ -49,7 +48,7 @@ exports.getAllConductors = async (req, res) => {
 // ------------------------------------------------------
 // Get conductors by owner
 // ------------------------------------------------------
-exports.getConductorsByOwner = async (req, res) => {
+export const getConductorsByOwner = async (req, res) => {
   try {
     const conductors = await Conductor.find({ ownerId: req.params.ownerId }).select("-password");
     res.status(200).json(conductors);
@@ -61,7 +60,7 @@ exports.getConductorsByOwner = async (req, res) => {
 // ------------------------------------------------------
 // Get conductor by ID
 // ------------------------------------------------------
-exports.getConductorById = async (req, res) => {
+export const getConductorById = async (req, res) => {
   try {
     const conductor = await Conductor.findById(req.params.id).select("-password");
     if (!conductor) return res.status(404).json({ message: "Conductor not found" });
@@ -74,10 +73,9 @@ exports.getConductorById = async (req, res) => {
 // ------------------------------------------------------
 // Update conductor
 // ------------------------------------------------------
-exports.updateConductor = async (req, res) => {
+export const updateConductor = async (req, res) => {
   try {
     const updateData = {};
-
     const fields = ["name", "phone", "email", "assignedBusId", "status", "role", "password"];
 
     fields.forEach((field) => {
@@ -102,7 +100,7 @@ exports.updateConductor = async (req, res) => {
 // ------------------------------------------------------
 // Delete conductor
 // ------------------------------------------------------
-exports.deleteConductor = async (req, res) => {
+export const deleteConductor = async (req, res) => {
   try {
     const deleted = await Conductor.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Conductor not found" });
@@ -115,7 +113,7 @@ exports.deleteConductor = async (req, res) => {
 // ------------------------------------------------------
 // Toggle active/inactive status
 // ------------------------------------------------------
-exports.toggleConductorStatus = async (req, res) => {
+export const toggleConductorStatus = async (req, res) => {
   try {
     const conductor = await Conductor.findById(req.params.id);
     if (!conductor) return res.status(404).json({ message: "Conductor not found" });
@@ -131,9 +129,11 @@ exports.toggleConductorStatus = async (req, res) => {
     res.status(500).json({ message: err.message || "Failed to toggle status" });
   }
 };
+
+// ------------------------------------------------------
 // Login conductor
 // ------------------------------------------------------
-exports.loginConductor = async (req, res) => {
+export const loginConductor = async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -145,7 +145,7 @@ exports.loginConductor = async (req, res) => {
     }
 
     const responseData = conductor.toObject();
-    delete responseData.password; // Remove password from response
+    delete responseData.password;
 
     res.status(200).json(responseData);
   } catch (err) {

@@ -5,11 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,12 +17,19 @@ const Login: React.FC = () => {
     setError('');
     setLoading(true);
 
-    const success = await login(formData.email, formData.password);
+    try {
+      const user = await login(formData.email, formData.password);
 
-    if (!success) {
-      setError('Invalid email or password');
-    } else {
-      navigate('/');
+      console.log('Login response:', user); // ✅ check what the backend returns
+
+      if (!user) {
+        setError('Invalid email or password');
+      } else {
+        navigate('/'); // App.js handles dashboard redirect
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Something went wrong. Please try again.');
     }
 
     setLoading(false);
@@ -36,12 +39,8 @@ const Login: React.FC = () => {
     <div className="max-w-md mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 transition-colors">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Welcome Back
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Sign in to your account to continue
-          </p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Sign in to your account to continue</p>
         </div>
 
         {error && (
@@ -90,22 +89,6 @@ const Login: React.FC = () => {
             {loading ? 'Processing...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <button className="text-[#fdc106] hover:text-[#e6ad05] font-semibold">
-            Forgot password?
-          </button>
-        </div>
-
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Demo Accounts:</p>
-          <div className="text-xs space-y-1">
-            <p><strong>Admin:</strong> admin@touchmeplus.com / admin123</p>
-            <p><strong>Owner:</strong> owner@touchmeplus.com / owner123</p>
-            <p><strong>Conductor:</strong> conductor@touchmeplus.com / conductor123</p>
-            <p><strong>Agent:</strong> agent@touchmeplus.com / agent123</p>
-          </div>
-        </div>
       </div>
     </div>
   );

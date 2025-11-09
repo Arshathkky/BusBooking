@@ -14,6 +14,8 @@ export interface Owner {
   registrationDocumentUrl?: string;
   status: "pending" | "active" | "suspended";
   createdAt?: string;
+  password?: string;
+
 }
 
 interface OwnerContextType {

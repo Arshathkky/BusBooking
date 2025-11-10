@@ -34,6 +34,7 @@ export interface BusType {
   specialTime?: string;
   ownerId?: string;
   seats: SeatType[];
+  busNumber:string;
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {

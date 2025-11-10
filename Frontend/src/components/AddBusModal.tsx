@@ -24,6 +24,7 @@ interface FormData {
   startTime: string;
   endTime: string;
   duration: string;
+  busNumber: string;
 }
 
 const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
@@ -45,6 +46,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     startTime: "",
     endTime: "",
     duration: "",
+    busNumber:""
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
@@ -67,6 +69,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         startTime: editingBus.departureTime,
         endTime: editingBus.arrivalTime,
         duration: editingBus.duration,
+        busNumber:editingBus.busNumber,
       });
     }
   }, [editingBus, routes]);
@@ -142,7 +145,8 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   isSpecial: formData.isSpecialBus,
   specialTime: formData.specialTime,
   ownerId: user.id,
-  seats: seats,                      // array of SeatType
+  seats: seats, 
+  busNumber:formData.busNumber                     // array of SeatType
 };
 
 
@@ -198,6 +202,16 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   placeholder="Bus Name"
                   value={formData.busName}
                   onChange={(e) => handleInputChange("busName", e.target.value)}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Bus Number"
+                  value={formData.busNumber}
+                  onChange={(e) =>
+                    handleInputChange("busNumber", e.target.value)
+                  }
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
                   required
                 />
@@ -367,6 +381,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   ))}
                 </div>
               </div>
+              
 
               {/* Buttons */}
               <div className="flex space-x-4">

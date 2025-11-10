@@ -30,6 +30,7 @@ const busSchema = new mongoose.Schema(
     specialTime: { type: String },
     seats: { type: [seatSchema], default: [] }, // ✅ seat details
     ownerId: { type: String, required: true }, //ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true }
+    busNumber:{type:String}
   },
   { timestamps: true }
 );

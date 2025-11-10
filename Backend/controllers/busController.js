@@ -82,6 +82,7 @@ export const addBus = async (req, res) => {
       ownerId,
       seats,
       status: "active",
+      busNumber,
     });
 
     res.status(201).json(bus);

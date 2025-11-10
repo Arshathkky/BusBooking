@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, User, Phone, Mail, Bus, Lock } from "lucide-react";
+import { X, User, Phone, Mail, Bus, Lock, Hash } from "lucide-react";
 import { useBus } from "../contexts/busDataContexts";
 import { useConductor, ConductorType } from "../contexts/conductorDataContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -21,30 +21,36 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
     name: "",
     phone: "",
     email: "",
-    password: "", // ✅ NEW password field
+    password: "",
     assignedBusId: "",
     status: "active" as "active" | "inactive",
     role: "conductor" as "conductor" | "agent",
+    agentCode: "", // ✅ added
   });
 
   const [error, setError] = useState<string | null>(null);
 
   const ownerBuses = buses.filter((bus) => bus.ownerId === user?.id);
 
-  // Prefill except password
+  // Prefill data (excluding password)
   useEffect(() => {
     if (editingConductor) {
       setFormData({
         name: editingConductor.name,
         phone: editingConductor.phone,
         email: editingConductor.email,
-        password: "", // ✅ remain blank on edit
+        password: "",
         assignedBusId: editingConductor.assignedBusId || "",
         status: editingConductor.status,
         role: editingConductor.role,
+        agentCode: editingConductor.agentCode || "",
       });
     }
   }, [editingConductor]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +70,12 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       return;
     }
 
+    // ✅ Require agentCode if role = agent
+    if (formData.role === "agent" && !formData.agentCode.trim()) {
+      setError("Agent Code is required for agents.");
+      return;
+    }
+
     try {
       if (editingConductor) {
         await updateConductor(editingConductor.id, {
@@ -73,18 +85,20 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           assignedBusId: formData.assignedBusId || undefined,
           status: formData.status,
           role: formData.role,
-          ...(formData.password.trim() && { password: formData.password }), // ✅ update only if typed
+          agentCode: formData.agentCode || undefined,
+          ...(formData.password.trim() && { password: formData.password }),
         });
       } else {
         await addConductor({
           name: formData.name,
           phone: formData.phone,
           email: formData.email,
-          password: formData.password, // ✅ send password
+          password: formData.password,
           assignedBusId: formData.assignedBusId || undefined,
           ownerId: user.id,
           status: formData.status,
           role: formData.role,
+          agentCode: formData.agentCode || undefined,
         });
       }
 
@@ -94,10 +108,6 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       console.error("Failed to save conductor:", err);
       setError("Failed to save conductor. Please try again.");
     }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -120,7 +130,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               {editingConductor
-                ? "Update details of your conductor"
+                ? "Update details of your conductor or agent"
                 : "Add a conductor or agent to your team"}
             </p>
           </div>
@@ -213,6 +223,21 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
               <option value="conductor">Conductor</option>
               <option value="agent">Agent</option>
             </select>
+
+            {/* ✅ Agent Code (only visible if role = agent) */}
+            {formData.role === "agent" && (
+              <div className="relative">
+                <Hash className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Agent Code"
+                  value={formData.agentCode}
+                  onChange={(e) => handleInputChange("agentCode", e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+                  required={formData.role === "agent"}
+                />
+              </div>
+            )}
 
             {/* Status */}
             <select

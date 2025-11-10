@@ -12,6 +12,7 @@ export interface ConductorType {
   ownerId: string;
   status: "active" | "inactive";
   role: "conductor" | "agent";
+  agentCode?:string;
 }
 
 interface ConductorFromDB extends Omit<ConductorType, "id"> {

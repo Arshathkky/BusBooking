@@ -21,6 +21,8 @@ const conductorSchema = new mongoose.Schema(
       enum: ["conductor", "agent"],
       default: "conductor",
     },
+    agentCode: { type: String, default: null },
+
   },
   { timestamps: true }
 );

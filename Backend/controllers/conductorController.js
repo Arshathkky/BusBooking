@@ -5,7 +5,7 @@ import Conductor from "../models/conductorModel.js";
 // ------------------------------------------------------
 export const createConductor = async (req, res) => {
   try {
-    const { name, phone, email, assignedBusId, ownerId, status, role, password } = req.body;
+    const { name, phone, email, assignedBusId, ownerId, status, role, password,agentCode } = req.body;
 
     if (!password) {
       return res.status(400).json({ message: "Password is required" });
@@ -20,6 +20,7 @@ export const createConductor = async (req, res) => {
       status: status || "active",
       role: role || "conductor",
       password,
+      agentCode,
     });
 
     const saved = await conductor.save();

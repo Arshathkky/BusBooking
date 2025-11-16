@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import Booking from "../models/bookingModel.js";
+
+
 
 // ✅ Create a new booking
 export const createBooking = async (req, res) => {
@@ -43,6 +46,30 @@ export const updatePaymentStatus = async (req, res) => {
     );
     res.status(200).json({ success: true, booking });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+export const getOccupiedSeatsForDate = async (req, res) => {
+  try {
+    const { busId, date } = req.query;
+
+    if (!busId || !date) {
+      return res.status(400).json({ success: false, message: "BusId and date are required" });
+    }
+
+    const bookings = await Booking.find({
+      "bus.id": new mongoose.Types.ObjectId(busId), // ✅ use 'new'
+      "searchData.date": date,
+    });
+
+    const occupiedSeats = bookings.flatMap(b => b.selectedSeats);
+
+    res.status(200).json({ success: true, occupiedSeats });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

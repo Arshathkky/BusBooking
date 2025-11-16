@@ -5,8 +5,26 @@ import mongoose from "mongoose";
 // --------------------
 const seatSchema = new mongoose.Schema({
   seatNumber: { type: Number, required: true },
+
+  // 🚺 Whether seat is ladies only
   isLadiesOnly: { type: Boolean, default: false },
-  isOccupied: { type: Boolean, default: false }, // ✅ track if seat is booked
+
+  // 🧍‍♂️ Whether seat is occupied (booked by passenger)
+  isOccupied: { type: Boolean, default: false },
+
+  // 🧾 Whether seat is assigned to an agent
+  agentAssigned: { type: Boolean, default: false },
+
+  // 🧑‍💼 Agent details (if assigned)
+  agentCode: { type: String, default: null },
+  agentId: { type: String, default: null },
+
+  // ✅ Optional: mark seat as reserved for agent (can’t be booked by others)
+  isReservedForAgent: { type: Boolean, default: false },
+
+  // Optional: track last booking info for analytics
+  lastBookedAt: { type: Date, default: null },
+  lastBookedBy: { type: String, default: null },
 });
 
 // --------------------
@@ -22,15 +40,28 @@ const busSchema = new mongoose.Schema(
     type: { type: String, required: true },
     totalSeats: { type: Number, required: true },
     price: { type: Number, required: true },
-    routeId: { type: String, required: true },
-    ladiesOnlySeats: { type: [Number], default: [] }, // ✅ store seat numbers reserved for ladies
+
+    routeId: { type: mongoose.Schema.Types.ObjectId, ref: "Route", required: true },
+
+    ladiesOnlySeats: { type: [Number], default: [] },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
+
     amenities: { type: [String], default: [] },
+
+    // 🌙 Special trips or timings
     isSpecial: { type: Boolean, default: false },
     specialTime: { type: String },
-    seats: { type: [seatSchema], default: [] }, // ✅ seat details
-    ownerId: { type: String, required: true }, //ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true }
-    busNumber:{type:String}
+
+    // 💺 All seat details (each seat has sub-schema above)
+    seats: { type: [seatSchema], default: [] },
+
+    // 🧑‍💼 Owner of the bus
+    ownerId: { type: String, required: true },
+
+    // 🚌 Optional unique bus number/plate
+    busNumber: { type: String },
+
+    // 📅 Track creation/update times
   },
   { timestamps: true }
 );

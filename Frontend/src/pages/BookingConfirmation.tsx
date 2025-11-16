@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, Download, RotateCcw, Calendar, MapPin, Clock, Users } from 'lucide-react';
+import { CheckCircle, Download, RotateCcw, MapPin,  Users } from 'lucide-react';
 
 const BookingConfirmation: React.FC = () => {
   const location = useLocation();

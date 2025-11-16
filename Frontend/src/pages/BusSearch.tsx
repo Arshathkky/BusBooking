@@ -286,8 +286,11 @@ const BusSearch: React.FC = () => {
                               Rs. {bus.price.toLocaleString()} per seat
                             </p>
                           </div>
-                          <button className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold px-4 py-2 rounded-lg">
-                            Select Seats
+                          <button
+                              onClick={() => handleBusSelect(bus.id)}
+                              className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold px-4 py-2 rounded-lg"
+                            >
+                              Select Seats
                           </button>
                         </div>
                       </div>

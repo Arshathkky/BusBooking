@@ -91,6 +91,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       } else {
         await addConductor({
           name: formData.name,
+          
           phone: formData.phone,
           email: formData.email,
           password: formData.password,

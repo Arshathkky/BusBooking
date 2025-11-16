@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
 import { useSeat } from "../contexts/seatSelectionContext";
+import axios from "axios";
 
 interface SearchData {
   from: string;
@@ -43,19 +44,15 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     if (isLadiesOnly && isOccupied) {
       seatClass += "bg-pink-600 border-pink-700 text-white cursor-not-allowed";
     } else if (isLadiesOnly) {
-      if (isSelected) {
-        seatClass += "bg-[#fdc106] border-[#e6ad05] text-gray-900 transform scale-105";
-      } else {
-        seatClass +=
-          "bg-pink-200 border-pink-300 text-pink-800 hover:bg-pink-300";
-      }
+      seatClass += isSelected
+        ? "bg-[#fdc106] border-[#e6ad05] text-gray-900 transform scale-105"
+        : "bg-pink-200 border-pink-300 text-pink-800 hover:bg-pink-300";
     } else if (isOccupied) {
       seatClass += "bg-gray-400 border-gray-500 text-white cursor-not-allowed";
     } else if (isSelected) {
       seatClass += "bg-[#fdc106] border-[#e6ad05] text-gray-900 transform scale-105";
     } else {
-      seatClass +=
-        "bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300";
+      seatClass += "bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300";
     }
 
     seats.push(
@@ -133,12 +130,34 @@ const SeatSelection: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchData = location.state?.searchData as SearchData;
+
   const { busSeats, selectedSeats, fetchBusSeats, selectSeat, deselectSeat, clearSelection } = useSeat();
 
+  const [dateOccupiedSeats, setDateOccupiedSeats] = useState<Set<number>>(new Set());
+
+  // -----------------------------
+  // Fetch booked seats for selected date
+  // -----------------------------
+  const fetchDateBooking = async (busId: string, date: string) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/bookings/occupied-seats`,
+        { params: { busId, date } }
+      );
+      const bookedSeats: string[] = res.data.occupiedSeats || [];
+      setDateOccupiedSeats(new Set(bookedSeats.map(Number)));
+    } catch (err) {
+      console.error("⚠️ Failed to load date-wise seats:", err);
+    }
+  };
+
   useEffect(() => {
-    if (busId) fetchBusSeats(busId);
+    if (busId) {
+      fetchBusSeats(busId);
+      if (searchData?.date) fetchDateBooking(busId, searchData.date);
+    }
     return () => clearSelection();
-  }, [busId]);
+  }, [busId, searchData?.date]);
 
   if (!searchData) {
     return (
@@ -156,10 +175,13 @@ const SeatSelection: React.FC = () => {
 
   if (!busSeats) return <p className="text-center mt-8">Loading bus data...</p>;
 
-  const occupiedSeats = new Set(busSeats.seats.filter((s) => s.isOccupied).map((s) => s.seatNumber));
-  const ladiesOnlySeats = new Set(busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber));
+  // Merge permanent seats + date-wise bookings
+  const occupiedSeats = new Set([
+    ...busSeats.seats.filter((s) => s.isOccupied).map((s) => s.seatNumber),
+    ...Array.from(dateOccupiedSeats),
+  ]);
 
-  // check if all seats booked
+  const ladiesOnlySeats = new Set(busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber));
   const allBooked = busSeats.totalSeats === occupiedSeats.size;
 
   const handleSeatClick = (seatNumber: number) => {
@@ -194,13 +216,15 @@ const SeatSelection: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Select Seats</h2>
           <p className="text-gray-600">
-            {busSeats.name} • {searchData.from} → {searchData.to}
+            {busSeats.name} • {searchData.from} → {searchData.to} • {searchData.date}
           </p>
         </div>
       </div>
 
       {allBooked ? (
-        <p className="text-center text-red-500 font-semibold">All seats are already booked!</p>
+        <p className="text-center text-red-500 font-semibold">
+          All seats are already booked for this date!
+        </p>
       ) : (
         <>
           <SeatLayout

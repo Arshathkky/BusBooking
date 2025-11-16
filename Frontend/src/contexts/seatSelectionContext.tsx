@@ -17,6 +17,12 @@ export interface Bus {
   seats: Seat[];
 }
 
+// Backend response wrapper
+interface BusResponse {
+  success: boolean;
+  data: BusFromBackend;
+}
+
 interface BusFromBackend {
   _id: string;
   name: string;
@@ -55,8 +61,13 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Fetch bus seats from backend
   const fetchBusSeats = useCallback(async (busId: string) => {
     try {
-      const res = await axios.get<BusFromBackend>(`${API_URL}/${busId}`);
-      const busData = res.data;
+      const res = await axios.get<BusResponse>(`${API_URL}/${busId}`);
+      const busData = res.data.data; // ✅ Access the "data" property
+
+      if (!busData || !busData.seats) {
+        console.error("Bus data or seats are missing");
+        return;
+      }
 
       setBusSeats({
         id: busData._id,

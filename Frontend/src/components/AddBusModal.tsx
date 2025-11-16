@@ -7,7 +7,7 @@ import { useRouteData } from "../contexts/RouteDataContext";
 
 interface AddBusModalProps {
   onClose: () => void;
-  editingBus?: BusType | null; // optional for edit
+  editingBus?: BusType | null;
 }
 
 interface FormData {
@@ -46,7 +46,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     startTime: "",
     endTime: "",
     duration: "",
-    busNumber:""
+    busNumber: "",
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
@@ -69,7 +69,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         startTime: editingBus.departureTime,
         endTime: editingBus.arrivalTime,
         duration: editingBus.duration,
-        busNumber:editingBus.busNumber,
+        busNumber: editingBus.busNumber,
       });
     }
   }, [editingBus, routes]);
@@ -108,8 +108,12 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     }));
   };
 
+  // Receive only ladies-only seats from layout
   const handleLayoutSave = (ladiesSeats: number[]) => {
-    setFormData((prev) => ({ ...prev, ladiesOnlySeats: ladiesSeats }));
+    setFormData((prev) => ({
+      ...prev,
+      ladiesOnlySeats: ladiesSeats,
+    }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -123,32 +127,36 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     }
 
     // Generate seat layout
-    const seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
-      seatNumber: i + 1,
-      isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
-    }));
-
-    // Correct payload to match backend expectations
-   const busPayload: Omit<BusType, "id"> = {
-  name: formData.busName,
-  companyName: formData.companyName,
-  type: formData.busType,
-  routeId: selectedRoute.id,         // link to Route
-  departureTime: formData.startTime,
-  arrivalTime: formData.endTime,
-  duration: formData.duration,
-  totalSeats: formData.totalSeats,
-  ladiesOnlySeats: formData.ladiesOnlySeats,
-  price: parseFloat(formData.pricePerSeat),
-  status: "active",                  // matches BusType
-  amenities: formData.amenities,
-  isSpecial: formData.isSpecialBus,
-  specialTime: formData.specialTime,
-  ownerId: user.id,
-  seats: seats, 
-  busNumber:formData.busNumber                     // array of SeatType
-};
-
+        const seats = Array.from({ length: formData.totalSeats }, (_, i) => {
+    const seatNumber = i + 1;
+    return {
+    seatNumber,
+    isLadiesOnly: formData.ladiesOnlySeats.includes(seatNumber),
+    isOccupied: false,
+    agentAssigned: false,
+    agentCode: null,
+    agentId: null,
+    };
+    });
+    const busPayload: Omit<BusType, "id"> = {
+      name: formData.busName,
+      companyName: formData.companyName,
+      type: formData.busType,
+      routeId: selectedRoute.id,
+      departureTime: formData.startTime,
+      arrivalTime: formData.endTime,
+      duration: formData.duration,
+      totalSeats: formData.totalSeats,
+      ladiesOnlySeats: formData.ladiesOnlySeats,
+      price: parseFloat(formData.pricePerSeat),
+      status: "active",
+      amenities: formData.amenities,
+      isSpecial: formData.isSpecialBus,
+      specialTime: formData.specialTime,
+      ownerId: user.id,
+      seats: seats,
+      busNumber: formData.busNumber,
+    };
 
     try {
       if (editingBus) {
@@ -195,7 +203,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Bus Info */}
+              {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input
                   type="text"
@@ -315,11 +323,11 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                 </select>
               </div>
 
-              {/* Ladies Only Seats */}
+              {/* Layout (Ladies Seats Only) */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-semibold">
-                    Ladies Only Seats ({formData.ladiesOnlySeats.length} selected)
+                    Layout Setup ({formData.ladiesOnlySeats.length} ladies-only seats)
                   </label>
                   <button
                     type="button"
@@ -332,7 +340,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                 </div>
                 <div className="p-3 bg-gray-50 rounded-lg text-sm">
                   {formData.ladiesOnlySeats.length > 0
-                    ? `Seats: ${formData.ladiesOnlySeats.join(", ")}`
+                    ? `Ladies seats: ${formData.ladiesOnlySeats.join(", ")}`
                     : "No ladies-only seats selected"}
                 </div>
               </div>
@@ -366,7 +374,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
 
               {/* Amenities */}
               <div>
-                <label className="block text-sm font-semibold mb-3">Amenities</label>
+                <label className="block text-sm font-semibold mb-3">
+                  Amenities
+                </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {availableAmenities.map((amenity) => (
                     <label key={amenity} className="flex items-center space-x-2">
@@ -381,7 +391,6 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                   ))}
                 </div>
               </div>
-              
 
               {/* Buttons */}
               <div className="flex space-x-4">
@@ -404,7 +413,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         </div>
       </div>
 
-      {/* Layout Designer */}
+      {/* Layout Designer Modal */}
       {showLayoutDesigner && (
         <BusLayoutDesigner
           totalSeats={formData.totalSeats}

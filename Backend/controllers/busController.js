@@ -1,8 +1,10 @@
 import Bus from "../models/busModel.js";
 import Route from "../models/routeModel.js";
+import Conductor from "../models/conductorModel.js";
+
 
 // --------------------
-// Add a new bus
+// Add a new bus (with ladies + agent seats)
 // --------------------
 export const addBus = async (req, res) => {
   try {
@@ -22,29 +24,40 @@ export const addBus = async (req, res) => {
       amenities = [],
       ownerId,
       isSpecial = false,
-      specialTime,
+      specialTime = null,
       ladiesOnlySeats = [],
+      agentSeats = [], // 👈 Added field
+      busNumber,
     } = req.body;
 
     // ✅ Validate required fields
-    if (!name || !companyName || !type || (!routeId && (!startPoint || !endPoint))) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!name || !companyName || !type || !ownerId || !totalSeats || !price) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
-    let route;
+    // ✅ Validate busNumber uniqueness
+    if (busNumber) {
+      const existing = await Bus.findOne({ busNumber });
+      if (existing) {
+        return res.status(400).json({ success: false, message: "Bus number already exists" });
+      }
+    }
 
-    // ✅ Find or create route
+    // ✅ Route handling (find or create)
+    let route;
     if (routeId) {
       route = await Route.findById(routeId);
-      if (!route) return res.status(404).json({ message: "Route not found" });
+      if (!route) return res.status(404).json({ success: false, message: "Route not found" });
     } else {
       const start = startPoint?.trim();
       const end = endPoint?.trim();
 
-      route = await Route.findOne({ startPoint: start, endPoint: end, status: "active" });
+      if (!start || !end)
+        return res.status(400).json({ success: false, message: "Start and end points are required" });
 
-      if (!route) {
-        route = await Route.create({
+      route =
+        (await Route.findOne({ startPoint: start, endPoint: end, status: "active" })) ||
+        (await Route.create({
           name: `${start}-${end}`,
           startPoint: start,
           endPoint: end,
@@ -53,18 +66,28 @@ export const addBus = async (req, res) => {
           duration,
           ownerId,
           status: "active",
-        });
-      }
+        }));
     }
 
-    // ✅ Initialize seats
-    const seats = Array.from({ length: totalSeats }, (_, i) => ({
-      seatNumber: i + 1,
-      isLadiesOnly: ladiesOnlySeats.includes(i + 1),
-      isOccupied: false,
-    }));
+    // ✅ Initialize seat layout with ladies + agent seats
+    const seats = Array.from({ length: totalSeats }, (_, i) => {
+      const seatNumber = i + 1;
+      const isLadiesOnly = ladiesOnlySeats.includes(seatNumber);
 
-    // ✅ Create Bus
+      const agentSeat = agentSeats.find((s) => s.seatNumber === seatNumber);
+      const isAgentSeat = !!agentSeat;
+
+      return {
+        seatNumber,
+        isLadiesOnly,
+        isOccupied: false,
+        agentAssigned: isAgentSeat,
+        agentCode: isAgentSeat ? agentSeat.agentCode : null,
+        agentId: isAgentSeat ? agentSeat.agentId || null : null,
+      };
+    });
+
+    // ✅ Create new bus
     const bus = await Bus.create({
       name,
       companyName,
@@ -75,6 +98,9 @@ export const addBus = async (req, res) => {
       totalSeats,
       price,
       routeId: route._id.toString(),
+      startPoint: route.startPoint,
+      endPoint: route.endPoint,
+      stops,
       amenities,
       isSpecial,
       specialTime,
@@ -82,13 +108,20 @@ export const addBus = async (req, res) => {
       ownerId,
       seats,
       status: "active",
-      busNumber,
+      busNumber: busNumber || `BUS-${Date.now()}`,
     });
 
-    res.status(201).json(bus);
+    res.status(201).json({
+      success: true,
+      message: "Bus created successfully with ladies and agent seats",
+      data: bus,
+    });
   } catch (error) {
     console.error("Add Bus Error:", error);
-    res.status(500).json({ message: error.message || "Failed to create bus" });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create bus",
+    });
   }
 };
 
@@ -97,11 +130,18 @@ export const addBus = async (req, res) => {
 // --------------------
 export const getBuses = async (req, res) => {
   try {
-    const buses = await Bus.find();
-    res.status(200).json(buses);
+    const { ownerId } = req.query;
+    const filter = ownerId ? { ownerId } : {};
+    const buses = await Bus.find(filter).populate("routeId");
+
+    res.status(200).json({
+      success: true,
+      count: buses.length,
+      data: buses,
+    });
   } catch (error) {
     console.error("Get Buses Error:", error);
-    res.status(500).json({ message: error.message || "Failed to fetch buses" });
+    res.status(500).json({ success: false, message: "Failed to fetch buses" });
   }
 };
 
@@ -110,60 +150,131 @@ export const getBuses = async (req, res) => {
 // --------------------
 export const getBusById = async (req, res) => {
   try {
-    const bus = await Bus.findById(req.params.id);
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
+    const bus = await Bus.findById(req.params.id).populate("routeId");
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    res.status(200).json(bus);
+    res.status(200).json({ success: true, data: bus });
   } catch (error) {
     console.error("Get Bus Error:", error);
-    res.status(500).json({ message: error.message || "Failed to fetch bus" });
+    res.status(500).json({ success: false, message: "Failed to fetch bus" });
   }
 };
 
 // --------------------
-// Update bus
+// Update bus details
 // --------------------
 export const updateBus = async (req, res) => {
   try {
-    const updated = await Bus.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ message: "Bus not found" });
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    res.status(200).json(updated);
+    Object.assign(bus, req.body);
+    await bus.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Bus updated successfully",
+      data: bus,
+    });
   } catch (error) {
     console.error("Update Bus Error:", error);
-    res.status(400).json({ message: error.message || "Failed to update bus" });
+    res.status(400).json({ success: false, message: "Failed to update bus" });
   }
 };
 
 // --------------------
-// Update seat layout only
+// Update seat layout (manual edit)
 // --------------------
 export const updateSeatLayout = async (req, res) => {
   try {
     const { seats } = req.body;
-    if (!Array.isArray(seats)) return res.status(400).json({ message: "Seats must be an array" });
+    if (!Array.isArray(seats)) {
+      return res.status(400).json({ success: false, message: "Seats must be an array" });
+    }
 
     const bus = await Bus.findById(req.params.id);
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    // Update only seats provided in request
     for (let updatedSeat of seats) {
       const seat = bus.seats.find((s) => s.seatNumber === updatedSeat.seatNumber);
       if (!seat) continue;
+
       if (updatedSeat.isOccupied && seat.isOccupied) {
-        return res.status(400).json({ message: `Seat ${seat.seatNumber} is already occupied` });
+        return res.status(400).json({
+          success: false,
+          message: `Seat ${seat.seatNumber} is already occupied`,
+        });
       }
-      seat.isOccupied = updatedSeat.isOccupied;
+
+      seat.isOccupied = updatedSeat.isOccupied ?? seat.isOccupied;
+      seat.isLadiesOnly = updatedSeat.isLadiesOnly ?? seat.isLadiesOnly;
+      seat.agentAssigned = updatedSeat.agentAssigned ?? seat.agentAssigned;
+      seat.agentCode = updatedSeat.agentCode ?? seat.agentCode;
+      seat.agentId = updatedSeat.agentId ?? seat.agentId;
     }
 
     await bus.save();
-    res.status(200).json({ success: true, seats: bus.seats });
+    res.status(200).json({ success: true, message: "Seat layout updated", data: bus.seats });
   } catch (error) {
     console.error("Update Seat Layout Error:", error);
-    res.status(500).json({ message: error.message || "Failed to update seat layout" });
+    res.status(500).json({ success: false, message: "Failed to update seat layout" });
   }
 };
 
+// --------------------
+// Assign seats to agent (Agent Booking)
+// --------------------
+// export const assignAgentSeats = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { agentId, seatNumbers, markAsOccupied } = req.body;
+
+//     const bus = await Bus.findById(id);
+//     if (!bus) {
+//       return res.status(404).json({ success: false, message: "Bus not found" });
+//     }
+
+//     seatNumbers.forEach((num) => {
+//       const seat = bus.seats.find(
+//         (s) => Number(s.seatNumber) === Number(num)
+//       );
+//       if (seat) {
+//         seat.agentAssigned = true;
+//         seat.agentId = agentId;
+//         seat.isOccupied = !!markAsOccupied; // ✅ Mark only if user selected it
+//       }
+//     });
+
+//     await bus.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: `Seats assigned successfully ${
+//         markAsOccupied ? "(marked as occupied)" : "(kept available)"
+//       }`,
+//       bus,
+//     });
+//   } catch (error) {
+//     console.error("Error assigning seats:", error);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
+// --------------------
+// Get all agent-assigned seats
+// --------------------
+export const getAgentSeats = async (req, res) => {
+  try {
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    const agentSeats = bus.seats.filter((s) => s.agentAssigned);
+    res.status(200).json({ success: true, data: agentSeats });
+  } catch (error) {
+    console.error("Get Agent Seats Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch agent seats" });
+  }
+};
 
 // --------------------
 // Delete bus
@@ -171,12 +282,12 @@ export const updateSeatLayout = async (req, res) => {
 export const deleteBus = async (req, res) => {
   try {
     const deleted = await Bus.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Bus not found" });
+    if (!deleted) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    res.status(200).json({ message: "Bus deleted successfully" });
+    res.status(200).json({ success: true, message: "Bus deleted successfully" });
   } catch (error) {
     console.error("Delete Bus Error:", error);
-    res.status(500).json({ message: error.message || "Failed to delete bus" });
+    res.status(500).json({ success: false, message: "Failed to delete bus" });
   }
 };
 
@@ -186,29 +297,96 @@ export const deleteBus = async (req, res) => {
 export const toggleBusStatus = async (req, res) => {
   try {
     const bus = await Bus.findById(req.params.id);
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
     bus.status = bus.status === "active" ? "inactive" : "active";
-    const updated = await bus.save();
+    await bus.save();
 
-    res.status(200).json(updated);
+    res.status(200).json({
+      success: true,
+      message: `Bus status changed to ${bus.status}`,
+      data: bus,
+    });
   } catch (error) {
     console.error("Toggle Bus Status Error:", error);
-    res.status(500).json({ message: error.message || "Failed to toggle bus status" });
+    res.status(500).json({ success: false, message: "Failed to toggle bus status" });
   }
 };
 
 // --------------------
-// Fetch only seat layout (optional endpoint for frontend)
+// Get seat layout (frontend use)
 // --------------------
 export const getSeatLayout = async (req, res) => {
   try {
     const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price");
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    res.status(200).json(bus);
+    res.status(200).json({ success: true, data: bus });
   } catch (error) {
     console.error("Get Seat Layout Error:", error);
-    res.status(500).json({ message: error.message || "Failed to fetch seat layout" });
+    res.status(500).json({ success: false, message: "Failed to fetch seat layout" });
+  }
+};
+
+
+// ✅ PUT /api/buses/:id/agent-seats
+export const assignAgentSeats = async (req, res) => {
+  try {
+    const { agentId, seatNumbers, markAsOccupied } = req.body;
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+    // Get agent details (for agentCode)
+    const agent = await Conductor.findById(agentId);
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+
+    bus.seats = bus.seats.map((seat) => {
+      if (seatNumbers.includes(seat.seatNumber)) {
+        return {
+          ...seat.toObject(),
+          agentAssigned: true,
+          agentId,
+          agentCode: agent.agentCode,
+          isOccupied: markAsOccupied, // Only mark if selected
+          isReservedForAgent: !markAsOccupied,
+        };
+      }
+      return seat;
+    });
+
+    await bus.save();
+    res.status(200).json({ message: "Seats assigned successfully", bus });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to assign seats", error });
+  }
+};
+
+// ✅ PATCH /api/buses/:id/agent-seats/remove
+export const removeAgentSeats = async (req, res) => {
+  try {
+    const { seatNumbers } = req.body;
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+    bus.seats = bus.seats.map((seat) => {
+      if (seatNumbers.includes(seat.seatNumber)) {
+        return {
+          ...seat.toObject(),
+          agentAssigned: false,
+          agentId: null,
+          agentCode: null,
+          isOccupied: false,
+          isReservedForAgent: false,
+        };
+      }
+      return seat;
+    });
+
+    await bus.save();
+    res.status(200).json({ message: "Agent assignment removed", bus });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to remove agent assignment", error });
   }
 };

@@ -16,9 +16,10 @@ import { useConductor, ConductorType } from "../contexts/conductorDataContext";
 import { useRouteData, RouteType } from "../contexts/RouteDataContext";
 import AddRouteModal from "../components/AddRouteModal";
 import AssignAgentTab from "./ownerDashboard/AssignTab";
+import BookingOverviewByDate from "./ownerDashboard/BookingOverviewByDate";
 
 const OwnerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignAgent">("overview"); 
+  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignAgent" | "Bookingoverview">("overview"); 
   const [editingRoute, setEditingRoute] = useState<RouteType | null>(null); // ✅ Fixed type
 
   const [showBusModal, setShowBusModal] = useState(false);
@@ -85,8 +86,8 @@ const OwnerDashboard: React.FC = () => {
     setShowAddConductorModal(true);
   };
 
-  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignAgent"> =
-  ["overview", "buses", "conductors", "routes", "assignAgent"];
+  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignAgent"| "Bookingoverview"> =
+  ["overview", "buses", "conductors", "routes", "assignAgent", "Bookingoverview"];
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -347,6 +348,7 @@ const OwnerDashboard: React.FC = () => {
       )}
       
       {activeTab === "assignAgent" && <AssignAgentTab />}
+      {activeTab === "Bookingoverview" && <BookingOverviewByDate />}
 
     </div>
   );

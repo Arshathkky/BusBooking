@@ -56,46 +56,45 @@ const OwnerDashboard: React.FC = () => {
     if (user?.id) fetchOverview(selectedMonth, selectedDate, selectedBus);
   }, [user]);
 
- const fetchOverview = async (month?: string, date?: string, bus?: string) => {
-  if (!user?.id) return;
-  setLoadingOverview(true);
-  try {
-    let url = `${API_URL}/${user.id}/overview?`;
-    if (date) url += `date=${date}`;
-    else url += `month=${month}`;
-    if (bus && bus !== "all") url += `&busId=${bus}`;
+  const fetchOverview = async (month?: string, date?: string, bus?: string) => {
+    if (!user?.id) return;
+    setLoadingOverview(true);
+    try {
+      let url = `${API_URL}/${user.id}/overview?`;
+      if (date) url += `date=${date}`;
+      else url += `month=${month}`;
+      if (bus && bus !== "all") url += `&busId=${bus}`;
 
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.success && data.data) {
-      setOverview({
-        totalBuses: data.data.totalBuses ?? 0,
-        activeBuses: data.data.activeBuses ?? 0,
-        totalConductors: data.data.totalConductors ?? 0,
-        totalBookings: data.data.totalBookings ?? 0,
-        totalRoutes: data.data.totalRoutes ?? 0,
-        activeRoutes: data.data.activeRoutes ?? 0,
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setOverview({
+          totalBuses: data.data.totalBuses ?? 0,
+          activeBuses: data.data.activeBuses ?? 0,
+          totalConductors: data.data.totalConductors ?? 0,
+          totalBookings: data.data.totalBookings ?? 0,
+          totalRoutes: data.data.totalRoutes ?? 0,
+          activeRoutes: data.data.activeRoutes ?? 0,
 
-        // Today values
-        todayBookings: date ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
-        todayEarnings: date ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
+          // Today values: show filtered date values if a date is selected
+          todayBookings: date ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
+          todayEarnings: date ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
 
-        // Monthly earnings always for the selected month
-        monthlyEarnings: data.data.monthlyEarnings ?? 0,
-        totalRevenue: data.data.totalRevenue ?? 0,
-      });
-      setOverviewError(null);
-    } else {
-      setOverviewError(data.message || "Could not load overview data.");
+          // Monthly earnings always for the selected month
+          monthlyEarnings: data.data.monthlyEarnings ?? 0,
+          totalRevenue: data.data.totalRevenue ?? 0,
+        });
+        setOverviewError(null);
+      } else {
+        setOverviewError(data.message || "Could not load overview data.");
+      }
+    } catch (err) {
+      console.error(err);
+      setOverviewError("Network error while loading dashboard.");
+    } finally {
+      setLoadingOverview(false);
     }
-  } catch (err) {
-    console.error(err);
-    setOverviewError("Network error while loading dashboard.");
-  } finally {
-    setLoadingOverview(false);
-  }
-};
-
+  };
 
   // ---------------- Modals ----------------
   const [showBusModal, setShowBusModal] = useState(false);
@@ -139,11 +138,7 @@ const OwnerDashboard: React.FC = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-4 font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab
-                  ? "text-[#fdc106] border-b-2 border-[#fdc106]"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
+              className={`px-6 py-4 font-medium whitespace-nowrap transition-colors ${activeTab === tab ? "text-[#fdc106] border-b-2 border-[#fdc106]" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -202,10 +197,9 @@ const OwnerDashboard: React.FC = () => {
                 { label: "Conductors", value: overview.totalConductors, icon: Users },
                 { label: "Total Routes", value: overview.totalRoutes, icon: Bus },
                 { label: "Active Routes", value: overview.activeRoutes, icon: Calendar },
-                { label: "Today's Bookings", value: overview.todayBookings, icon: Users },
-                { label: "Total Bookings", value: overview.totalBookings, icon: Users },
+                { label: selectedDate ? "Bookings (Selected Date)" : "Today's Bookings", value: overview.todayBookings, icon: Users },
+                { label: selectedDate ? "Earnings (Selected Date)" : "Today's Earnings", value: `LKR ${overview.todayEarnings.toLocaleString()}`, icon: DollarSign },
                 { label: "Monthly Earnings", value: `LKR ${overview.monthlyEarnings.toLocaleString()}`, icon: DollarSign },
-                { label: "Today's Earnings", value: `LKR ${overview.todayEarnings.toLocaleString()}`, icon: DollarSign },
               ].map((item, i) => (
                 <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
                   <div>
@@ -219,9 +213,6 @@ const OwnerDashboard: React.FC = () => {
           )}
         </div>
       )}
-
-
-
 
       {/* ---------------- Buses ---------------- */}
       {activeTab === "buses" && (
@@ -357,7 +348,7 @@ const OwnerDashboard: React.FC = () => {
               }}
               className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
             >
-              <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
               <span>Add Route</span>
             </button>
           </div>
@@ -376,7 +367,6 @@ const OwnerDashboard: React.FC = () => {
                     {route.startPoint} → {route.endPoint} • {route.distance} km • {route.duration}
                   </p>
 
-                  {/* 🚏 Bus Stops */}
                   {route.stops && route.stops.length > 0 ? (
                     <ul className="flex flex-wrap gap-2">
                       {route.stops.map((stop, i) => (
@@ -431,11 +421,16 @@ const OwnerDashboard: React.FC = () => {
           )}
         </div>
       )}
-      
-      {activeTab === "assignAgent" && <AssignAgentTab />}
 
+      {/* ---------------- Assign Agent Tab ---------------- */}
+      {activeTab === "assignAgent" && (
+        <div>
+          <AssignAgentTab />
+        </div>
+      )}
     </div>
   );
 };
 
 export default OwnerDashboard;
+

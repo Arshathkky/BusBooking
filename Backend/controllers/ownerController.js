@@ -1,5 +1,7 @@
 const Owner = require("../models/ownerModel");
 const Bus = require("../models/busModel");
+const Conductor = require("../models/conductorModel");
+const Route = require("../models/routeModel");
 const Booking = require("../models/bookingModel");
 const bcrypt = require("bcryptjs");
 
@@ -49,21 +51,52 @@ exports.getOwnerDetails = async (req, res) => {
       { $match: { busId: { $in: busIds } } },
       { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
     ]);
-
     const totalRevenue = totalRevenueAgg[0]?.totalRevenue || 0;
-    const routes = buses.map(b => ({ routeId: b.routeId, busName: b.name }));
+
+    const routes = await Route.find({ ownerId });
+    const totalRoutes = routes.length;
+    const activeRoutes = routes.filter(r => r.status === "active").length;
+
+    const conductors = await Conductor.find({ ownerId });
+    const totalConductors = conductors.length;
+
+    // Example: today bookings
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const todayBookings = await Booking.countDocuments({
+      busId: { $in: busIds },
+      createdAt: { $gte: today, $lt: tomorrow },
+    });
+
+    // Monthly earnings (example: this month)
+    const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const monthlyEarningsAgg = await Booking.aggregate([
+      { $match: { busId: { $in: busIds }, createdAt: { $gte: startMonth, $lt: endMonth } } },
+      { $group: { _id: null, monthlyEarnings: { $sum: "$totalAmount" } } }
+    ]);
+    const monthlyEarnings = monthlyEarningsAgg[0]?.monthlyEarnings || 0;
 
     res.json({
-      owner,
-      totalBuses,
-      totalBookings,
-      totalRevenue,
-      buses,
-      routes
+      success: true,
+      data: {
+        totalBuses,
+        activeBuses: buses.filter(b => b.status === "active").length,
+        totalConductors,
+        totalRoutes,
+        activeRoutes,
+        totalBookings,
+        todayBookings,
+        totalRevenue,
+        monthlyEarnings,
+        totalEarnings: totalRevenue
+      }
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

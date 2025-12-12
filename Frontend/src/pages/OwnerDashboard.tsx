@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Bus,
@@ -19,87 +19,123 @@ import AssignAgentTab from "./ownerDashboard/AssignTab";
 
 const OwnerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignAgent">("overview"); 
-  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null); // ✅ Fixed type
+  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
 
+  // ---------------- Owner Overview ----------------
+  interface OwnerOverview {
+    totalBuses: number;
+    activeBuses: number;
+    totalConductors: number;
+    totalBookings: number;
+    totalRoutes: number;
+    activeRoutes: number;
+    todayBookings: number;
+    monthlyEarnings: number;
+    todayEarnings: number;
+    totalRevenue?: number;
+    [key: string]: number | string | undefined;
+  }
+
+  const [overview, setOverview] = useState<OwnerOverview | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState<boolean>(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const API_URL = "http://localhost:5000/api/owner";
+
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}`
+  );
+  const [selectedDate, setSelectedDate] = useState<string>(
+    `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`
+  );
+  const [selectedBus, setSelectedBus] = useState<string>("all");
+
+  useEffect(() => {
+    if (user?.id) fetchOverview(selectedMonth, selectedDate, selectedBus);
+  }, [user]);
+
+ const fetchOverview = async (month?: string, date?: string, bus?: string) => {
+  if (!user?.id) return;
+  setLoadingOverview(true);
+  try {
+    let url = `${API_URL}/${user.id}/overview?`;
+    if (date) url += `date=${date}`;
+    else url += `month=${month}`;
+    if (bus && bus !== "all") url += `&busId=${bus}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success && data.data) {
+      setOverview({
+        totalBuses: data.data.totalBuses ?? 0,
+        activeBuses: data.data.activeBuses ?? 0,
+        totalConductors: data.data.totalConductors ?? 0,
+        totalBookings: data.data.totalBookings ?? 0,
+        totalRoutes: data.data.totalRoutes ?? 0,
+        activeRoutes: data.data.activeRoutes ?? 0,
+
+        // Today values
+        todayBookings: date ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
+        todayEarnings: date ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
+
+        // Monthly earnings always for the selected month
+        monthlyEarnings: data.data.monthlyEarnings ?? 0,
+        totalRevenue: data.data.totalRevenue ?? 0,
+      });
+      setOverviewError(null);
+    } else {
+      setOverviewError(data.message || "Could not load overview data.");
+    }
+  } catch (err) {
+    console.error(err);
+    setOverviewError("Network error while loading dashboard.");
+  } finally {
+    setLoadingOverview(false);
+  }
+};
+
+
+  // ---------------- Modals ----------------
   const [showBusModal, setShowBusModal] = useState(false);
   const [showAddRouteModal, setShowAddRouteModal] = useState(false);
   const [showAddConductorModal, setShowAddConductorModal] = useState(false);
-
   const [editingBus, setEditingBus] = useState<BusType | null>(null);
   const [editingConductor, setEditingConductor] = useState<ConductorType | null>(null);
 
-  const { user } = useAuth();
   const { buses, deleteBus, toggleBusStatus } = useBus();
   const { routes, deleteRoute, toggleRouteStatus } = useRouteData();
   const { conductors, deleteConductor, toggleConductorStatus } = useConductor();
 
-  // ---------------- Filter data by logged-in owner ----------------
   const ownerBuses = buses.filter((bus) => String(bus.ownerId) === String(user?.id));
-  const ownerConductors = conductors.filter((conductor) => String(conductor.ownerId) === String(user?.id));
-  const ownerRoutes = routes.filter((route) => String(route.ownerId) === String(user?.id));
+  const ownerConductors = conductors.filter((c) => String(c.ownerId) === String(user?.id));
+  const ownerRoutes = routes.filter((r) => String(r.ownerId) === String(user?.id));
 
-  // ---------------- Dashboard Statistics ----------------
-  const stats = {
-    totalBuses: ownerBuses.length,
-    activeBuses: ownerBuses.filter((b) => b.status === "active").length,
-    totalConductors: ownerConductors.length,
-    monthlyEarnings: 125000,
-  };
+  // ---------------- Helper ----------------
+  const getRouteName = (routeId?: string) => routeId ? routes.find(r => r.id === routeId)?.name ?? "Unknown" : "Unassigned";
+  const getBusName = (busId?: string) => busId ? ownerBuses.find(b => b.id === busId)?.name ?? "Unknown Bus" : "Unassigned";
+  const getStatusColor = (status?: string) => status === "active" ? "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900" : "text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-900";
+  const formatStatus = (status?: string) => (status ?? "inactive")[0].toUpperCase() + (status ?? "inactive").slice(1);
 
-  // ---------------- Helper Functions ----------------
-  const getRouteName = (routeId?: string): string => {
-    if (!routeId) return "Unknown Route";
-    const route = routes.find((r) => r.id === routeId);
-    return route ? `${route.startPoint} - ${route.endPoint}` : "Unknown Route";
-  };
-
-  const getBusName = (busId?: string): string => {
-    if (!busId) return "Unassigned";
-    const bus = ownerBuses.find((b) => b.id === busId);
-    return bus ? bus.name : "Unknown Bus";
-  };
-
-  const getStatusColor = (status?: string): string => {
-    switch (status) {
-      case "active":
-        return "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900";
-      case "inactive":
-        return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900";
-      default:
-        return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900";
-    }
-  };
-
-  const formatStatus = (status?: string): string => {
-    const s = status ?? "inactive";
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  };
-
-  const handleEditBus = (bus: BusType): void => {
-    setEditingBus(bus);
-    setShowBusModal(true);
-  };
-
-  const handleEditConductor = (conductor: ConductorType): void => {
-    setEditingConductor(conductor);
-    setShowAddConductorModal(true);
-  };
+  const handleEditBus = (bus: BusType) => { setEditingBus(bus); setShowBusModal(true); };
+  const handleEditConductor = (c: ConductorType) => { setEditingConductor(c); setShowAddConductorModal(true); };
 
   const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignAgent"> =
-  ["overview", "buses", "conductors", "routes", "assignAgent"];
+    ["overview", "buses", "conductors", "routes", "assignAgent"];
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* ---------------- Header ---------------- */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Owner Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage your buses, routes, and conductors</p>
+        <p className="text-gray-600 dark:text-gray-400">Manage your buses, routes, and conductors efficiently</p>
       </div>
 
-      {/* ---------------- Tabs ---------------- */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6 transition-colors">
+      {/* Tabs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 sticky top-0 z-20">
         <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -117,25 +153,75 @@ const OwnerDashboard: React.FC = () => {
 
       {/* ---------------- Overview ---------------- */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { label: "Total Buses", value: stats.totalBuses, icon: Bus },
-            { label: "Active Buses", value: stats.activeBuses, icon: Calendar },
-            { label: "Conductors", value: stats.totalConductors, icon: Users },
-            { label: "Monthly Earnings", value: `LKR ${stats.monthlyEarnings.toLocaleString()}`, icon: DollarSign },
-          ].map((item, i) => (
-            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{item.label}</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">{item.value}</p>
-                </div>
-                <item.icon className="w-12 h-12 text-[#fdc106]" />
-              </div>
+        <div>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 justify-end mb-6 items-end">
+            <div className="flex flex-col">
+              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Month</label>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+              />
             </div>
-          ))}
+            <div className="flex flex-col">
+              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Bus</label>
+              <select
+                value={selectedBus}
+                onChange={e => setSelectedBus(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+              >
+                <option value="all">All Buses</option>
+                {ownerBuses.map(bus => <option key={bus.id} value={bus.id}>{bus.name}</option>)}
+              </select>
+            </div>
+            <button
+              onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+              className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-5 py-2 rounded-lg font-semibold shadow transition"
+            >Apply</button>
+          </div>
+
+          {loadingOverview && <p className="text-center text-gray-500 dark:text-gray-400">Loading analytics...</p>}
+          {overviewError && <p className="text-center text-red-500">{overviewError}</p>}
+
+          {overview && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { label: "Total Buses", value: overview.totalBuses, icon: Bus },
+                { label: "Active Buses", value: overview.activeBuses, icon: Calendar },
+                { label: "Conductors", value: overview.totalConductors, icon: Users },
+                { label: "Total Routes", value: overview.totalRoutes, icon: Bus },
+                { label: "Active Routes", value: overview.activeRoutes, icon: Calendar },
+                { label: "Today's Bookings", value: overview.todayBookings, icon: Users },
+                { label: "Total Bookings", value: overview.totalBookings, icon: Users },
+                { label: "Monthly Earnings", value: `LKR ${overview.monthlyEarnings.toLocaleString()}`, icon: DollarSign },
+                { label: "Today's Earnings", value: `LKR ${overview.todayEarnings.toLocaleString()}`, icon: DollarSign },
+              ].map((item, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{item.label}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{item.value}</p>
+                  </div>
+                  <item.icon className="w-12 h-12 text-[#fdc106]" />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+
+
+
 
       {/* ---------------- Buses ---------------- */}
       {activeTab === "buses" && (

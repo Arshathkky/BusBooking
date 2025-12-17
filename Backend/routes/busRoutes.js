@@ -10,7 +10,8 @@ import {
   assignAgentSeats,     // ✅ Add this
   getAgentSeats,        // ✅ Add this
   getSeatLayout,  
-  removeAgentSeats        // ✅ Add this
+  removeAgentSeats ,
+
 } from "../controllers/busController.js";
 
 
@@ -31,6 +32,7 @@ router.patch("/:id/status", toggleBusStatus);
 
 router.patch("/:id/seats", updateSeatLayout);
 router.put("/:id/agent-seats", assignAgentSeats);
+
 router.get("/:id/agent-seats", getAgentSeats);
 router.get("/:id/layout", getSeatLayout);
 router.patch("/:id/agent-seats/remove", removeAgentSeats);

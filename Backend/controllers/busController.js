@@ -221,44 +221,29 @@ export const updateSeatLayout = async (req, res) => {
   }
 };
 
-// --------------------
-// Assign seats to agent (Agent Booking)
-// --------------------
-// export const assignAgentSeats = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { agentId, seatNumbers, markAsOccupied } = req.body;
+export const verifyAgentCode = async (req, res) => {
+  try {
+    const { code } = req.body;
 
-//     const bus = await Bus.findById(id);
-//     if (!bus) {
-//       return res.status(404).json({ success: false, message: "Bus not found" });
-//     }
+    if (!code) {
+      return res.json({ success: false, message: "Agent code required" });
+    }
 
-//     seatNumbers.forEach((num) => {
-//       const seat = bus.seats.find(
-//         (s) => Number(s.seatNumber) === Number(num)
-//       );
-//       if (seat) {
-//         seat.agentAssigned = true;
-//         seat.agentId = agentId;
-//         seat.isOccupied = !!markAsOccupied; // ✅ Mark only if user selected it
-//       }
-//     });
+    const agent = await Conductor.findOne({ agentCode: code });
 
-//     await bus.save();
+    if (!agent) {
+      return res.json({ success: false, message: "Invalid agent code" });
+    }
 
-//     res.status(200).json({
-//       success: true,
-//       message: `Seats assigned successfully ${
-//         markAsOccupied ? "(marked as occupied)" : "(kept available)"
-//       }`,
-//       bus,
-//     });
-//   } catch (error) {
-//     console.error("Error assigning seats:", error);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
+    res.json({
+      success: true,
+      agentId: agent._id,
+      agentCode: agent.agentCode,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Verification failed" });
+  }
+};
 
 // --------------------
 // Get all agent-assigned seats

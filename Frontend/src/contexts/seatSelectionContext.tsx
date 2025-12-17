@@ -6,6 +6,8 @@ export interface Seat {
   seatNumber: number;
   isLadiesOnly: boolean;
   isOccupied: boolean;
+  agentAssigned?: boolean;
+  isReservedForAgent?: boolean;
 }
 
 export interface Bus {
@@ -58,17 +60,18 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const API_URL = "http://localhost:5000/api/buses";
 
-  // Fetch bus seats from backend
+  // -------------------- Fetch bus seats from backend --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
     try {
       const res = await axios.get<BusResponse>(`${API_URL}/${busId}`);
-      const busData = res.data.data; // ✅ Access the "data" property
+      const busData = res.data.data;
 
       if (!busData || !busData.seats) {
         console.error("Bus data or seats are missing");
         return;
       }
 
+      // Map all seat info including agent fields
       setBusSeats({
         id: busData._id,
         name: busData.name,
@@ -79,6 +82,8 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,
           isOccupied: s.isOccupied ?? false,
+          agentAssigned: s.agentAssigned ?? false,
+          isReservedForAgent: s.isReservedForAgent ?? false,
         })),
       });
 
@@ -88,14 +93,16 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Update seat occupancy while preserving isLadiesOnly
+  // -------------------- Update seat occupancy --------------------
   const updateSeats = useCallback(
     async (busId: string, updatedSeats: { seatNumber: number; isOccupied: boolean }[]) => {
       if (!busSeats) return;
 
       const newSeats: Seat[] = busSeats.seats.map((seat) => {
         const updated = updatedSeats.find((s) => s.seatNumber === seat.seatNumber);
-        return updated ? { ...seat, isOccupied: updated.isOccupied } : seat;
+        return updated
+          ? { ...seat, isOccupied: updated.isOccupied }
+          : seat;
       });
 
       try {
@@ -110,7 +117,9 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // -------------------- Seat Selection --------------------
   const selectSeat = (seatNumber: number) => {
-    setSelectedSeats((prev) => (prev.includes(seatNumber) ? prev : [...prev, seatNumber]));
+    setSelectedSeats((prev) =>
+      prev.includes(seatNumber) ? prev : [...prev, seatNumber]
+    );
   };
 
   const deselectSeat = (seatNumber: number) => {
@@ -121,6 +130,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSelectedSeats([]);
   };
 
+  // -------------------- Provide context --------------------
   return (
     <SeatContext.Provider
       value={{

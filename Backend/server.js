@@ -10,6 +10,7 @@ import routeRoutes from "./routes/routeRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
+import agentRoutes from "./routes/agentRouts.js";
 // ✅ ensure correct filename
 
 // Load environment variables
@@ -32,6 +33,8 @@ app.use("/api/conductors", conductorRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
+app.use("/api/agent", agentRoutes);
+
 
 
 // Health Check Endpoint

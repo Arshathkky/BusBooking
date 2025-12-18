@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
 import { useSeat } from "../contexts/seatSelectionContext";
-import AgentCodeModal from "../components/AgentCodeModal";
 import axios from "axios";
 
 /* -------------------- Types -------------------- */
@@ -62,9 +61,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       <button
         key={i}
         onClick={() => onSeatClick(i)}
-        disabled={
-          isOccupied || (!isSelected && selectedSeats.length >= maxSeats)
-        }
+        disabled={isOccupied || (!isSelected && selectedSeats.length >= maxSeats)}
         className={seatClass}
       >
         {isOccupied ? (
@@ -113,7 +110,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 };
 
 /* -------------------- Seat Selection Page -------------------- */
-const HOLD_DURATION = 5 * 60; // 5 minutes
+const HOLD_DURATION = 5 * 60;
 
 const SeatSelection: React.FC = () => {
   const { busId } = useParams<{ busId: string }>();
@@ -126,7 +123,7 @@ const SeatSelection: React.FC = () => {
     selectedSeats,
     fetchBusSeats,
     selectSeat,
-    
+    deselectSeat,
     clearSelection,
   } = useSeat();
 
@@ -134,10 +131,7 @@ const SeatSelection: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [showAgentModal, setShowAgentModal] = useState(false);
-  const [pendingAgentSeat, setPendingAgentSeat] = useState<number | null>(null);
-
-  /* -------------------- Fetch Date Seats -------------------- */
+  /* -------------------- Fetch Date-wise Occupied Seats -------------------- */
   const fetchDateBooking = async (busId: string, date: string) => {
     const res = await axios.get(
       "http://localhost:5000/api/bookings/occupied-seats",
@@ -187,7 +181,9 @@ const SeatSelection: React.FC = () => {
     };
   }, [timeLeft]);
 
-  if (!searchData || !busSeats) return <p className="text-center mt-8">Loading...</p>;
+  if (!searchData || !busSeats) {
+    return <p className="text-center mt-8">Loading...</p>;
+  }
 
   const occupiedSeats = new Set([
     ...busSeats.seats.filter((s) => s.isOccupied).map((s) => s.seatNumber),
@@ -204,39 +200,22 @@ const SeatSelection: React.FC = () => {
 
   /* -------------------- Seat Click -------------------- */
   const handleSeatClick = (seat: number) => {
-    if (occupiedSeats.has(seat)) return;
+  if (occupiedSeats.has(seat)) return;
 
-    if (agentSeats.has(seat)) {
-      setPendingAgentSeat(seat);
-      setShowAgentModal(true);
-      return;
-    }
+  if (selectedSeats.includes(seat)) {
+    deselectSeat(seat);
+  } else {
+    selectSeat(seat);
+  }
+};
 
-    // selectedSeats.includes(seat) ? deselectSeat(seat) : selectSeat(seat);
-  };
-
-  /* -------------------- Agent Confirm -------------------- */
-  const handleAgentConfirm = async (code: string) => {
-    if (!pendingAgentSeat) return;
-
-    try {
-      await axios.post("http://localhost:5000/api/agents/verify", {
-        busId,
-        seatNumber: pendingAgentSeat,
-        agentCode: code,
-      });
-
-      selectSeat(pendingAgentSeat);
-      setShowAgentModal(false);
-      setPendingAgentSeat(null);
-    } catch {
-      alert("Invalid agent code");
-    }
-  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[#fdc106] mb-4">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-[#fdc106] mb-4"
+      >
         <ArrowLeft /> Back
       </button>
 
@@ -273,13 +252,6 @@ const SeatSelection: React.FC = () => {
       >
         Continue
       </button>
-
-      {showAgentModal && (
-        <AgentCodeModal
-          onConfirm={handleAgentConfirm}
-          onClose={() => setShowAgentModal(false)}
-        />
-      )}
     </div>
   );
 };

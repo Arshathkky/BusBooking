@@ -34,6 +34,8 @@ app.use("/api/routes", routeRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/agent", agentRoutes);
+import "./utils/releasePendingBookings.js";
+
 
 
 

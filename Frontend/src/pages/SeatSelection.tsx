@@ -110,7 +110,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 };
 
 /* -------------------- Seat Selection Page -------------------- */
-const HOLD_DURATION = 5 * 60;
+const HOLD_DURATION = 10 * 60; // 10 minutes
 
 const SeatSelection: React.FC = () => {
   const { busId } = useParams<{ busId: string }>();
@@ -133,10 +133,9 @@ const SeatSelection: React.FC = () => {
 
   /* -------------------- Fetch Date-wise Occupied Seats -------------------- */
   const fetchDateBooking = async (busId: string, date: string) => {
-    const res = await axios.get(
-      "http://localhost:5000/api/bookings/occupied-seats",
-      { params: { busId, date } }
-    );
+    const res = await axios.get("http://localhost:5000/api/bookings/occupied-seats", {
+      params: { busId, date },
+    });
     setDateOccupiedSeats(new Set(res.data.occupiedSeats.map(Number)));
   };
 
@@ -150,7 +149,7 @@ const SeatSelection: React.FC = () => {
 
   /* -------------------- Seat Hold Timer -------------------- */
   useEffect(() => {
-    if (selectedSeats.length === 1 && timeLeft === null) {
+    if (selectedSeats.length > 0 && timeLeft === null) {
       setTimeLeft(HOLD_DURATION);
     }
 
@@ -168,6 +167,7 @@ const SeatSelection: React.FC = () => {
         if (!prev || prev <= 1) {
           clearInterval(timerRef.current!);
           alert("Seat hold expired. Please select again.");
+          releaseSeats(selectedSeats);
           clearSelection();
           navigate(-1);
           return null;
@@ -179,11 +179,44 @@ const SeatSelection: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeLeft]);
+  }, [timeLeft, selectedSeats]);
 
-  if (!searchData || !busSeats) {
-    return <p className="text-center mt-8">Loading...</p>;
-  }
+  /* -------------------- Hold Seats Backend -------------------- */
+  const holdSeats = async (seatNumbers: number[]) => {
+    try {
+      await axios.post(`http://localhost:5000/api/buses/${busId}/hold-seats`, {
+        seatNumbers,
+        holdDuration: HOLD_DURATION,
+      });
+    } catch (err) {
+      console.error("Failed to hold seats:", err);
+    }
+  };
+
+  const releaseSeats = async (seatNumbers: number[]) => {
+    try {
+      await axios.post(`http://localhost:5000/api/buses/${busId}/release-seats`, {
+        seatNumbers,
+      });
+    } catch (err) {
+      console.error("Failed to release seats:", err);
+    }
+  };
+
+  /* -------------------- Seat Click -------------------- */
+  const handleSeatClick = async (seat: number) => {
+    if (dateOccupiedSeats.has(seat)) return;
+
+    if (selectedSeats.includes(seat)) {
+      deselectSeat(seat);
+      await releaseSeats([seat]);
+    } else {
+      selectSeat(seat);
+      await holdSeats([seat]);
+    }
+  };
+
+  if (!searchData || !busSeats) return <p className="text-center mt-8">Loading...</p>;
 
   const occupiedSeats = new Set([
     ...busSeats.seats.filter((s) => s.isOccupied).map((s) => s.seatNumber),
@@ -197,18 +230,6 @@ const SeatSelection: React.FC = () => {
   const agentSeats = new Set(
     busSeats.seats.filter((s) => s.isReservedForAgent).map((s) => s.seatNumber)
   );
-
-  /* -------------------- Seat Click -------------------- */
-  const handleSeatClick = (seat: number) => {
-  if (occupiedSeats.has(seat)) return;
-
-  if (selectedSeats.includes(seat)) {
-    deselectSeat(seat);
-  } else {
-    selectSeat(seat);
-  }
-};
-
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">

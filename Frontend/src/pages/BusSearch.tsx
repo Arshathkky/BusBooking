@@ -177,7 +177,7 @@ const BusSearch: React.FC = () => {
                   }
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
-                  {[...Array(10)].map((_, i) => {
+                  {[...Array(4)].map((_, i) => {
                     const num = i + 1;
                     return (
                       <option key={num} value={num}>

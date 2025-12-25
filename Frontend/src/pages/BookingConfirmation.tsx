@@ -1,46 +1,60 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, Download, RotateCcw, MapPin,  Users } from 'lucide-react';
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  CheckCircle,
+  Download,
+  RotateCcw,
+  MapPin,
+  Users,
+} from "lucide-react";
 
 const BookingConfirmation: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
   const booking = location.state?.booking;
 
+  /* -------------------- DOWNLOAD TICKET -------------------- */
   const handleDownloadPDF = () => {
-    // Create a simple PDF-like content
-    const ticketContent = `
-      TouchMe+ Bus Ticket
-      ==================
-      
-      Booking ID: ${booking.bookingId}
-      Reference: ${booking.referenceId}
-      
-      Journey Details:
-      Bus: ${booking.bus.name}
-      Route: ${booking.searchData.from} → ${booking.searchData.to}
-      Date: ${new Date(booking.searchData.date).toLocaleDateString()}
-      Seats: ${booking.selectedSeats.join(', ')}
-      
-      Passenger Details:
-      Name: ${booking.passengerDetails.name}
-      Phone: ${booking.passengerDetails.phone}
-      Address: ${booking.passengerDetails.address}
-      
-      Total Amount: LKR ${booking.totalAmount.toLocaleString()}
-      
-      Important Instructions:
-      - Arrive 15 minutes before departure
-      - Carry valid ID proof
-      - Keep this ticket for verification
-      
-      Contact: support@touchmeplus.com
-      Phone: +94 11 250 8888
-    `;
+    if (!booking) return;
 
-    const blob = new Blob([ticketContent], { type: 'text/plain' });
+    const ticketContent = `
+TouchMe+ Bus Ticket
+==================
+
+Booking No: ${booking.bookingId}
+Reference ID: ${booking.referenceId}
+
+Journey Details
+---------------
+Bus: ${booking.bus.name}
+Bus Number: ${booking.bus.busNumber}
+Type: ${booking.bus.type}
+Route: ${booking.searchData.from} → ${booking.searchData.to}
+Date: ${new Date(booking.searchData.date).toLocaleDateString("en-GB")}
+Seats: ${booking.selectedSeats.join(", ")}
+
+Passenger Details
+-----------------
+Name: ${booking.passengerDetails.name}
+Phone: ${booking.passengerDetails.phone}
+Address: ${booking.passengerDetails.address}
+NIC: ${booking.passengerDetails.nic}
+
+Total Amount: LKR ${booking.totalAmount.toLocaleString()}
+
+Important Instructions
+----------------------
+• Arrive 15 minutes before departure
+• Keep this ticket for verification
+
+Support: support@touchmeplus.com
+Phone: +94 11 250 8888
+`;
+
+    const blob = new Blob([ticketContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `TouchMe-Ticket-${booking.bookingId}.txt`;
     document.body.appendChild(a);
@@ -49,13 +63,14 @@ const BookingConfirmation: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  /* -------------------- FALLBACK -------------------- */
   if (!booking) {
     return (
       <div className="text-center">
-        <p className="text-gray-600 dark:text-gray-400">No booking data found.</p>
+        <p className="text-gray-600">No booking data found.</p>
         <button
-          onClick={() => navigate('/search')}
-          className="mt-4 bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-6 py-2 rounded-lg"
+          onClick={() => navigate("/search")}
+          className="mt-4 bg-[#fdc106] px-6 py-2 rounded-lg"
         >
           Go to Search
         </button>
@@ -63,140 +78,101 @@ const BookingConfirmation: React.FC = () => {
     );
   }
 
+  /* -------------------- UI -------------------- */
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Success Header */}
       <div className="text-center mb-8">
         <div className="flex justify-center mb-4">
-          <div className="bg-green-100 dark:bg-green-900 p-4 rounded-full">
-            <CheckCircle className="w-16 h-16 text-green-600 dark:text-green-400" />
+          <div className="bg-green-100 p-4 rounded-full">
+            <CheckCircle className="w-16 h-16 text-green-600" />
           </div>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Payment Successful!</h1>
-        <p className="text-gray-600 dark:text-gray-400 text-lg">Your bus tickets have been confirmed</p>
+        <h1 className="text-3xl font-bold mb-2">Payment Successful!</h1>
+        <p className="text-gray-600 text-lg">
+          Your bus tickets have been confirmed
+        </p>
       </div>
 
-      {/* Booking Details Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden mb-8 transition-colors">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-[#fdc106] to-[#e6ad05] text-gray-900 p-6">
+      {/* Ticket Card */}
+      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-8">
+        <div className="bg-gradient-to-r from-[#fdc106] to-[#e6ad05] p-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold mb-1">TouchMe+ e-Ticket</h2>
-              <p className="text-gray-800">Booking ID: {booking.bookingId}</p>
-              <p className="text-gray-800">Reference: {booking.referenceId}</p>
+              <h2 className="text-2xl font-bold">TouchMe+ e-Ticket</h2>
+              <p>Booking No: {booking.bookingId}</p>
+              <p>Reference: {booking.referenceId}</p>
             </div>
             <div className="text-right">
-              <p className="text-gray-800">Total Amount</p>
-              <p className="text-3xl font-bold">LKR {booking.totalAmount.toLocaleString()}</p>
+              <p>Total Amount</p>
+              <p className="text-3xl font-bold">
+                LKR {booking.totalAmount.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Journey Details */}
-        <div className="p-8">
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2 text-[#fdc106]" />
-                Journey Details
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <span className="text-gray-600 dark:text-gray-400">Bus:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{booking.bus.name}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <span className="text-gray-600 dark:text-gray-400">Type:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{booking.bus.type}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <span className="text-gray-600 dark:text-gray-400">Route:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {booking.searchData.from} → {booking.searchData.to}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <span className="text-gray-600 dark:text-gray-400">Date:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {new Date(booking.searchData.date).toLocaleDateString('en-GB')}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <span className="text-gray-600 dark:text-gray-400">Seats:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {booking.selectedSeats.join(', ')}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-[#fdc106]" />
-                Passenger Details
-              </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors">
-                  <div className="mb-2">
-                    <span className="font-semibold text-gray-900 dark:text-white">{booking.passengerDetails.name}</span>
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                    <p>Phone: {booking.passengerDetails.phone}</p>
-                    <p>Address: {booking.passengerDetails.address}</p>
-                    <p>Passengers: {booking.selectedSeats.length}</p>
-                  </div>
-                </div>
-              </div>
+        <div className="p-8 grid md:grid-cols-2 gap-8">
+          {/* Journey */}
+          <div>
+            <h3 className="text-xl font-bold mb-4 flex items-center">
+              <MapPin className="w-5 h-5 mr-2 text-[#fdc106]" />
+              Journey Details
+            </h3>
+            <div className="space-y-2">
+              <p><b>Bus:</b> {booking.bus.name}</p>
+              <p><b>Bus Number:</b> {booking.bus.busNumber}</p>
+              <p><b>Type:</b> {booking.bus.type}</p>
+              <p><b>Route:</b> {booking.searchData.from} → {booking.searchData.to}</p>
+              <p>
+                <b>Date:</b>{" "}
+                {new Date(booking.searchData.date).toLocaleDateString("en-GB")}
+              </p>
+              <p><b>Seats:</b> {booking.selectedSeats.join(", ")}</p>
             </div>
           </div>
 
-          {/* Important Information */}
-          <div className="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 p-4 rounded-r-lg mb-8 transition-colors">
-            <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-2">Important Information:</h4>
-            <ul className="text-yellow-700 dark:text-yellow-300 text-sm space-y-1">
-              <li>• Please arrive at the boarding point 15 minutes before departure</li>
-              <li>• Carry a valid ID proof for verification</li>
-              <li>• Keep this ticket handy for verification during travel</li>
-              <li>• For cancellation, contact customer support</li>
-            </ul>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button 
-              onClick={handleDownloadPDF}
-              className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-8 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
-            >
-              <Download className="w-5 h-5" />
-              <span>Download Ticket</span>
-            </button>
-            
-            <button 
-              onClick={() => navigate('/search')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center space-x-2"
-            >
-              <RotateCcw className="w-5 h-5" />
-              <span>Book Another Trip</span>
-            </button>
+          {/* Passenger */}
+          <div>
+            <h3 className="text-xl font-bold mb-4 flex items-center">
+              <Users className="w-5 h-5 mr-2 text-[#fdc106]" />
+              Passenger Details
+            </h3>
+            <div className="space-y-2">
+              <p><b>Name:</b> {booking.passengerDetails.name}</p>
+              <p><b>Phone:</b> {booking.passengerDetails.phone}</p>
+              <p><b>Address:</b> {booking.passengerDetails.address}</p>
+              <p><b>NIC:</b> {booking.passengerDetails.nic}</p>
+              <p><b>Passengers:</b> {booking.selectedSeats.length}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Customer Support */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transition-colors">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Need Help?</h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Contact our customer support for any assistance
-        </p>
-        <div className="flex justify-center space-x-8 text-sm">
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white">Phone</p>
-            <p className="text-[#fdc106]">+94 11 250 8888</p>
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900 dark:text-white">Email</p>
-            <p className="text-[#fdc106]">support@touchmeplus.com</p>
-          </div>
+        {/* Info */}
+        <div className="bg-yellow-50 p-4 mx-8 mb-8 rounded-lg">
+          <h4 className="font-bold mb-2">Important Information</h4>
+          <ul className="text-sm space-y-1">
+            <li>• Arrive 15 minutes before departure</li>
+            <li>• Keep this ticket for verification</li>
+            <li>• Contact support for cancellation</li>
+          </ul>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-center gap-4 pb-8">
+          <button
+            onClick={handleDownloadPDF}
+            className="bg-[#fdc106] px-8 py-3 rounded-lg font-semibold flex items-center gap-2"
+          >
+            <Download className="w-5 h-5" /> Download Ticket
+          </button>
+
+          <button
+            onClick={() => navigate("/search")}
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2"
+          >
+            <RotateCcw className="w-5 h-5" /> Book Another Trip
+          </button>
         </div>
       </div>
     </div>

@@ -301,17 +301,7 @@ export const toggleBusStatus = async (req, res) => {
 // --------------------
 // Get seat layout (frontend use)
 // --------------------
-export const getSeatLayout = async (req, res) => {
-  try {
-    const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price");
-    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    res.status(200).json({ success: true, data: bus });
-  } catch (error) {
-    console.error("Get Seat Layout Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch seat layout" });
-  }
-};
 
 
 // ✅ PUT /api/buses/:id/agent-seats
@@ -373,5 +363,70 @@ export const removeAgentSeats = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to remove agent assignment", error });
+  }
+};
+
+
+// ✅ Hold seats temporarily for 10 minutes
+export const holdSeats = async (req, res) => {
+  try {
+    const { busId, seatNumbers, sessionId } = req.body; // sessionId = unique per user
+    const bus = await Bus.findById(busId);
+    if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+    const now = new Date();
+    const holdExpiresAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
+
+    bus.seats = bus.seats.map((seat) => {
+      if (seatNumbers.includes(seat.seatNumber)) {
+        if (seat.isOccupied || seat.isHeld) {
+          throw new Error(`Seat ${seat.seatNumber} is already occupied/held`);
+        }
+        return {
+          ...seat.toObject(),
+          isHeld: true,
+          heldBy: sessionId,
+          holdExpiresAt,
+        };
+      }
+      return seat;
+    });
+
+    await bus.save();
+    res.status(200).json({ success: true, message: "Seats held", bus });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ✅ Release expired holds (call before fetching seats)
+export const releaseExpiredHolds = async (bus) => {
+  const now = new Date();
+  bus.seats = bus.seats.map((seat) => {
+    if (seat.isHeld && seat.holdExpiresAt && new Date(seat.holdExpiresAt) <= now) {
+      return {
+        ...seat.toObject(),
+        isHeld: false,
+        heldBy: null,
+        holdExpiresAt: null,
+      };
+    }
+    return seat;
+  });
+  await bus.save();
+};
+export const getSeatLayout = async (req, res) => {
+  try {
+    const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price busNumber");
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    // Release expired holds before sending to frontend
+    await releaseExpiredHolds(bus);
+
+    res.status(200).json({ success: true, data: bus });
+  } catch (error) {
+    console.error("Get Seat Layout Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch seat layout" });
   }
 };

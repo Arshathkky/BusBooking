@@ -1,18 +1,27 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import axios from "axios";
 
-// -------------------- Types --------------------
+/* -------------------- Types -------------------- */
+
 export interface PassengerDetails {
   name: string;
   phone: string;
   address: string;
+  nic:string
 }
-
 export interface BusInfo {
   id: string;
   name: string;
   type?: string;
+  busNumber?: string; // ✅ ADD THIS
 }
+
 
 export interface SearchData {
   from: string;
@@ -24,6 +33,11 @@ export type PaymentStatus = "Pending" | "Paid" | "Cancelled";
 
 export interface Booking {
   _id?: string;
+
+  // ✅ FROM BACKEND
+  bookingId?: number;
+  referenceId?: string;
+
   bus: BusInfo;
   searchData: SearchData;
   selectedSeats: string[];
@@ -34,33 +48,43 @@ export interface Booking {
   updatedAt?: string;
 }
 
-// -------------------- Context Type --------------------
+/* -------------------- Context Type -------------------- */
+
 interface BookingContextType {
   bookings: Booking[];
   loading: boolean;
   error?: string;
+
   fetchBookings: () => Promise<void>;
-  addBooking: (booking: Omit<Booking, "_id">) => Promise<Booking | null>;
+  addBooking: (booking: Omit<Booking, "_id" | "bookingId" | "referenceId">) => Promise<Booking | null>;
   updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
   getBookingById: (id: string) => Promise<Booking | null>;
-  // ---- Today-specific helper functions ----
+
+  // 📊 Today helpers
   todayBookings: Booking[];
   totalPassengersToday: number;
   totalEarningsToday: number;
 }
 
-// -------------------- Context --------------------
+/* -------------------- Context -------------------- */
+
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
-// -------------------- Hook --------------------
+/* -------------------- Hook -------------------- */
+
 export const useBooking = (): BookingContextType => {
   const context = useContext(BookingContext);
-  if (!context) throw new Error("useBooking must be used within a BookingProvider");
+  if (!context) {
+    throw new Error("useBooking must be used within BookingProvider");
+  }
   return context;
 };
 
-// -------------------- Provider --------------------
-export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+/* -------------------- Provider -------------------- */
+
+export const BookingProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -69,23 +93,31 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     ? `${import.meta.env.VITE_API_URL}/bookings`
     : "http://localhost:5000/api/bookings";
 
-  // -------------------- Error Handling --------------------
+  /* -------------------- Error Handler -------------------- */
+
   const handleError = (err: unknown) => {
     if (axios.isAxiosError(err)) {
       setError(err.response?.data?.message || err.message);
     } else if (err instanceof Error) {
       setError(err.message);
     } else {
-      setError("An unknown error occurred");
+      setError("Unknown error occurred");
     }
   };
 
-  // -------------------- Fetch all bookings --------------------
+  /* -------------------- Fetch All Bookings -------------------- */
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get<{ success: boolean; bookings: Booking[] }>(API_URL);
-      if (data.success) setBookings(data.bookings);
+      const { data } = await axios.get<{
+        success: boolean;
+        bookings: Booking[];
+      }>(API_URL);
+
+      if (data.success) {
+        setBookings(data.bookings);
+      }
     } catch (err) {
       handleError(err);
     } finally {
@@ -93,14 +125,22 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // -------------------- Add a new booking --------------------
-  const addBooking = async (booking: Omit<Booking, "_id">): Promise<Booking | null> => {
+  /* -------------------- Add Booking -------------------- */
+
+  const addBooking = async (
+    booking: Omit<Booking, "_id" | "bookingId" | "referenceId">
+  ): Promise<Booking | null> => {
     try {
       setLoading(true);
-      const { data } = await axios.post<{ success: boolean; booking: Booking }>(API_URL, booking);
+
+      const { data } = await axios.post<{
+        success: boolean;
+        booking: Booking;
+      }>(API_URL, booking);
+
       if (data.success) {
         setBookings((prev) => [...prev, data.booking]);
-        return data.booking;
+        return data.booking; // ✅ contains bookingId & referenceId
       }
       return null;
     } catch (err) {
@@ -111,11 +151,17 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // -------------------- Get booking by ID --------------------
+  /* -------------------- Get Booking By ID -------------------- */
+
   const getBookingById = async (id: string): Promise<Booking | null> => {
     try {
       setLoading(true);
-      const { data } = await axios.get<{ success: boolean; booking: Booking }>(`${API_URL}/${id}`);
+
+      const { data } = await axios.get<{
+        success: boolean;
+        booking: Booking;
+      }>(`${API_URL}/${id}`);
+
       return data.success ? data.booking : null;
     } catch (err) {
       handleError(err);
@@ -125,14 +171,22 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // -------------------- Update payment status --------------------
-  const updatePaymentStatus = async (id: string, status: PaymentStatus) => {
+  /* -------------------- Update Payment Status -------------------- */
+
+  const updatePaymentStatus = async (
+    id: string,
+    status: PaymentStatus
+  ) => {
     try {
       setLoading(true);
-      const { data } = await axios.put<{ success: boolean; booking: Booking }>(
-        `${API_URL}/${id}/payment`,
-        { paymentStatus: status }
-      );
+
+      const { data } = await axios.put<{
+        success: boolean;
+        booking: Booking;
+      }>(`${API_URL}/${id}/payment`, {
+        paymentStatus: status,
+      });
+
       if (data.success) {
         setBookings((prev) =>
           prev.map((b) => (b._id === id ? data.booking : b))
@@ -145,22 +199,31 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  // -------------------- Today bookings helpers --------------------
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-  const todayBookings = bookings.filter((b) => b.searchData.date === today);
+  /* -------------------- Today Helpers -------------------- */
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const todayBookings = bookings.filter(
+    (b) => b.searchData.date === today
+  );
+
   const totalPassengersToday = todayBookings.reduce(
     (sum, b) => sum + b.selectedSeats.length,
     0
   );
+
   const totalEarningsToday = todayBookings.reduce(
     (sum, b) => sum + b.totalAmount,
     0
   );
 
-  // -------------------- Fetch bookings on mount --------------------
+  /* -------------------- Initial Fetch -------------------- */
+
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  /* -------------------- Provider -------------------- */
 
   return (
     <BookingContext.Provider

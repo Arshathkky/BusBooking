@@ -2,17 +2,45 @@
   import Booking from "../models/bookingModel.js";
 
 
+import { Counter } from "../models/counterModal.js";
 
-  // ✅ Create a new booking
-  export const createBooking = async (req, res) => {
-    try {
-      const booking = await Booking.create(req.body);
-      res.status(201).json({ success: true, booking });
-    } catch (error) {
-      console.error("❌ Booking creation failed:", error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
+// ✅ Create a new booking with bookingId & referenceId
+export const createBooking = async (req, res) => {
+  try {
+    // 1️⃣ Get next bookingId
+    const counter = await Counter.findOneAndUpdate(
+      { name: "booking" },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const bookingId = counter.seq; // starts from 1
+
+    // 2️⃣ Generate referenceId
+    const { searchData, selectedSeats, bus } = req.body;
+
+    const seatPart = selectedSeats.join("");
+    const referenceId = `${searchData.date}-${seatPart}-${bus.busNumber || bus.name}`;
+
+    // 3️⃣ Create booking
+    const booking = await Booking.create({
+      ...req.body,
+      bookingId,
+      referenceId,
+    });
+
+    res.status(201).json({
+      success: true,
+      booking,
+    });
+  } catch (error) {
+    console.error("❌ Booking creation failed:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
   // ✅ Get all bookings
   export const getAllBookings = async (req, res) => {

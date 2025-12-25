@@ -17,6 +17,8 @@ export interface Bus {
   totalSeats: number;
   price: number;
   seats: Seat[];
+  busNumber:string,
+  
 }
 
 // Backend response wrapper
@@ -32,6 +34,7 @@ interface BusFromBackend {
   totalSeats: number;
   price: number;
   seats: Seat[];
+  busNumber:string,
 }
 
 // -------------------- Context Type --------------------
@@ -78,6 +81,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         type: busData.type,
         totalSeats: busData.totalSeats,
         price: busData.price,
+        busNumber: busData.busNumber,
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,

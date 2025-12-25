@@ -1,184 +1,204 @@
-import React, { useEffect, useState } from "react";
-import { Users, DollarSign, Calendar, Bus } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useBooking,} from "../contexts/BookingContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useBooking } from "../contexts/BookingContext";
-import { useBus } from "../contexts/busDataContexts";
 import { useConductor } from "../contexts/conductorDataContext";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
-// -------------------- Types --------------------
-interface BusType {
-  id: string;
-  name: string;
-  type?: string;
-}
-
-interface PassengerDetails {
+type SeatBookingRow = {
+  seat: string | number;
   name: string;
   phone: string;
-}
+  address: string;
+  nic: string;
+  bookingId: string | number;
+  referenceId: string;
+};
 
-interface SearchData {
-  from: string;
-  to: string;
-  date: string;
-}
-
-interface Booking {
-  _id?: string;
-  passengerDetails: PassengerDetails;
-  selectedSeats: string[];
-  totalAmount: number;
-  searchData: SearchData;
-  bus: BusType;
-}
-
-// -------------------- Component --------------------
 const ConductorDashboard: React.FC = () => {
-  const { user } = useAuth();
   const { bookings } = useBooking();
-  const { buses } = useBus();
+  const { user } = useAuth();
   const { conductors } = useConductor();
 
-  const [assignedBus, setAssignedBus] = useState<BusType | null>(null);
-  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState<
+    "All" | "Paid" | "Pending" | "Cancelled"
+  >("All");
 
-  // -------------------- Find assigned bus --------------------
+  // Default date is today
+  const today = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState<string>(today);
+
+  const [assignedBusId, setAssignedBusId] = useState<string | null>(null);
+
+  // Get assigned bus for current conductor
   useEffect(() => {
     if (!user) return;
+    const conductor = conductors.find((c) => c.email === user.email);
+    setAssignedBusId(conductor?.assignedBusId ?? null);
+  }, [user, conductors]);
 
-    // get conductor from context
-    const currentConductor = conductors.find((c) => c.email === user.email);
-    const busId = currentConductor?.assignedBusId;
+  // Filter bookings for assigned bus + selected date + payment
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      if (!assignedBusId) return false;
 
-    if (busId && buses.length > 0) {
-      const bus = buses.find((b) => b.id === busId);
-      setAssignedBus(bus || null);
-    } else {
-      setAssignedBus(null);
-    }
-  }, [user, conductors, buses]);
+      if ((b.bus?.id ?? b.bus?.id) !== assignedBusId) return false;
 
-  // -------------------- Filter today's bookings --------------------
-  useEffect(() => {
-    if (!assignedBus) {
-      setTodayBookings([]);
-      return;
-    }
+      // Payment filter
+      if (paymentFilter !== "All" && b.paymentStatus !== paymentFilter)
+        return false;
 
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      // Selected date filter
+      const bookingDate = b.searchData?.date || b.createdAt?.split("T")[0];
+      if (!bookingDate) return false;
+      if (selectedDate && bookingDate !== selectedDate) return false;
 
-    const busBookings = bookings.filter(
-      (b) => b.bus.id === assignedBus.id && b.searchData.date === today
+      return true;
+    });
+  }, [bookings, paymentFilter, selectedDate, assignedBusId]);
+
+  // Flatten seat rows
+  const seatBookings: SeatBookingRow[] = useMemo(() => {
+    return filteredBookings.flatMap((b) =>
+      b.selectedSeats.map((seat) => ({
+        seat,
+        name: b.passengerDetails.name,
+        phone: b.passengerDetails.phone,
+        address: b.passengerDetails.address,
+        nic: b.passengerDetails.nic,
+        bookingId: b.bookingId ?? "-",
+        referenceId: b.referenceId ?? "-",
+      }))
     );
+  }, [filteredBookings]);
 
-    setTodayBookings(busBookings);
-  }, [assignedBus, bookings]);
+  // Export Excel
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(seatBookings);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bookings");
+    XLSX.writeFile(wb, "BookedSeats.xlsx");
+  };
 
-  // -------------------- Stats --------------------
-  const totalPassengers = todayBookings.reduce(
-    (sum, b) => sum + b.selectedSeats.length,
-    0
-  );
+  // Export PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    const columns = [
+      "Seat",
+      "Passenger Name",
+      "Phone",
+      "Address",
+      "NIC",
+      "Booking ID",
+      "Reference No",
+    ];
+    const rows = seatBookings.map((row) => [
+      row.seat,
+      row.name,
+      row.phone,
+      row.address,
+      row.nic,
+      row.bookingId,
+      row.referenceId,
+    ]);
+    doc.autoTable({ head: [columns], body: rows });
+    doc.save("BookedSeats.pdf");
+  };
 
-  const totalEarnings = todayBookings.reduce(
-    (sum, b) => sum + b.totalAmount,
-    0
-  );
-
-  // -------------------- Render --------------------
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Conductor Dashboard
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Welcome, {user?.name || "Conductor"}!
-        </p>
-      </div>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Conductor Dashboard</h1>
 
-      {/* Assigned Bus */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-        {assignedBus ? (
-          <div>
-            <h2 className="text-2xl font-semibold mb-2 flex items-center gap-2">
-              <Bus className="text-yellow-500" /> {assignedBus.name}
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Type: {assignedBus.type || "-"}
-            </p>
-          </div>
-        ) : (
-          <p className="text-gray-500">No assigned bus found.</p>
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm">Today's Bookings</p>
-            <h3 className="text-2xl font-bold">{todayBookings.length}</h3>
-          </div>
-          <Calendar className="text-yellow-500 w-8 h-8" />
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 items-end">
+        {/* Date Selector */}
+        <div>
+          <label className="block font-medium mb-1">Select Date:</label>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="border px-2 py-1 rounded"
+          />
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm">Total Passengers</p>
-            <h3 className="text-2xl font-bold">{totalPassengers}</h3>
-          </div>
-          <Users className="text-yellow-500 w-8 h-8" />
+        {/* Payment Filter */}
+        <div>
+          <label className="block font-medium mb-1">Payment Status:</label>
+          <select
+            value={paymentFilter}
+            onChange={(e) =>
+              setPaymentFilter(
+                e.target.value as "All" | "Paid" | "Pending" | "Cancelled"
+              )
+            }
+            className="border px-2 py-1 rounded"
+          >
+            <option value="All">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex items-center justify-between">
-          <div>
-            <p className="text-gray-500 text-sm">Total Earnings (LKR)</p>
-            <h3 className="text-2xl font-bold">{totalEarnings.toLocaleString()}</h3>
-          </div>
-          <DollarSign className="text-yellow-500 w-8 h-8" />
+        {/* Export Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={exportExcel}
+            className="bg-green-500 text-white px-4 py-2 rounded"
+          >
+            Export Excel
+          </button>
+          <button
+            onClick={exportPDF}
+            className="bg-red-500 text-white px-4 py-2 rounded"
+          >
+            Export PDF
+          </button>
         </div>
       </div>
 
-      {/* Today's Bookings Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">
-          Today's Bookings ({todayBookings.length})
+      {/* Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 overflow-x-auto">
+        <h2 className="text-lg font-semibold mb-3">
+          Booked Seats ({seatBookings.length})
         </h2>
 
-        {todayBookings.length === 0 ? (
-          <p className="text-gray-500">No bookings found for today.</p>
+        {seatBookings.length === 0 ? (
+          <p className="text-gray-500">No booked seats found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-700 dark:text-gray-300">
-              <thead className="bg-gray-100 dark:bg-gray-700">
-                <tr>
-                  <th className="px-4 py-3">Passenger Name</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">From</th>
-                  <th className="px-4 py-3">To</th>
-                  <th className="px-4 py-3">Seats</th>
-                  <th className="px-4 py-3 text-right">Amount (LKR)</th>
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-gray-100 dark:bg-gray-700">
+              <tr>
+                <th className="border px-3 py-2">Seat</th>
+                <th className="border px-3 py-2">Passenger Name</th>
+                <th className="border px-3 py-2">Phone</th>
+                <th className="border px-3 py-2">Address</th>
+                <th className="border px-3 py-2">NIC</th>
+                <th className="border px-3 py-2">Booking ID</th>
+                <th className="border px-3 py-2">Reference No</th>
+              </tr>
+            </thead>
+            <tbody>
+              {seatBookings.map((row, index) => (
+                <tr
+                  key={`${row.bookingId}-${row.seat}-${index}`}
+                  className="border-b dark:border-gray-700"
+                >
+                  <td className="border px-3 py-2 font-bold text-blue-600">
+                    {row.seat}
+                  </td>
+                  <td className="border px-3 py-2">{row.name}</td>
+                  <td className="border px-3 py-2">{row.phone}</td>
+                  <td className="border px-3 py-2">{row.address}</td>
+                  <td className="border px-3 py-2">{row.nic}</td>
+                  <td className="border px-3 py-2">{row.bookingId}</td>
+                  <td className="border px-3 py-2">{row.referenceId}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {todayBookings.map((booking) => (
-                  <tr
-                    key={booking._id}
-                    className="border-b border-gray-200 dark:border-gray-700"
-                  >
-                    <td className="px-4 py-3 font-medium">{booking.passengerDetails.name}</td>
-                    <td className="px-4 py-3">{booking.passengerDetails.phone}</td>
-                    <td className="px-4 py-3">{booking.searchData.from}</td>
-                    <td className="px-4 py-3">{booking.searchData.to}</td>
-                    <td className="px-4 py-3">{booking.selectedSeats.join(", ")}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{booking.totalAmount.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

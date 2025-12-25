@@ -11,7 +11,7 @@ export const createBooking = async (req, res) => {
     const counter = await Counter.findOneAndUpdate(
       { name: "booking" },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+      { new: true, upsert: true } 
     );
 
     const bookingId = counter.seq; // starts from 1

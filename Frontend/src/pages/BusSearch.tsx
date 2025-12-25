@@ -282,6 +282,9 @@ const BusSearch: React.FC = () => {
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               Departure: {bus.departureTime} • Arrival: {bus.arrivalTime}
                             </p>
+                            <p className="text-sm font-semibold text-green-600">
+                              Available Seats: {bus.seatsAvailable}
+                            </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               Rs. {bus.price.toLocaleString()} per seat
                             </p>

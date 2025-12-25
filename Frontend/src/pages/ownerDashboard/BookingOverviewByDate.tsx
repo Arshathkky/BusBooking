@@ -128,6 +128,7 @@ const BookingOverviewByDate: React.FC = () => {
             <thead>
               <tr className="bg-gray-200 dark:bg-gray-700">
                 <th className="p-2 border">Name</th>
+                <th className="p-2 border">NIC No</th>
                 <th className="p-2 border">Phone</th>
                 <th className="p-2 border">Seats</th>
                 <th className="p-2 border">Amount</th>
@@ -139,6 +140,7 @@ const BookingOverviewByDate: React.FC = () => {
                 <tr key={b._id} className="text-center">
                   <td className="p-2 border">{b.passengerDetails.name}</td>
                   <td className="p-2 border">{b.passengerDetails.phone}</td>
+                  <td className="p-2 border">{b.passengerDetails.nic}</td>
                   <td className="p-2 border">{b.selectedSeats.join(", ")}</td>
                   <td className="p-2 border">Rs. {b.totalAmount}</td>
                   <td className="p-2 border">{b.paymentStatus || "Pending"}</td>

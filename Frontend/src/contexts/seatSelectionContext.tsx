@@ -8,7 +8,9 @@ export interface Seat {
   isOccupied: boolean;
   agentAssigned?: boolean;
   isReservedForAgent?: boolean;
+  agentId?: string | null;   // 🔥 ADD THIS
 }
+
 
 export interface Bus {
   id: string;
@@ -83,12 +85,14 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         price: busData.price,
         busNumber: busData.busNumber,
         seats: busData.seats.map((s) => ({
-          seatNumber: s.seatNumber,
-          isLadiesOnly: s.isLadiesOnly,
-          isOccupied: s.isOccupied ?? false,
-          agentAssigned: s.agentAssigned ?? false,
-          isReservedForAgent: s.isReservedForAgent ?? false,
-        })),
+        seatNumber: s.seatNumber,
+        isLadiesOnly: s.isLadiesOnly,
+        isOccupied: s.isOccupied ?? false,
+        agentAssigned: s.agentAssigned ?? false,
+        isReservedForAgent: s.isReservedForAgent ?? false,
+        agentId: s.agentId ?? null, // 🔥 ADD
+      })),
+
       });
 
       setSelectedSeats([]);

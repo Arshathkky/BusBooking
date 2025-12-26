@@ -4,7 +4,7 @@ import { useOwner, Owner } from "../../contexts/OwnerContext";
 import OwnerModal from "./AddOwnerModal";
 
 const OwnerTab: React.FC = () => {
-  const { owners, deleteOwner, updateOwner } = useOwner();
+  const { owners, deleteOwner, updateOwner, fetchOwners } = useOwner();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);
 
@@ -18,7 +18,7 @@ const OwnerTab: React.FC = () => {
     setShowOwnerModal(true);
   };
 
-  // Handle clicking on status badge to cycle status
+  // ✅ Cycle status on badge click
   const handleStatusChange = async (owner: Owner) => {
     const nextStatus =
       owner.status === "pending"
@@ -35,20 +35,27 @@ const OwnerTab: React.FC = () => {
       case "pending":
         return "text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900";
       case "active":
-      case "approved":
         return "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900";
       case "suspended":
-      case "rejected":
         return "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900";
       default:
         return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900";
     }
   };
 
+  // ✅ Refresh owners after modal close
+  const handleModalClose = async () => {
+    setShowOwnerModal(false);
+    setEditingOwner(undefined);
+    await fetchOwners();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Bus Owner Management</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          Bus Owner Management
+        </h3>
         <button
           onClick={handleAddOwner}
           className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
@@ -65,13 +72,16 @@ const OwnerTab: React.FC = () => {
             className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex justify-between items-center transition-colors"
           >
             <div>
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white">{owner.name}</h4>
+              <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                {owner.name}
+              </h4>
               <p className="text-gray-600 dark:text-gray-400">{owner.email}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {owner.phone} • {owner.address}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Registered: {new Date(owner.createdAt || "").toLocaleDateString()}
+                Registered:{" "}
+                {new Date(owner.createdAt || "").toLocaleDateString()}
               </p>
             </div>
 
@@ -105,7 +115,10 @@ const OwnerTab: React.FC = () => {
       </div>
 
       {showOwnerModal && (
-        <OwnerModal ownerData={editingOwner} onClose={() => setShowOwnerModal(false)} />
+        <OwnerModal
+          ownerData={editingOwner}
+          onClose={handleModalClose} // ✅ Refresh owners after add/edit
+        />
       )}
     </div>
   );

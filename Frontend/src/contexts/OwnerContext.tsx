@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import axios from "axios";
 
-// -------------------- Types --------------------
 export interface Owner {
   _id: string;
   name: string;
@@ -15,7 +14,6 @@ export interface Owner {
   status: "pending" | "active" | "suspended";
   createdAt?: string;
   password?: string;
-
 }
 
 interface OwnerContextType {
@@ -25,14 +23,11 @@ interface OwnerContextType {
   error: string | null;
   fetchOwners: () => Promise<void>;
   setOwner: (owner: Owner | null) => void;
-  addOwner: (data: Omit<Owner, "_id" | "status">) => Promise<void>;
+  addOwner: (data: Omit<Owner, "_id" | "status"> & { status?: Owner["status"] }) => Promise<void>;
   updateOwner: (id: string, data: Partial<Owner>) => Promise<void>;
   deleteOwner: (id: string) => Promise<void>;
-  approveOwner: (id: string) => Promise<void>;
-  rejectOwner: (id: string) => Promise<void>;
 }
 
-// -------------------- Context --------------------
 const OwnerContext = createContext<OwnerContextType | undefined>(undefined);
 
 export const useOwner = (): OwnerContextType => {
@@ -41,7 +36,6 @@ export const useOwner = (): OwnerContextType => {
   return context;
 };
 
-// -------------------- Provider --------------------
 export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [owner, setOwner] = useState<Owner | null>(null);
@@ -50,7 +44,6 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const API_URL = "http://localhost:5000/api/owner";
 
-  // -------------------- Error handler --------------------
   const handleError = (err: unknown, defaultMessage: string) => {
     if (axios.isAxiosError(err)) {
       setError(err.response?.data?.message || defaultMessage);
@@ -62,7 +55,6 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     console.error(err);
   };
 
-  // -------------------- CRUD operations --------------------
   const fetchOwners = async (): Promise<void> => {
     setLoading(true);
     setError(null);
@@ -76,7 +68,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const addOwner = async (data: Omit<Owner, "_id" | "status">): Promise<void> => {
+  const addOwner = async (data: Omit<Owner, "_id" | "status"> & { status?: Owner["status"] }) => {
     setLoading(true);
     setError(null);
     try {
@@ -90,12 +82,11 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const updateOwner = async (id: string, data: Partial<Owner>): Promise<void> => {
+  const updateOwner = async (id: string, data: Partial<Owner>) => {
     setLoading(true);
     setError(null);
     try {
-      const updateData = { ...data };
-      const { data: updatedOwner } = await axios.put<Owner>(`${API_URL}/${id}`, updateData);
+      const { data: updatedOwner } = await axios.put<Owner>(`${API_URL}/${id}`, data);
       setOwners(prev => prev.map(o => (o._id === id ? updatedOwner : o)));
       if (owner?._id === id) setOwner(updatedOwner);
     } catch (err) {
@@ -105,7 +96,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const deleteOwner = async (id: string): Promise<void> => {
+  const deleteOwner = async (id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -119,16 +110,23 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const approveOwner = async (id: string): Promise<void> => updateOwner(id, { status: "active" });
-  const rejectOwner = async (id: string): Promise<void> => updateOwner(id, { status: "suspended" });
-
   useEffect(() => {
     fetchOwners();
   }, []);
 
   return (
     <OwnerContext.Provider
-      value={{ owners, owner, setOwner, loading, error, fetchOwners, addOwner, updateOwner, deleteOwner, approveOwner, rejectOwner }}
+      value={{
+        owners,
+        owner,
+        setOwner,
+        loading,
+        error,
+        fetchOwners,
+        addOwner,
+        updateOwner,
+        deleteOwner,
+      }}
     >
       {children}
     </OwnerContext.Provider>

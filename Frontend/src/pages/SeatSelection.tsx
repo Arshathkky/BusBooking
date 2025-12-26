@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
 import { useSeat } from "../contexts/seatSelectionContext";
@@ -12,11 +12,21 @@ interface SearchData {
   passengers: number;
 }
 
+interface BookingFromBackend {
+  selectedSeats: number[];
+  paymentStatus: "PENDING" | "Paid" | "CANCELLED";
+  holdExpiresAt: string; // ISO date string
+}
+
+interface OccupiedSeatsResponse {
+  bookings: BookingFromBackend[];
+}
+
 interface SeatLayoutProps {
   totalSeats: number;
   occupiedSeats: Set<number>;
   ladiesOnlySeats: Set<number>;
-  agentSeats: Set<number>;
+  agentSeatMap: Map<number, string>;
   selectedSeats: number[];
   onSeatClick: (seatNumber: number) => void;
   maxSeats: number;
@@ -27,7 +37,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
   ladiesOnlySeats,
-  agentSeats,
+  agentSeatMap,
   selectedSeats,
   onSeatClick,
   maxSeats,
@@ -37,7 +47,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   for (let i = 1; i <= totalSeats; i++) {
     const isOccupied = occupiedSeats.has(i);
     const isLadiesOnly = ladiesOnlySeats.has(i);
-    const isAgentSeat = agentSeats.has(i);
+    const agentId = agentSeatMap.get(i);
+    const isAgentSeat = Boolean(agentId);
     const isSelected = selectedSeats.includes(i);
 
     let seatClass =
@@ -45,8 +56,11 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
     if (isOccupied) {
       seatClass += "bg-gray-400 border-gray-500 text-white cursor-not-allowed";
-    } else if (isAgentSeat && !isSelected) {
-      seatClass += "bg-purple-300 border-purple-400 text-purple-900 cursor-pointer";
+    } else if (isAgentSeat) {
+      seatClass +=
+        agentId === "AGENT_1"
+          ? "bg-purple-300 border-purple-500 text-purple-900 cursor-not-allowed"
+          : "bg-blue-300 border-blue-500 text-blue-900 cursor-not-allowed";
     } else if (isLadiesOnly) {
       seatClass += isSelected
         ? "bg-[#fdc106] border-[#e6ad05] scale-105"
@@ -61,13 +75,19 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       <button
         key={i}
         onClick={() => onSeatClick(i)}
-        disabled={isOccupied || (!isSelected && selectedSeats.length >= maxSeats)}
+        disabled={
+          isOccupied ||
+          isAgentSeat ||
+          (!isSelected && selectedSeats.length >= maxSeats)
+        }
         className={seatClass}
       >
         {isOccupied ? (
           <UserX className="w-4 h-4 mb-1" />
         ) : isAgentSeat ? (
-          <span className="text-[10px] font-bold">AG</span>
+          <span className="text-[10px] font-bold">
+            {agentId === "AGENT_1" ? "A1" : "A2"}
+          </span>
         ) : isSelected ? (
           <User className="w-4 h-4 mb-1" />
         ) : isLadiesOnly ? (
@@ -79,35 +99,53 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   }
 
   return (
-    <div className="bg-gray-50 rounded-lg p-6">
-      <div className="mb-6 flex justify-end">
-        <div className="bg-gray-300 w-16 h-10 rounded-t-lg flex items-center justify-center">
-          <Steering className="w-6 h-6 text-gray-600" />
+    <>
+      <div className="bg-gray-50 rounded-lg p-6">
+        <div className="mb-6 flex justify-end">
+          <div className="bg-gray-300 w-16 h-10 rounded-t-lg flex items-center justify-center">
+            <Steering className="w-6 h-6 text-gray-600" />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {Array.from({ length: Math.ceil(totalSeats / 5) }).map((_, row) => (
+            <div key={row} className="flex justify-center space-x-2">
+              <div className="flex space-x-1">
+                {[0, 1, 2].map((o) => {
+                  const n = row * 5 + o + 1;
+                  return n <= totalSeats ? seats[n - 1] : null;
+                })}
+              </div>
+              <div className="w-8" />
+              <div className="flex space-x-1">
+                {[3, 4].map((o) => {
+                  const n = row * 5 + o + 1;
+                  return n <= totalSeats ? seats[n - 1] : null;
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="space-y-3">
-        {Array.from({ length: Math.ceil(totalSeats / 5) }).map((_, row) => (
-          <div key={row} className="flex justify-center space-x-2">
-            <div className="flex space-x-1">
-              {[0, 1, 2].map((o) => {
-                const n = row * 5 + o + 1;
-                return n <= totalSeats ? seats[n - 1] : null;
-              })}
-            </div>
-            <div className="w-8" />
-            <div className="flex space-x-1">
-              {[3, 4].map((o) => {
-                const n = row * 5 + o + 1;
-                return n <= totalSeats ? seats[n - 1] : null;
-              })}
-            </div>
-          </div>
-        ))}
+      {/* ---------- Legend ---------- */}
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+        <Legend color="bg-gray-400" label="Booked" />
+        <Legend color="bg-[#fdc106]" label="Selected" />
+        <Legend color="bg-pink-300" label="Ladies" />
+        <Legend color="bg-purple-300" label="Agent 1" />
+        <Legend color="bg-blue-300" label="Agent 2" />
       </div>
-    </div>
+    </>
   );
 };
+
+const Legend = ({ color, label }: { color: string; label: string }) => (
+  <div className="flex items-center gap-2">
+    <div className={`w-4 h-4 rounded ${color}`} />
+    <span>{label}</span>
+  </div>
+);
 
 /* -------------------- Seat Selection Page -------------------- */
 const HOLD_DURATION = 10 * 60; // 10 minutes
@@ -131,28 +169,37 @@ const SeatSelection: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  /* -------------------- Fetch Date-wise Occupied Seats -------------------- */
-  const fetchDateBooking = async (busId: string, date: string) => {
-    const res = await axios.get("http://localhost:5000/api/bookings/occupied-seats", {
-      params: { busId, date },
-    });
-    setDateOccupiedSeats(new Set(res.data.occupiedSeats.map(Number)));
-  };
+  const fetchDateBooking = useCallback(async () => {
+    if (!busId || !searchData?.date) return;
+    try {
+      const res = await axios.get<OccupiedSeatsResponse>(
+        "http://localhost:5000/api/bookings/occupied-seats",
+        { params: { busId, date: searchData.date } }
+      );
 
-  useEffect(() => {
-    if (busId) {
-      fetchBusSeats(busId);
-      if (searchData?.date) fetchDateBooking(busId, searchData.date);
+      // Only consider active holds (PENDING + not expired)
+      const activeSeats = res.data.bookings
+        .filter(
+          (b) => b.paymentStatus === "PENDING" && new Date(b.holdExpiresAt) > new Date()
+        )
+        .flatMap((b) => b.selectedSeats);
+
+      setDateOccupiedSeats(new Set(activeSeats));
+    } catch (err) {
+      console.error("Failed to fetch date bookings:", err);
     }
-    return () => clearSelection();
   }, [busId, searchData?.date]);
 
-  /* -------------------- Seat Hold Timer -------------------- */
   useEffect(() => {
-    if (selectedSeats.length > 0 && timeLeft === null) {
-      setTimeLeft(HOLD_DURATION);
-    }
+    if (!busId) return;
+    fetchBusSeats(busId);
+    fetchDateBooking();
+    return () => clearSelection();
+  }, [busId, fetchBusSeats, fetchDateBooking]);
 
+  // Seat hold timer for selected seats
+  useEffect(() => {
+    if (selectedSeats.length > 0 && timeLeft === null) setTimeLeft(HOLD_DURATION);
     if (selectedSeats.length === 0) {
       setTimeLeft(null);
       if (timerRef.current) clearInterval(timerRef.current);
@@ -167,7 +214,6 @@ const SeatSelection: React.FC = () => {
         if (!prev || prev <= 1) {
           clearInterval(timerRef.current!);
           alert("Seat hold expired. Please select again.");
-          releaseSeats(selectedSeats);
           clearSelection();
           navigate(-1);
           return null;
@@ -179,40 +225,22 @@ const SeatSelection: React.FC = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeLeft, selectedSeats]);
+  }, [timeLeft, clearSelection, navigate]);
 
-  /* -------------------- Hold Seats Backend -------------------- */
-  const holdSeats = async (seatNumbers: number[]) => {
-    try {
-      await axios.post(`http://localhost:5000/api/buses/${busId}/hold-seats`, {
-        seatNumbers,
-        holdDuration: HOLD_DURATION,
-      });
-    } catch (err) {
-      console.error("Failed to hold seats:", err);
-    }
-  };
-
-  const releaseSeats = async (seatNumbers: number[]) => {
-    try {
-      await axios.post(`http://localhost:5000/api/buses/${busId}/release-seats`, {
-        seatNumbers,
-      });
-    } catch (err) {
-      console.error("Failed to release seats:", err);
-    }
-  };
-
-  /* -------------------- Seat Click -------------------- */
   const handleSeatClick = async (seat: number) => {
     if (dateOccupiedSeats.has(seat)) return;
 
     if (selectedSeats.includes(seat)) {
       deselectSeat(seat);
-      await releaseSeats([seat]);
+      await axios.post(`http://localhost:5000/api/buses/${busId}/release-seats`, {
+        seatNumbers: [seat],
+      });
     } else {
       selectSeat(seat);
-      await holdSeats([seat]);
+      await axios.post(`http://localhost:5000/api/buses/${busId}/hold-seats`, {
+        seatNumbers: [seat],
+        holdDuration: HOLD_DURATION,
+      });
     }
   };
 
@@ -227,16 +255,14 @@ const SeatSelection: React.FC = () => {
     busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber)
   );
 
-  const agentSeats = new Set(
-    busSeats.seats.filter((s) => s.isReservedForAgent).map((s) => s.seatNumber)
-  );
+  const agentSeatMap = new Map<number, string>();
+  busSeats.seats.forEach((s) => {
+    if (s.isReservedForAgent) agentSeatMap.set(s.seatNumber, s.agentId ?? "AGENT_1");
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-[#fdc106] mb-4"
-      >
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 mb-4">
         <ArrowLeft /> Back
       </button>
 
@@ -251,7 +277,7 @@ const SeatSelection: React.FC = () => {
         totalSeats={busSeats.totalSeats}
         occupiedSeats={occupiedSeats}
         ladiesOnlySeats={ladiesOnlySeats}
-        agentSeats={agentSeats}
+        agentSeatMap={agentSeatMap}
         selectedSeats={selectedSeats}
         onSeatClick={handleSeatClick}
         maxSeats={searchData.passengers}

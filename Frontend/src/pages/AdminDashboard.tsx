@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
+import { CreditCard as Edit, Trash2, Plus, } from "lucide-react";
 
 import { useBus } from "../contexts/busDataContexts";
 import { useData } from "../contexts/DataContext";
@@ -15,9 +15,9 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [showAddRouteModal, setShowAddRouteModal] = useState(false);
 
-  const { buses } = useBus();
+  const { buses, toggleBusStatus, deleteBus } = useBus();
   const { users, deleteUser } = useData();
-  const { routes, deleteRoute } = useRouteData();
+  const { routes, toggleRouteStatus, deleteRoute } = useRouteData();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -68,8 +68,8 @@ const AdminDashboard: React.FC = () => {
 
       {/* Tab Content */}
       {activeTab === "overview" && <Overview />}
-      {activeTab === "owners" && <OwnerTab />} {/* ✅ owner tab */}
-      
+      {activeTab === "owners" && <OwnerTab />}
+
       {/* Users */}
       {activeTab === "users" && (
         <div className="space-y-4">
@@ -77,7 +77,9 @@ const AdminDashboard: React.FC = () => {
             <div key={user.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div>
                 <h4 className="font-semibold text-gray-900 dark:text-white">{user.name}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{user.email} • {user.phone} • {user.role}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {user.email} • {user.phone} • {user.role}
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status)}`}>
@@ -102,11 +104,24 @@ const AdminDashboard: React.FC = () => {
             <div key={bus.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div>
                 <h4 className="font-semibold text-gray-900 dark:text-white">{bus.name}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{bus.type} • {bus.totalSeats} seats • LKR {bus.price}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {bus.type} • {bus.totalSeats} seats • LKR {bus.price}
+                </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bus.status)}`}>
-                {bus.status.charAt(0).toUpperCase() + bus.status.slice(1)}
-              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => toggleBusStatus(bus.id)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bus.status)}`}
+                >
+                  {bus.status.charAt(0).toUpperCase() + bus.status.slice(1)}
+                </button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button onClick={() => deleteBus(bus.id)} className="p-2 text-gray-400 hover:text-red-600">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -115,19 +130,27 @@ const AdminDashboard: React.FC = () => {
       {/* Routes */}
       {activeTab === "routes" && (
         <div className="space-y-4">
-          <button onClick={() => setShowAddRouteModal(true)} className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2">
+          <button
+            onClick={() => setShowAddRouteModal(true)}
+            className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+          >
             <Plus className="w-4 h-4" /> <span>Add Route</span>
           </button>
           {routes.map((route) => (
             <div key={route.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div>
                 <h4 className="font-semibold text-gray-900 dark:text-white">{route.name}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{route.startPoint} → {route.endPoint} • {route.distance} km • {route.duration}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {route.startPoint} → {route.endPoint} • {route.distance} km • {route.duration}
+                </p>
               </div>
               <div className="flex items-center space-x-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(route.status)}`}>
+                <button
+                  onClick={() => toggleRouteStatus(route.id)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(route.status)}`}
+                >
                   {route.status.charAt(0).toUpperCase() + route.status.slice(1)}
-                </span>
+                </button>
                 <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                   <Edit className="w-4 h-4" />
                 </button>

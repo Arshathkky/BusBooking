@@ -9,45 +9,43 @@ const passengerSchema = new mongoose.Schema({
 
 const bookingSchema = new mongoose.Schema(
   {
-    bookingId: {
-      type: Number,
-      unique: true,
-    },
+    bookingId: Number,
+    referenceId: String,
 
-    referenceId: {
-      type: String,
-      unique: true,
-    },
-
-    bus: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Bus", required: true },
-      name: { type: String, required: true },
-      type: { type: String },
-      busNumber: { type: String }, // ✅ REQUIRED for referenceId
-    },
+          bus: {
+        id: { type: mongoose.Schema.Types.ObjectId, ref: "Bus", required: true },
+        name: { type: String, required: true },
+        type: { type: String },
+        busNumber: { type: String },
+      },
 
     searchData: {
-      from: { type: String, required: true },
-      to: { type: String, required: true },
-      date: { type: String, required: true },
+      from: String,
+      to: String,
+      date: String,
     },
 
-    selectedSeats: [{ type: String, required: true }],
+    selectedSeats: [{ type: Number, required: true }],
 
-    totalAmount: { type: Number, required: true },
+    totalAmount: Number,
 
-    passengerDetails: {
-      type: passengerSchema,
-      required: true,
+    passengerDetails: passengerSchema,
+
+    holdExpiresAt: {
+      type: Date,
+      required: true
     },
-
     paymentStatus: {
       type: String,
-      enum: ["Pending", "Paid", "Cancelled"],
-      default: "Pending",
+      enum: ["PENDING", "PAID", "CANCELLED"],
+      default: "PENDING"
     },
+
+    // 🔥 NEW FIELDS
+    paymentExpiresAt: { type: Date, required: true },
   },
   { timestamps: true }
 );
+
 
 export default mongoose.model("Booking", bookingSchema);

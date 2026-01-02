@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // ✅ Try Owner login
       try {
-        const ownerResponse = await axios.post('http://localhost:5000/api/owner/login', { email, password });
+        const ownerResponse = await axios.post('https://bus-booking-nt91.onrender.com/api/owner/login', { email, password });
         console.log('Owner login response:', ownerResponse.data);
 
         if (ownerResponse.data && ownerResponse.data._id) {
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // ✅ Try Conductor / Agent login
       try {
-        const conductorResponse = await axios.post('http://localhost:5000/api/conductors/login', { email, password });
+        const conductorResponse = await axios.post('https://bus-booking-nt91.onrender.com/api/conductors/login', { email, password });
         console.log('Conductor login response:', conductorResponse.data);
 
         const data = conductorResponse.data;

@@ -41,7 +41,7 @@ const OwnerDashboard: React.FC = () => {
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const API_URL = "http://localhost:5000/api/owner";
+  const API_URL = "https://bus-booking-nt91.onrender.com/api/owner";
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(

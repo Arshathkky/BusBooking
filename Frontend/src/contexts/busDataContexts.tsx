@@ -91,7 +91,7 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "http://localhost:5000/api/buses";
+  const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
 
   // Helper to map _id → id
   const mapBus = (bus: BusFromDB): BusType => ({

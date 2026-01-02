@@ -173,7 +173,7 @@ const SeatSelection: React.FC = () => {
     if (!busId || !searchData?.date) return;
     try {
       const res = await axios.get<OccupiedSeatsResponse>(
-        "http://localhost:5000/api/bookings/occupied-seats",
+        "https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats",
         { params: { busId, date: searchData.date } }
       );
 
@@ -232,12 +232,12 @@ const SeatSelection: React.FC = () => {
 
     if (selectedSeats.includes(seat)) {
       deselectSeat(seat);
-      await axios.post(`http://localhost:5000/api/buses/${busId}/release-seats`, {
+      await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`, {
         seatNumbers: [seat],
       });
     } else {
       selectSeat(seat);
-      await axios.post(`http://localhost:5000/api/buses/${busId}/hold-seats`, {
+      await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`, {
         seatNumbers: [seat],
         holdDuration: HOLD_DURATION,
       });

@@ -91,7 +91,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
 
   const API_URL = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/bookings`
-    : "http://localhost:5000/api/bookings";
+    : "https://bus-booking-nt91.onrender.com/api/bookings";
 
   /* -------------------- Error Handler -------------------- */
 

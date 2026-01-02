@@ -55,7 +55,7 @@ export const SearchProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "http://localhost:5000/api/search";
+  const API_URL = "https://bus-booking-nt91.onrender.com/api/search";
 
   const searchBuses = async (data?: SearchData): Promise<void> => {
     const query = data || searchData;

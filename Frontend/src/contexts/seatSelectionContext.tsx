@@ -63,7 +63,7 @@ export const useSeat = (): SeatContextType => {
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-  const API_URL = "http://localhost:5000/api/buses";
+  const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
 
   // -------------------- Fetch bus seats from backend --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {

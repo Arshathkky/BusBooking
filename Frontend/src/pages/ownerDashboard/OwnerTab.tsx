@@ -18,7 +18,6 @@ const OwnerTab: React.FC = () => {
     setShowOwnerModal(true);
   };
 
-  // ✅ Cycle status on badge click
   const handleStatusChange = async (owner: Owner) => {
     const nextStatus =
       owner.status === "pending"
@@ -26,7 +25,6 @@ const OwnerTab: React.FC = () => {
         : owner.status === "active"
         ? "suspended"
         : "pending";
-
     await updateOwner(owner._id, { status: nextStatus });
   };
 
@@ -43,7 +41,7 @@ const OwnerTab: React.FC = () => {
     }
   };
 
-  // ✅ Refresh owners after modal close
+  // ✅ Refresh after modal close
   const handleModalClose = async () => {
     setShowOwnerModal(false);
     setEditingOwner(undefined);
@@ -66,27 +64,23 @@ const OwnerTab: React.FC = () => {
       </div>
 
       <div className="grid gap-4">
-        {owners.map((owner) => (
+        {owners.map(owner => (
           <div
             key={owner._id}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex justify-between items-center transition-colors"
           >
             <div>
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                {owner.name}
-              </h4>
+              <h4 className="text-lg font-bold text-gray-900 dark:text-white">{owner.name}</h4>
               <p className="text-gray-600 dark:text-gray-400">{owner.email}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {owner.phone} • {owner.address}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Registered:{" "}
-                {new Date(owner.createdAt || "").toLocaleDateString()}
+                Registered: {new Date(owner.createdAt || "").toLocaleDateString()}
               </p>
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* ✅ Clickable status badge */}
               <span
                 onClick={() => handleStatusChange(owner)}
                 title="Click to change status"
@@ -117,7 +111,7 @@ const OwnerTab: React.FC = () => {
       {showOwnerModal && (
         <OwnerModal
           ownerData={editingOwner}
-          onClose={handleModalClose} // ✅ Refresh owners after add/edit
+          onClose={handleModalClose} // Refresh owners
         />
       )}
     </div>

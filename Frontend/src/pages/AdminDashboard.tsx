@@ -1,24 +1,33 @@
 import React, { useState } from "react";
-import { CreditCard as Edit, Trash2, Plus, } from "lucide-react";
+import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
 
-import { useBus } from "../contexts/busDataContexts";
+import { useBus, BusType } from "../contexts/busDataContexts";
 import { useData } from "../contexts/DataContext";
-import { useRouteData } from "../contexts/RouteDataContext";
+import { useRouteData, RouteType } from "../contexts/RouteDataContext";
 
-import OwnerTab from "./ownerDashboard/OwnerTab"; // ✅ new owner tab component
+import OwnerTab from "./ownerDashboard/OwnerTab";
 import AddRouteModal from "../components/AddRouteModal";
+import AddBusModal from "../components/AddBusModal";
 import Overview from "../contexts/OverView";
 
 type TabKey = "overview" | "owners" | "buses" | "routes" | "users";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
-  const [showAddRouteModal, setShowAddRouteModal] = useState(false);
 
+  // -------- Modals --------
+  const [showAddRouteModal, setShowAddRouteModal] = useState(false);
+  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
+
+  const [showBusModal, setShowBusModal] = useState(false);
+  const [editingBus, setEditingBus] = useState<BusType | null>(null);
+
+  // -------- Data --------
   const { buses, toggleBusStatus, deleteBus } = useBus();
   const { users, deleteUser } = useData();
   const { routes, toggleRouteStatus, deleteRoute } = useRouteData();
 
+  // -------- Helpers --------
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -36,13 +45,18 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Admin Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Complete system management and oversight</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          Admin Dashboard
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Complete system management and oversight
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6 transition-colors">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md mb-6">
         <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           {[
             { key: "overview", label: "Overview" },
@@ -54,7 +68,7 @@ const AdminDashboard: React.FC = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as TabKey)}
-              className={`px-6 py-4 font-medium whitespace-nowrap transition-colors ${
+              className={`px-6 py-4 font-medium whitespace-nowrap ${
                 activeTab === tab.key
                   ? "text-[#fdc106] border-b-2 border-[#fdc106]"
                   : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -66,11 +80,13 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* ---------------- Overview ---------------- */}
       {activeTab === "overview" && <Overview />}
+
+      {/* ---------------- Owners ---------------- */}
       {activeTab === "owners" && <OwnerTab />}
 
-      {/* Users */}
+      {/* ---------------- Users ---------------- */}
       {activeTab === "users" && (
         <div className="space-y-4">
           {users.map((user) => (
@@ -85,7 +101,7 @@ const AdminDashboard: React.FC = () => {
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(user.status)}`}>
                   {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                 </span>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <button className="p-2 text-gray-400 hover:text-gray-600">
                   <Edit className="w-4 h-4" />
                 </button>
                 <button onClick={() => deleteUser(user.id)} className="p-2 text-gray-400 hover:text-red-600">
@@ -97,9 +113,20 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Buses */}
+      {/* ---------------- Buses (EDIT ENABLED) ---------------- */}
       {activeTab === "buses" && (
-        <div className="grid gap-4">
+        <div className="space-y-4">
+          <button
+            onClick={() => {
+              setEditingBus(null);
+              setShowBusModal(true);
+            }}
+            className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Bus</span>
+          </button>
+
           {buses.map((bus) => (
             <div key={bus.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div>
@@ -115,10 +142,19 @@ const AdminDashboard: React.FC = () => {
                 >
                   {bus.status.charAt(0).toUpperCase() + bus.status.slice(1)}
                 </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <button
+                  onClick={() => {
+                    setEditingBus(bus);
+                    setShowBusModal(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button onClick={() => deleteBus(bus.id)} className="p-2 text-gray-400 hover:text-red-600">
+                <button
+                  onClick={() => deleteBus(bus.id)}
+                  className="p-2 text-gray-400 hover:text-red-600"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -127,15 +163,20 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Routes */}
+      {/* ---------------- Routes (EDIT ENABLED) ---------------- */}
       {activeTab === "routes" && (
         <div className="space-y-4">
           <button
-            onClick={() => setShowAddRouteModal(true)}
+            onClick={() => {
+              setEditingRoute(null);
+              setShowAddRouteModal(true);
+            }}
             className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium flex items-center space-x-2"
           >
-            <Plus className="w-4 h-4" /> <span>Add Route</span>
+            <Plus className="w-4 h-4" />
+            <span>Add Route</span>
           </button>
+
           {routes.map((route) => (
             <div key={route.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
               <div>
@@ -151,10 +192,19 @@ const AdminDashboard: React.FC = () => {
                 >
                   {route.status.charAt(0).toUpperCase() + route.status.slice(1)}
                 </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <button
+                  onClick={() => {
+                    setEditingRoute(route);
+                    setShowAddRouteModal(true);
+                  }}
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button onClick={() => deleteRoute(route.id)} className="p-2 text-gray-400 hover:text-red-600">
+                <button
+                  onClick={() => deleteRoute(route.id)}
+                  className="p-2 text-gray-400 hover:text-red-600"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -163,8 +213,26 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Modals */}
-      {showAddRouteModal && <AddRouteModal onClose={() => setShowAddRouteModal(false)} />}
+      {/* ---------------- Modals ---------------- */}
+      {showAddRouteModal && (
+        <AddRouteModal
+          editingRoute={editingRoute}
+          onClose={() => {
+            setShowAddRouteModal(false);
+            setEditingRoute(null);
+          }}
+        />
+      )}
+
+      {showBusModal && (
+        <AddBusModal
+          editingBus={editingBus}
+          onClose={() => {
+            setShowBusModal(false);
+            setEditingBus(null);
+          }}
+        />
+      )}
     </div>
   );
 };

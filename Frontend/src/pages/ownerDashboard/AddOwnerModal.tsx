@@ -25,6 +25,7 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
 
   const [errorMessage, setErrorMessage] = useState("");
 
+  // ✅ Fill form when editing
   useEffect(() => {
     if (ownerData) {
       setFormData({
@@ -39,6 +40,20 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
         password: "",
         status: ownerData.status ?? "pending",
       });
+    } else {
+      // Clear form when adding
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        companyName: "",
+        address: "",
+        businessRegistrationNumber: "",
+        taxId: "",
+        registrationDocumentUrl: "",
+        password: "",
+        status: "pending",
+      });
     }
   }, [ownerData]);
 
@@ -50,26 +65,23 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setErrorMessage("");
+    e.preventDefault();
+    setErrorMessage("");
 
-  try {
-    if (ownerData) {
-      // Update owner
-      await updateOwner(ownerData._id, { ...formData });
-    } else {
-      // Add new owner
-      await addOwner({ ...formData });
+    try {
+      if (ownerData) {
+        // Update owner
+        await updateOwner(ownerData._id, { ...formData });
+      } else {
+        // Add new owner
+        await addOwner({ ...formData });
+      }
+      onClose(); // refresh will happen in OwnerTab
+    } catch (err) {
+      const axiosError = err as AxiosError<{ message: string }>;
+      setErrorMessage(axiosError.response?.data?.message || "Something went wrong");
     }
-    onClose();
-  } catch (err) {
-    // ✅ Type-safe error handling
-    const axiosError = err as AxiosError<{ message: string }>;
-    setErrorMessage(
-      axiosError.response?.data?.message || "Something went wrong"
-    );
-  }
-};
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center">
@@ -85,9 +97,7 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
           {ownerData ? "Edit Bus Owner" : "Add New Bus Owner"}
         </h2>
 
-        {errorMessage && (
-          <p className="text-red-600 mb-2">{errorMessage}</p>
-        )}
+        {errorMessage && <p className="text-red-600 mb-2">{errorMessage}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

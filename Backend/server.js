@@ -34,7 +34,7 @@ app.use("/api/buses", busRoutes);
 app.use("/api/conductors", conductorRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/search", searchRoutes);
-app.use("/api/owner", ownerRoutes);
+  app.use("/api/owner", ownerRoutes);
 app.use("/api/agent", agentRoutes);
 
 

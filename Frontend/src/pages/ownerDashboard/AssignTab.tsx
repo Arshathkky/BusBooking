@@ -66,7 +66,7 @@ const AssignAgentTab: React.FC = () => {
 
     setAssigning(true);
     try {
-      await axios.put(`http://localhost:5000/api/buses/${selectedBusId}/agent-seats`, {
+      await axios.put(`https://bus-booking-nt91.onrender.com/api/buses/${selectedBusId}/agent-seats`, {
         agentId: selectedAgentId,
         seatNumbers: selectedSeats,
         markAsOccupied: false,

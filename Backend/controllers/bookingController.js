@@ -77,56 +77,48 @@ export const createBooking = async (req, res) => {
     }
   };
 
-  // ✅ Update payment status
-export const updatePaymentStatus = async (req, res) => {
+  export const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { paymentStatus } = req.body; // expected "PAID"
+    const { paymentStatus } = req.body;
 
-    // 1️⃣ Fetch booking
     const booking = await Booking.findById(id);
-    if (!booking)
+    if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
-
-    // 2️⃣ Check if booking is still PENDING
-    if (booking.paymentStatus !== "PENDING") {
-      return res.status(400).json({ success: false, message: "Booking already expired or paid" });
     }
 
-    // 3️⃣ Check if hold has expired
+    // Only pending bookings allowed
+    if (booking.paymentStatus !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "Booking already paid or cancelled",
+      });
+    }
+
+    // Check expiry
     if (booking.paymentExpiresAt < new Date()) {
       booking.paymentStatus = "CANCELLED";
       await booking.save();
-      return res.status(400).json({ success: false, message: "Booking expired" });
+
+      return res.status(400).json({
+        success: false,
+        message: "Payment time expired",
+      });
     }
 
-    // 4️⃣ Update payment status
-    booking.paymentStatus = paymentStatus.toUpperCase(); // ensure consistent "PAID"
+    // ✅ Mark booking as PAID
+    booking.paymentStatus = paymentStatus.toUpperCase(); // "PAID"
     await booking.save();
 
-    // 5️⃣ If paid, mark seats permanently occupied
-    if (booking.paymentStatus === "PAID") {
-      const bus = await Bus.findById(booking.bus.id);
-      if (bus) {
-        bus.seats = bus.seats.map((seat) => {
-          if (booking.selectedSeats.includes(seat.seatNumber)) {
-            return {
-              ...seat.toObject(),
-              isOccupied: true,       // ✅ permanently booked
-              isHeld: false,
-              heldBy: null,
-              holdExpiresAt: null,
-            };
-          }
-          return seat;
-        });
-        await bus.save();
-      }
-    }
+    // ❌ DO NOT touch Bus.seats here
 
-    res.status(200).json({ success: true, booking });
+    res.status(200).json({
+      success: true,
+      message: "Payment successful",
+      booking,
+    });
   } catch (error) {
-    console.error("Update Payment Status Error:", error);
+    console.error("Payment update error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -136,26 +128,22 @@ export const updatePaymentStatus = async (req, res) => {
 
 
   export const getOccupiedSeatsForDate = async (req, res) => {
-    try {
-      const { busId, date } = req.query;
+  try {
+    const { busId, date } = req.query;
 
-      if (!busId || !date) {
-        return res.status(400).json({ success: false, message: "BusId and date are required" });
-      }
+    const bookings = await Booking.find({
+      "bus.id": new mongoose.Types.ObjectId(busId),
+      "searchData.date": date,
+      paymentStatus: "PAID",
+    });
 
-      const bookings = await Booking.find({
-        "bus.id": new mongoose.Types.ObjectId(busId), // ✅ use 'new'
-        "searchData.date": date,
-      });
+    const occupiedSeats = bookings.flatMap(b => b.selectedSeats);
 
-      const occupiedSeats = bookings.flatMap(b => b.selectedSeats);
-
-      res.status(200).json({ success: true, occupiedSeats });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
+    res.status(200).json({ success: true, occupiedSeats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
   export const assignAgentSeats = async (req, res) => {
   try {

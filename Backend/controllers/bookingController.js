@@ -71,7 +71,6 @@ export const getBookingById = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
 /* ===========================
    UPDATE PAYMENT STATUS
 =========================== */
@@ -79,40 +78,10 @@ export const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { paymentStatus } = req.body; // "PAID"
-=======
-
-  // ✅ Get all bookings
-  export const getAllBookings = async (req, res) => {
-    try {
-      const bookings = await Booking.find().sort({ createdAt: -1 });
-      res.status(200).json({ success: true, bookings });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
-
-  // ✅ Get a booking by ID
-  export const getBookingById = async (req, res) => {
-    try {
-      const booking = await Booking.findById(req.params.id);
-      if (!booking)
-        return res.status(404).json({ success: false, message: "Booking not found" });
-      res.status(200).json({ success: true, booking });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
-
-  export const updatePaymentStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { paymentStatus } = req.body;
->>>>>>> c7d8ad114274cd2b4e1a975438f3e50766cf3862
 
     const booking = await Booking.findById(id);
-    if (!booking) {
+    if (!booking)
       return res.status(404).json({ success: false, message: "Booking not found" });
-<<<<<<< HEAD
 
     // Already processed
     if (booking.paymentStatus !== "PENDING") {
@@ -123,50 +92,19 @@ export const updatePaymentStatus = async (req, res) => {
     }
 
     // Expired
-=======
-    }
-
-    // Only pending bookings allowed
-    if (booking.paymentStatus !== "PENDING") {
-      return res.status(400).json({
-        success: false,
-        message: "Booking already paid or cancelled",
-      });
-    }
-
-    // Check expiry
->>>>>>> c7d8ad114274cd2b4e1a975438f3e50766cf3862
     if (booking.paymentExpiresAt < new Date()) {
       booking.paymentStatus = "CANCELLED";
       await booking.save();
-
-      return res.status(400).json({
-        success: false,
-        message: "Payment time expired",
-      });
+      return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-<<<<<<< HEAD
     // ✅ Mark booking PAID (NO BUS UPDATE)
     booking.paymentStatus = paymentStatus.toUpperCase();
     await booking.save();
 
     res.status(200).json({ success: true, booking });
-=======
-    // ✅ Mark booking as PAID
-    booking.paymentStatus = paymentStatus.toUpperCase(); // "PAID"
-    await booking.save();
-
-    // ❌ DO NOT touch Bus.seats here
-
-    res.status(200).json({
-      success: true,
-      message: "Payment successful",
-      booking,
-    });
->>>>>>> c7d8ad114274cd2b4e1a975438f3e50766cf3862
   } catch (error) {
-    console.error("Payment update error:", error);
+    console.error("Update Payment Status Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -178,35 +116,12 @@ export const getOccupiedSeatsForDate = async (req, res) => {
   try {
     const { busId, date } = req.query;
 
-<<<<<<< HEAD
     if (!busId || !date) {
       return res.status(400).json({
         success: false,
         message: "busId and date are required",
       });
     }
-=======
-
-
-
-  export const getOccupiedSeatsForDate = async (req, res) => {
-  try {
-    const { busId, date } = req.query;
-
-    const bookings = await Booking.find({
-      "bus.id": new mongoose.Types.ObjectId(busId),
-      "searchData.date": date,
-      paymentStatus: "PAID",
-    });
-
-    const occupiedSeats = bookings.flatMap(b => b.selectedSeats);
-
-    res.status(200).json({ success: true, occupiedSeats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
->>>>>>> c7d8ad114274cd2b4e1a975438f3e50766cf3862
 
     const bookings = await Booking.find({
       "bus.id": new mongoose.Types.ObjectId(busId),

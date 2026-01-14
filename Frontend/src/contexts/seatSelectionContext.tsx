@@ -8,9 +8,8 @@ export interface Seat {
   isOccupied: boolean;
   agentAssigned?: boolean;
   isReservedForAgent?: boolean;
-  agentId?: string | null;   // 🔥 ADD THIS
+  agentId?: string | null;
 }
-
 
 export interface Bus {
   id: string;
@@ -19,8 +18,13 @@ export interface Bus {
   totalSeats: number;
   price: number;
   seats: Seat[];
-  busNumber:string,
-  
+  busNumber: string;
+}
+
+interface BookingFromBackend {
+  selectedSeats: number[];
+  paymentStatus: "PENDING" | "PAID" | "CANCELLED";
+  holdExpiresAt: string; // ISO string
 }
 
 // Backend response wrapper
@@ -36,7 +40,7 @@ interface BusFromBackend {
   totalSeats: number;
   price: number;
   seats: Seat[];
-  busNumber:string,
+  busNumber: string;
 }
 
 // -------------------- Context Type --------------------
@@ -48,6 +52,7 @@ interface SeatContextType {
   clearSelection: () => void;
   fetchBusSeats: (busId: string) => Promise<void>;
   updateSeats: (busId: string, updatedSeats: { seatNumber: number; isOccupied: boolean }[]) => Promise<void>;
+  fetchOccupiedSeatsForDate: (busId: string, date: string) => Promise<Set<number>>;
 }
 
 // -------------------- Context --------------------
@@ -63,9 +68,11 @@ export const useSeat = (): SeatContextType => {
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
 
-  // -------------------- Fetch bus seats from backend --------------------
+  // 🔹 Temporarily use localhost for backend
+  const API_URL = "http://localhost:5000/api/buses";
+
+  // -------------------- Fetch bus seats --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
     try {
       const res = await axios.get<BusResponse>(`${API_URL}/${busId}`);
@@ -76,7 +83,6 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Map all seat info including agent fields
       setBusSeats({
         id: busData._id,
         name: busData.name,
@@ -85,14 +91,13 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         price: busData.price,
         busNumber: busData.busNumber,
         seats: busData.seats.map((s) => ({
-        seatNumber: s.seatNumber,
-        isLadiesOnly: s.isLadiesOnly,
-        isOccupied: s.isOccupied ?? false,
-        agentAssigned: s.agentAssigned ?? false,
-        isReservedForAgent: s.isReservedForAgent ?? false,
-        agentId: s.agentId ?? null, // 🔥 ADD
-      })),
-
+          seatNumber: s.seatNumber,
+          isLadiesOnly: s.isLadiesOnly,
+          isOccupied: s.isOccupied ?? false,
+          agentAssigned: s.agentAssigned ?? false,
+          isReservedForAgent: s.isReservedForAgent ?? false,
+          agentId: s.agentId ?? null,
+        })),
       });
 
       setSelectedSeats([]);
@@ -101,7 +106,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // -------------------- Update seat occupancy --------------------
+  // -------------------- Update seat layout --------------------
   const updateSeats = useCallback(
     async (busId: string, updatedSeats: { seatNumber: number; isOccupied: boolean }[]) => {
       if (!busSeats) return;
@@ -121,6 +126,32 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     },
     [busSeats]
+  );
+
+  // -------------------- Fetch occupied seats for a specific date --------------------
+  const fetchOccupiedSeatsForDate = useCallback(
+    async (busId: string, date: string): Promise<Set<number>> => {
+      try {
+        const res = await axios.get<{ bookings: BookingFromBackend[] }>(
+          "http://localhost:5000/api/bookings/occupied-seats",
+          { params: { busId, date } }
+        );
+
+        const activeSeats: number[] = res.data.bookings
+          .filter(
+            (b) =>
+              b.paymentStatus === "PAID" ||
+              (b.paymentStatus === "PENDING" && new Date(b.holdExpiresAt) > new Date())
+          )
+          .flatMap((b) => b.selectedSeats as number[]);
+
+        return new Set(activeSeats);
+      } catch (err) {
+        console.error("❌ Failed to fetch occupied seats for date:", err);
+        return new Set<number>();
+      }
+    },
+    []
   );
 
   // -------------------- Seat Selection --------------------
@@ -149,6 +180,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         clearSelection,
         fetchBusSeats,
         updateSeats,
+        fetchOccupiedSeatsForDate,
       }}
     >
       {children}

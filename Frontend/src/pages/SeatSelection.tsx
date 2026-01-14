@@ -14,7 +14,7 @@ interface SearchData {
 
 interface BookingFromBackend {
   selectedSeats: number[];
-  paymentStatus: "PENDING" | "Paid" | "CANCELLED";
+  paymentStatus: "PENDING" | "PAID" | "CANCELLED";
   holdExpiresAt: string; // ISO date string
 }
 
@@ -32,7 +32,7 @@ interface SeatLayoutProps {
   maxSeats: number;
 }
 
-/* -------------------- Seat Layout -------------------- */
+/* -------------------- Seat Layout Component -------------------- */
 const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
@@ -63,7 +63,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
           : "bg-blue-300 border-blue-500 text-blue-900 cursor-not-allowed";
     } else if (isLadiesOnly) {
       seatClass += isSelected
-        ? "bg-[#fdc106] border-[#e6ad05] scale-105"
+        ? "bg-[#fdc106] border-[#e6ad05] scale-105 cursor-pointer"
         : "bg-pink-200 border-pink-300 hover:bg-pink-300 cursor-pointer";
     } else if (isSelected) {
       seatClass += "bg-[#fdc106] border-[#e6ad05] scale-105 cursor-pointer";
@@ -76,9 +76,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         key={i}
         onClick={() => onSeatClick(i)}
         disabled={
-          isOccupied ||
-          isAgentSeat ||
-          (!isSelected && selectedSeats.length >= maxSeats)
+          isOccupied || isAgentSeat || (!isSelected && selectedSeats.length >= maxSeats)
         }
         className={seatClass}
       >
@@ -177,10 +175,11 @@ const SeatSelection: React.FC = () => {
         { params: { busId, date: searchData.date } }
       );
 
-      // Only consider active holds (PENDING + not expired)
       const activeSeats = res.data.bookings
         .filter(
-          (b) => b.paymentStatus === "PENDING" && new Date(b.holdExpiresAt) > new Date()
+          (b) =>
+            b.paymentStatus === "PAID" ||
+            (b.paymentStatus === "PENDING" && new Date(b.holdExpiresAt) > new Date())
         )
         .flatMap((b) => b.selectedSeats);
 
@@ -195,9 +194,9 @@ const SeatSelection: React.FC = () => {
     fetchBusSeats(busId);
     fetchDateBooking();
     return () => clearSelection();
-  }, [busId, fetchBusSeats, fetchDateBooking]);
+  }, [busId, fetchBusSeats, fetchDateBooking, clearSelection]);
 
-  // Seat hold timer for selected seats
+  // Seat hold timer
   useEffect(() => {
     if (selectedSeats.length > 0 && timeLeft === null) setTimeLeft(HOLD_DURATION);
     if (selectedSeats.length === 0) {
@@ -232,15 +231,16 @@ const SeatSelection: React.FC = () => {
 
     if (selectedSeats.includes(seat)) {
       deselectSeat(seat);
-      await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`, {
-        seatNumbers: [seat],
-      });
+      await axios.post(
+        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`,
+        { seatNumbers: [seat] }
+      );
     } else {
       selectSeat(seat);
-      await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`, {
-        seatNumbers: [seat],
-        holdDuration: HOLD_DURATION,
-      });
+      await axios.post(
+        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`,
+        { seatNumbers: [seat], holdDuration: HOLD_DURATION }
+      );
     }
   };
 

@@ -1,13 +1,15 @@
-  import mongoose from "mongoose";
-  import Booking from "../models/bookingModel.js";
-import Bus from "../models/busModel.js"; // ✅ add this
-import Conductor from "../models/conductorModel.js"; // if using assignAgentSeats
-
+import mongoose from "mongoose";
+import Booking from "../models/bookingModel.js";
+import Bus from "../models/busModel.js";
+import Conductor from "../models/conductorModel.js";
 import { Counter } from "../models/counterModal.js";
 
+/* ===========================
+   CREATE BOOKING (PENDING)
+=========================== */
 export const createBooking = async (req, res) => {
   try {
-    // 1️⃣ Generate bookingId
+    // 1️⃣ Auto-increment bookingId
     const counter = await Counter.findOneAndUpdate(
       { name: "booking" },
       { $inc: { seq: 1 } },
@@ -19,110 +21,86 @@ export const createBooking = async (req, res) => {
     // 2️⃣ Extract data
     const { searchData, selectedSeats, bus } = req.body;
 
-    // 3️⃣ Generate referenceId
-    const seatPart = selectedSeats.join("");
-    const referenceId = `${searchData.date}-${seatPart}-${bus.busNumber || bus.name}`;
+    // 3️⃣ Reference ID
+    const referenceId = `${searchData.date}-${selectedSeats.join("")}-${bus.busNumber || bus.name}`;
 
-    // 4️⃣ 🔥 Create 10-min hold/payment expiry
-    const now = new Date();
-    const HOLD_MINUTES = 10;
-    const expiryTime = new Date(now.getTime() + HOLD_MINUTES * 60 * 1000);
+    // 4️⃣ Hold & payment expiry (10 mins)
+    const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 5️⃣ Create booking
+    // 5️⃣ Create booking (DATE-WISE)
     const booking = await Booking.create({
       ...req.body,
       bookingId,
       referenceId,
-      holdExpiresAt: expiryTime,       // ✅ required field
-      paymentExpiresAt: expiryTime,    // ✅ required field
-      paymentStatus: "PENDING"         // ✅ default status
+      holdExpiresAt: expiryTime,
+      paymentExpiresAt: expiryTime,
+      paymentStatus: "PENDING",
     });
 
-    res.status(201).json({
-      success: true,
-      booking,
-    });
+    res.status(201).json({ success: true, booking });
   } catch (error) {
     console.error("Booking creation failed:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
+/* ===========================
+   GET ALL BOOKINGS
+=========================== */
+export const getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+    res.status(200).json({ success: true, bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
+/* ===========================
+   GET BOOKING BY ID
+=========================== */
+export const getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking)
+      return res.status(404).json({ success: false, message: "Booking not found" });
 
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-
-  // ✅ Get all bookings
-  export const getAllBookings = async (req, res) => {
-    try {
-      const bookings = await Booking.find().sort({ createdAt: -1 });
-      res.status(200).json({ success: true, bookings });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
-
-  // ✅ Get a booking by ID
-  export const getBookingById = async (req, res) => {
-    try {
-      const booking = await Booking.findById(req.params.id);
-      if (!booking)
-        return res.status(404).json({ success: false, message: "Booking not found" });
-      res.status(200).json({ success: true, booking });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
-    }
-  };
-
-  // ✅ Update payment status
+/* ===========================
+   UPDATE PAYMENT STATUS
+=========================== */
 export const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { paymentStatus } = req.body; // expected "PAID"
+    const { paymentStatus } = req.body; // "PAID"
 
-    // 1️⃣ Fetch booking
     const booking = await Booking.findById(id);
     if (!booking)
       return res.status(404).json({ success: false, message: "Booking not found" });
 
-    // 2️⃣ Check if booking is still PENDING
+    // Already processed
     if (booking.paymentStatus !== "PENDING") {
-      return res.status(400).json({ success: false, message: "Booking already expired or paid" });
+      return res.status(400).json({
+        success: false,
+        message: "Booking already paid or cancelled",
+      });
     }
 
-    // 3️⃣ Check if hold has expired
+    // Expired
     if (booking.paymentExpiresAt < new Date()) {
       booking.paymentStatus = "CANCELLED";
       await booking.save();
       return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-    // 4️⃣ Update payment status
-    booking.paymentStatus = paymentStatus.toUpperCase(); // ensure consistent "PAID"
+    // ✅ Mark booking PAID (NO BUS UPDATE)
+    booking.paymentStatus = paymentStatus.toUpperCase();
     await booking.save();
-
-    // 5️⃣ If paid, mark seats permanently occupied
-    if (booking.paymentStatus === "PAID") {
-      const bus = await Bus.findById(booking.bus.id);
-      if (bus) {
-        bus.seats = bus.seats.map((seat) => {
-          if (booking.selectedSeats.includes(seat.seatNumber)) {
-            return {
-              ...seat.toObject(),
-              isOccupied: true,       // ✅ permanently booked
-              isHeld: false,
-              heldBy: null,
-              holdExpiresAt: null,
-            };
-          }
-          return seat;
-        });
-        await bus.save();
-      }
-    }
 
     res.status(200).json({ success: true, booking });
   } catch (error) {
@@ -131,33 +109,39 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
+/* ===========================
+   DATE-WISE OCCUPIED SEATS
+=========================== */
+export const getOccupiedSeatsForDate = async (req, res) => {
+  try {
+    const { busId, date } = req.query;
 
-
-
-
-  export const getOccupiedSeatsForDate = async (req, res) => {
-    try {
-      const { busId, date } = req.query;
-
-      if (!busId || !date) {
-        return res.status(400).json({ success: false, message: "BusId and date are required" });
-      }
-
-      const bookings = await Booking.find({
-        "bus.id": new mongoose.Types.ObjectId(busId), // ✅ use 'new'
-        "searchData.date": date,
+    if (!busId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "busId and date are required",
       });
-
-      const occupiedSeats = bookings.flatMap(b => b.selectedSeats);
-
-      res.status(200).json({ success: true, occupiedSeats });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ success: false, message: error.message });
     }
-  };
 
-  export const assignAgentSeats = async (req, res) => {
+    const bookings = await Booking.find({
+      "bus.id": new mongoose.Types.ObjectId(busId),
+      "searchData.date": date,
+      paymentStatus: "PAID", // ✅ only PAID seats block
+    });
+
+    const occupiedSeats = bookings.flatMap((b) => b.selectedSeats);
+
+    res.status(200).json({ success: true, occupiedSeats });
+  } catch (error) {
+    console.error("Occupied seats error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ===========================
+   ASSIGN AGENT SEATS (LAYOUT)
+=========================== */
+export const assignAgentSeats = async (req, res) => {
   try {
     const { agentId, seatNumbers } = req.body;
     const bus = await Bus.findById(req.params.id);
@@ -174,7 +158,6 @@ export const updatePaymentStatus = async (req, res) => {
           agentId,
           agentCode: agent.agentCode,
           isReservedForAgent: true,
-          isOccupied: false,
         };
       }
       return seat;
@@ -186,5 +169,3 @@ export const updatePaymentStatus = async (req, res) => {
     res.status(500).json({ message: "Failed", error });
   }
 };
-
-

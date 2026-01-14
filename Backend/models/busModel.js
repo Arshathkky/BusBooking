@@ -6,7 +6,7 @@ const seatSchema = new mongoose.Schema({
   isLadiesOnly: { type: Boolean, default: false },
 
   // Permanent booking
-  isOccupied: { type: Boolean, default: false },
+  // isOccupied: { type: Boolean, default: false },
 
   // Agent info
   agentAssigned: { type: Boolean, default: false },

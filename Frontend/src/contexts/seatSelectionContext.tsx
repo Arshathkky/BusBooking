@@ -8,9 +8,8 @@ export interface Seat {
   isOccupied: boolean;
   agentAssigned?: boolean;
   isReservedForAgent?: boolean;
-  agentId?: string | null;   // 🔥 ADD THIS
+  agentId?: string | null;
 }
-
 
 export interface Bus {
   id: string;
@@ -19,8 +18,7 @@ export interface Bus {
   totalSeats: number;
   price: number;
   seats: Seat[];
-  busNumber:string,
-  
+  busNumber: string;
 }
 
 // Backend response wrapper
@@ -36,7 +34,7 @@ interface BusFromBackend {
   totalSeats: number;
   price: number;
   seats: Seat[];
-  busNumber:string,
+  busNumber: string;
 }
 
 // -------------------- Context Type --------------------
@@ -71,12 +69,8 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await axios.get<BusResponse>(`${API_URL}/${busId}`);
       const busData = res.data.data;
 
-      if (!busData || !busData.seats) {
-        console.error("Bus data or seats are missing");
-        return;
-      }
+      if (!busData || !busData.seats) return;
 
-      // Map all seat info including agent fields
       setBusSeats({
         id: busData._id,
         name: busData.name,
@@ -85,14 +79,13 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         price: busData.price,
         busNumber: busData.busNumber,
         seats: busData.seats.map((s) => ({
-        seatNumber: s.seatNumber,
-        isLadiesOnly: s.isLadiesOnly,
-        isOccupied: s.isOccupied ?? false,
-        agentAssigned: s.agentAssigned ?? false,
-        isReservedForAgent: s.isReservedForAgent ?? false,
-        agentId: s.agentId ?? null, // 🔥 ADD
-      })),
-
+          seatNumber: s.seatNumber,
+          isLadiesOnly: s.isLadiesOnly,
+          isOccupied: s.isOccupied ?? false,
+          agentAssigned: s.agentAssigned ?? false,
+          isReservedForAgent: s.isReservedForAgent ?? false,
+          agentId: s.agentId ?? null,
+        })),
       });
 
       setSelectedSeats([]);
@@ -108,9 +101,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const newSeats: Seat[] = busSeats.seats.map((seat) => {
         const updated = updatedSeats.find((s) => s.seatNumber === seat.seatNumber);
-        return updated
-          ? { ...seat, isOccupied: updated.isOccupied }
-          : seat;
+        return updated ? { ...seat, isOccupied: updated.isOccupied } : seat;
       });
 
       try {
@@ -125,9 +116,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // -------------------- Seat Selection --------------------
   const selectSeat = (seatNumber: number) => {
-    setSelectedSeats((prev) =>
-      prev.includes(seatNumber) ? prev : [...prev, seatNumber]
-    );
+    setSelectedSeats((prev) => (prev.includes(seatNumber) ? prev : [...prev, seatNumber]));
   };
 
   const deselectSeat = (seatNumber: number) => {
@@ -138,7 +127,6 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSelectedSeats([]);
   };
 
-  // -------------------- Provide context --------------------
   return (
     <SeatContext.Provider
       value={{

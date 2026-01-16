@@ -4,7 +4,6 @@ import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
 import { useSeat } from "../contexts/seatSelectionContext";
 import axios from "axios";
 
-/* -------------------- Types -------------------- */
 interface SearchData {
   from: string;
   to: string;
@@ -12,14 +11,9 @@ interface SearchData {
   passengers: number;
 }
 
-interface BookingFromBackend {
-  selectedSeats: number[];
-  paymentStatus: "PENDING" | "Paid" | "CANCELLED";
-  holdExpiresAt: string; // ISO date string
-}
-
 interface OccupiedSeatsResponse {
-  bookings: BookingFromBackend[];
+  success: boolean;
+  occupiedSeats: number[];
 }
 
 interface SeatLayoutProps {
@@ -32,7 +26,6 @@ interface SeatLayoutProps {
   maxSeats: number;
 }
 
-/* -------------------- Seat Layout -------------------- */
 const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
@@ -54,40 +47,32 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     let seatClass =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold transition-all duration-200 flex flex-col items-center justify-center ";
 
-    if (isOccupied) {
+    if (isOccupied)
       seatClass += "bg-gray-400 border-gray-500 text-white cursor-not-allowed";
-    } else if (isAgentSeat) {
+    else if (isAgentSeat)
       seatClass +=
         agentId === "AGENT_1"
           ? "bg-purple-300 border-purple-500 text-purple-900 cursor-not-allowed"
           : "bg-blue-300 border-blue-500 text-blue-900 cursor-not-allowed";
-    } else if (isLadiesOnly) {
+    else if (isLadiesOnly)
       seatClass += isSelected
         ? "bg-[#fdc106] border-[#e6ad05] scale-105"
         : "bg-pink-200 border-pink-300 hover:bg-pink-300 cursor-pointer";
-    } else if (isSelected) {
+    else if (isSelected)
       seatClass += "bg-[#fdc106] border-[#e6ad05] scale-105 cursor-pointer";
-    } else {
-      seatClass += "bg-gray-200 border-gray-300 hover:bg-gray-300 cursor-pointer";
-    }
+    else seatClass += "bg-gray-200 border-gray-300 hover:bg-gray-300 cursor-pointer";
 
     seats.push(
       <button
         key={i}
         onClick={() => onSeatClick(i)}
-        disabled={
-          isOccupied ||
-          isAgentSeat ||
-          (!isSelected && selectedSeats.length >= maxSeats)
-        }
+        disabled={isOccupied || isAgentSeat || (!isSelected && selectedSeats.length >= maxSeats)}
         className={seatClass}
       >
         {isOccupied ? (
           <UserX className="w-4 h-4 mb-1" />
         ) : isAgentSeat ? (
-          <span className="text-[10px] font-bold">
-            {agentId === "AGENT_1" ? "A1" : "A2"}
-          </span>
+          <span className="text-[10px] font-bold">{agentId === "AGENT_1" ? "A1" : "A2"}</span>
         ) : isSelected ? (
           <User className="w-4 h-4 mb-1" />
         ) : isLadiesOnly ? (
@@ -128,7 +113,6 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         </div>
       </div>
 
-      {/* ---------- Legend ---------- */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
         <Legend color="bg-gray-400" label="Booked" />
         <Legend color="bg-[#fdc106]" label="Selected" />
@@ -147,8 +131,8 @@ const Legend = ({ color, label }: { color: string; label: string }) => (
   </div>
 );
 
-/* -------------------- Seat Selection Page -------------------- */
-const HOLD_DURATION = 10 * 60; // 10 minutes
+// -------------------- SeatSelection Page --------------------
+const HOLD_DURATION = 10 * 60; // 10 min
 
 const SeatSelection: React.FC = () => {
   const { busId } = useParams<{ busId: string }>();
@@ -156,37 +140,28 @@ const SeatSelection: React.FC = () => {
   const navigate = useNavigate();
   const searchData = location.state?.searchData as SearchData;
 
-  const {
-    busSeats,
-    selectedSeats,
-    fetchBusSeats,
-    selectSeat,
-    deselectSeat,
-    clearSelection,
-  } = useSeat();
-
+  const { busSeats, selectedSeats, fetchBusSeats, selectSeat, deselectSeat, clearSelection } = useSeat();
   const [dateOccupiedSeats, setDateOccupiedSeats] = useState<Set<number>>(new Set());
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // -------------------- Fetch only date-specific occupied seats --------------------
   const fetchDateBooking = useCallback(async () => {
     if (!busId || !searchData?.date) return;
+
     try {
       const res = await axios.get<OccupiedSeatsResponse>(
-        "https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats",
+        `https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats`,
         { params: { busId, date: searchData.date } }
       );
 
-      // Only consider active holds (PENDING + not expired)
-      const activeSeats = res.data.bookings
-        .filter(
-          (b) => b.paymentStatus === "PENDING" && new Date(b.holdExpiresAt) > new Date()
-        )
-        .flatMap((b) => b.selectedSeats);
-
-      setDateOccupiedSeats(new Set(activeSeats));
+      if (res.data.success) {
+        setDateOccupiedSeats(new Set(res.data.occupiedSeats || []));
+      } else {
+        setDateOccupiedSeats(new Set());
+      }
     } catch (err) {
-      console.error("Failed to fetch date bookings:", err);
+      console.error("Failed to fetch occupied seats:", err);
     }
   }, [busId, searchData?.date]);
 
@@ -197,7 +172,7 @@ const SeatSelection: React.FC = () => {
     return () => clearSelection();
   }, [busId, fetchBusSeats, fetchDateBooking]);
 
-  // Seat hold timer for selected seats
+  // -------------------- Seat hold timer --------------------
   useEffect(() => {
     if (selectedSeats.length > 0 && timeLeft === null) setTimeLeft(HOLD_DURATION);
     if (selectedSeats.length === 0) {
@@ -227,6 +202,7 @@ const SeatSelection: React.FC = () => {
     };
   }, [timeLeft, clearSelection, navigate]);
 
+  // -------------------- Handle seat click --------------------
   const handleSeatClick = async (seat: number) => {
     if (dateOccupiedSeats.has(seat)) return;
 
@@ -234,11 +210,13 @@ const SeatSelection: React.FC = () => {
       deselectSeat(seat);
       await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`, {
         seatNumbers: [seat],
+        date: searchData.date,
       });
     } else {
       selectSeat(seat);
       await axios.post(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`, {
         seatNumbers: [seat],
+        date: searchData.date,
         holdDuration: HOLD_DURATION,
       });
     }
@@ -246,14 +224,10 @@ const SeatSelection: React.FC = () => {
 
   if (!searchData || !busSeats) return <p className="text-center mt-8">Loading...</p>;
 
-  const occupiedSeats = new Set([
-    ...busSeats.seats.filter((s) => s.isOccupied).map((s) => s.seatNumber),
-    ...dateOccupiedSeats,
-  ]);
+  // -------------------- Use ONLY date-specific occupied seats --------------------
+  const occupiedSeats = dateOccupiedSeats;
 
-  const ladiesOnlySeats = new Set(
-    busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber)
-  );
+  const ladiesOnlySeats = new Set(busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber));
 
   const agentSeatMap = new Map<number, string>();
   busSeats.seats.forEach((s) => {
@@ -268,8 +242,7 @@ const SeatSelection: React.FC = () => {
 
       {timeLeft !== null && (
         <div className="text-center font-bold text-red-600 mb-4">
-          Seat hold expires in {Math.floor(timeLeft / 60)}:
-          {(timeLeft % 60).toString().padStart(2, "0")}
+          Seat hold expires in {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
         </div>
       )}
 

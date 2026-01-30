@@ -39,27 +39,33 @@ export const searchBuses = async (req, res) => {
 
     // 2️⃣ BOOKINGS FOR DATE
     const bookings = await Booking.find({
-      "searchData.date": date,
-      paymentStatus: { $in: ["PAID", "PENDING"] },
-      paymentExpiresAt: { $gt: new Date() }, // ⛔ expired ignored
-    });
+  "searchData.date": date,
+  paymentStatus: "PAID", // ✅ ONLY PAID BLOCKS
+});
+
 
     const results = buses.map(bus => {
       const busBookings = bookings.filter(
         b => b.bus.id.toString() === bus._id.toString()
       );
 
-      const bookedSeatsCount = busBookings.reduce(
-        (sum, b) => sum + b.selectedSeats.length,
-        0
-      );
+      // 🔑 COUNT BOOKED (PAID ONLY)
+const bookedSeatsCount = busBookings.reduce(
+  (sum, b) => sum + b.selectedSeats.length,
+  0
+);
 
-      const heldSeatsCount = bus.seats.filter(
-        s => s.isHeld && s.holdExpiresAt > new Date()
-      ).length;
+// 🔑 COUNT ACTIVE HELD SEATS (NOT EXPIRED)
+const now = new Date();
 
-      const seatsAvailable =
-        bus.totalSeats - bookedSeatsCount - heldSeatsCount;
+const activeHeldSeats = bus.seats.filter(
+  s => s.isHeld && s.holdExpiresAt && s.holdExpiresAt > now
+).length;
+
+// 🔑 FINAL AVAILABLE SEATS
+const seatsAvailable =
+  bus.totalSeats - bookedSeatsCount - activeHeldSeats;
+
 
       const route = matchingRoutes.find(
         r => r._id.toString() === bus.routeId

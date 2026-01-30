@@ -98,11 +98,30 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-    // ✅ Mark booking PAID (NO BUS UPDATE)
-    booking.paymentStatus = paymentStatus.toUpperCase();
-    await booking.save();
+    // // ✅ Mark booking PAID (NO BUS UPDATE)
+    // booking.paymentStatus = paymentStatus.toUpperCase();
+    // await booking.save();
 
-    res.status(200).json({ success: true, booking });
+    // res.status(200).json({ success: true, booking });
+    if (paymentStatus.toUpperCase() === "PAID") {
+  const bus = await Bus.findById(booking.bus.id);
+
+  bus.seats = bus.seats.map(seat => {
+    if (booking.selectedSeats.includes(seat.seatNumber)) {
+      return {
+        ...seat.toObject(),
+        isOccupied: true,
+        isHeld: false,
+        heldBy: null,
+        holdExpiresAt: null,
+      };
+    }
+    return seat;
+  });
+
+  await bus.save();
+}
+
   } catch (error) {
     console.error("Update Payment Status Error:", error);
     res.status(500).json({ success: false, message: error.message });

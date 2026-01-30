@@ -28,6 +28,7 @@ export const addBus = async (req, res) => {
       ladiesOnlySeats = [],
       agentSeats = [], // 👈 Added field
       busNumber,
+      seatLayoutType,
     } = req.body;
 
     // ✅ Validate required fields
@@ -108,6 +109,7 @@ export const addBus = async (req, res) => {
       ownerId,
       seats,
       status: "active",
+      seatLayoutType,
       busNumber: busNumber || `BUS-${Date.now()}`,
     });
 

@@ -38,6 +38,9 @@ const busSchema = new mongoose.Schema(
 
     seats: { type: [seatSchema], default: [] },
 
+    seatLayoutType: { type: String, enum: ["2x2", "3x2"], default: "2x2" },
+
+
     ownerId: String,
     busNumber: String,
     status: { type: String, enum: ["active", "inactive"], default: "active" },

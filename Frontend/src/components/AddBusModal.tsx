@@ -25,6 +25,7 @@ interface FormData {
   endTime: string;
   duration: string;
   busNumber: string;
+  seatLayoutType: "2x2" | "3x2";
 }
 
 const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
@@ -47,32 +48,39 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     endTime: "",
     duration: "",
     busNumber: "",
+    seatLayoutType: "2x2",
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
 
   // Populate form if editing
   useEffect(() => {
-    if (editingBus) {
-      const routeObj = routes?.find((r) => r.id === editingBus.routeId);
-      setFormData({
-        busName: editingBus.name,
-        companyName: editingBus.companyName,
-        busType: editingBus.type,
-        totalSeats: editingBus.totalSeats,
-        route: routeObj ? routeObj.name : "",
-        pricePerSeat: editingBus.price.toString(),
-        amenities: editingBus.amenities || [],
-        ladiesOnlySeats: editingBus.ladiesOnlySeats || [],
-        isSpecialBus: editingBus.isSpecial || false,
-        specialTime: editingBus.specialTime || "",
-        startTime: editingBus.departureTime,
-        endTime: editingBus.arrivalTime,
-        duration: editingBus.duration,
-        busNumber: editingBus.busNumber,
-      });
-    }
-  }, [editingBus, routes]);
+  if (editingBus) {
+    const routeObj = routes?.find((r) => r.id === editingBus.routeId);
+
+    setFormData({
+      busName: editingBus.name,
+      companyName: editingBus.companyName,
+      busType: editingBus.type,
+      totalSeats: editingBus.totalSeats,
+      route: routeObj ? routeObj.name : "",
+      pricePerSeat: editingBus.price.toString(),
+      amenities: editingBus.amenities || [],
+      ladiesOnlySeats: editingBus.ladiesOnlySeats || [],
+      isSpecialBus: editingBus.isSpecial || false,
+      specialTime: editingBus.specialTime || "",
+      startTime: editingBus.departureTime,
+      endTime: editingBus.arrivalTime,
+      duration: editingBus.duration,
+      busNumber: editingBus.busNumber,
+
+      // ✅ IMPORTANT: restore seat layout
+      seatLayoutType: editingBus.seatLayoutType === "3x2" ? "3x2" : "2x2",
+
+    });
+  }
+}, [editingBus, routes]);
+
 
   const busTypes = [
     "AC Sleeper",
@@ -138,25 +146,30 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     agentId: null,
     };
     });
-    const busPayload: Omit<BusType, "id"> = {
-      name: formData.busName,
-      companyName: formData.companyName,
-      type: formData.busType,
-      routeId: selectedRoute.id,
-      departureTime: formData.startTime,
-      arrivalTime: formData.endTime,
-      duration: formData.duration,
-      totalSeats: formData.totalSeats,
-      ladiesOnlySeats: formData.ladiesOnlySeats,
-      price: parseFloat(formData.pricePerSeat),
-      status: "active",
-      amenities: formData.amenities,
-      isSpecial: formData.isSpecialBus,
-      specialTime: formData.specialTime,
-      ownerId: user.id,
-      seats: seats,
-      busNumber: formData.busNumber,
-    };
+   const busPayload: Omit<BusType, "id"> = {
+  name: formData.busName,
+  companyName: formData.companyName,
+  type: formData.busType,
+  routeId: selectedRoute.id,
+  departureTime: formData.startTime,
+  arrivalTime: formData.endTime,
+  duration: formData.duration,
+  totalSeats: formData.totalSeats,
+
+  // ✅ ADD THIS
+  seatLayoutType: formData.seatLayoutType,
+
+  ladiesOnlySeats: formData.ladiesOnlySeats,
+  price: parseFloat(formData.pricePerSeat),
+  status: "active",
+  amenities: formData.amenities,
+  isSpecial: formData.isSpecialBus,
+  specialTime: formData.specialTime,
+  ownerId: user.id,
+  seats,
+  busNumber: formData.busNumber,
+};
+
 
     try {
       if (editingBus) {
@@ -344,6 +357,17 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     : "No ladies-only seats selected"}
                 </div>
               </div>
+              <select
+                    value={formData.seatLayoutType}
+                    onChange={(e) =>
+                      handleInputChange("seatLayoutType", e.target.value as "2x2" | "3x2")
+                    }
+                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]"
+                  >
+                    <option value="2x2">2 × 2 (Standard)</option>
+                    <option value="3x2">3 × 2 (Driver: 3 | Conductor: 2)</option>
+                  </select>
+
 
               {/* Special Bus */}
               <div>

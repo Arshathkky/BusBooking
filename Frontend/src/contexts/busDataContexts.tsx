@@ -39,6 +39,7 @@ export interface BusType {
   ownerId?: string;
   seats: SeatType[];
   busNumber: string;
+  seatLayoutType:string
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {

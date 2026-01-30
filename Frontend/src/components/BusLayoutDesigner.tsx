@@ -3,6 +3,7 @@ import { X, Save, RotateCcw } from "lucide-react";
 
 interface BusLayoutDesignerProps {
   totalSeats: number;
+  layoutType: "2x2" | "3x2";
   currentLadiesSeats: number[];
   onSave: (ladiesSeats: number[]) => void;
   onClose: () => void;
@@ -10,80 +11,62 @@ interface BusLayoutDesignerProps {
 
 const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
   totalSeats,
+  layoutType,
   currentLadiesSeats,
   onSave,
   onClose,
 }) => {
-  const [ladiesSeats, setLadiesSeats] = useState<Set<number>>(new Set(currentLadiesSeats));
+  const [ladiesSeats, setLadiesSeats] = useState<Set<number>>(
+    new Set(currentLadiesSeats)
+  );
 
-  // ------------------------------
-  // Get seat type
-  // ------------------------------
-  const getSeatType = (seatNumber: number) => {
-    return ladiesSeats.has(seatNumber) ? "ladies" : "normal";
-  };
+  // Seats calculation
+  const leftSeats = layoutType === "3x2" ? 3 : 2;
+  const rightSeats = 2;
+  const seatsPerRow = leftSeats + rightSeats;
+  const rows = Math.ceil(totalSeats / seatsPerRow);
 
-  // ------------------------------
-  // Toggle seat (Regular ↔ Ladies)
-  // ------------------------------
+  // Toggle seat between regular and ladies
   const toggleSeat = (seatNumber: number) => {
-    const newLadies = new Set(ladiesSeats);
-    if (newLadies.has(seatNumber)) newLadies.delete(seatNumber);
-    else newLadies.add(seatNumber);
-    setLadiesSeats(newLadies);
+    const updated = new Set(ladiesSeats);
+    if (updated.has(seatNumber)) updated.delete(seatNumber);
+    else updated.add(seatNumber);
+    setLadiesSeats(updated);
   };
 
-  // ------------------------------
-  // Reset seats
-  // ------------------------------
-  const handleReset = () => {
-    setLadiesSeats(new Set());
-  };
+  // Reset layout
+  const handleReset = () => setLadiesSeats(new Set());
 
-  // ------------------------------
   // Save layout
-  // ------------------------------
   const handleSave = () => {
     onSave(Array.from(ladiesSeats));
     onClose();
   };
 
-  // ------------------------------
-  // Memoize seat components for performance
-  // ------------------------------
+  // Memoize seat components
   const seatComponents = useMemo(() => {
     return Array.from({ length: totalSeats }, (_, i) => {
       const seatNumber = i + 1;
-      const seatType = getSeatType(seatNumber);
+      const isLadies = ladiesSeats.has(seatNumber);
 
-      let seatClass =
-        "w-12 h-12 rounded-lg border-2 text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center ";
-
-      if (seatType === "ladies") {
-        seatClass +=
-          "bg-pink-200 dark:bg-pink-800 border-pink-300 dark:border-pink-700 text-pink-800 dark:text-pink-200";
-      } else {
-        seatClass +=
-          "bg-gray-200 dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500";
-      }
+      const seatClass =
+        "w-12 h-12 rounded-lg border-2 text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center justify-center " +
+        (isLadies
+          ? "bg-pink-200 dark:bg-pink-800 border-pink-400 text-pink-900"
+          : "bg-gray-200 dark:bg-gray-600 border-gray-400 text-gray-800 hover:bg-gray-300 dark:hover:bg-gray-500");
 
       return (
         <button
           key={seatNumber}
           onClick={() => toggleSeat(seatNumber)}
           className={seatClass}
-          title={seatType === "ladies" ? "Ladies Only Seat" : "Regular Seat"}
+          title={isLadies ? "Ladies Only Seat" : "Regular Seat"}
         >
           {seatNumber}
         </button>
       );
     });
   }, [totalSeats, ladiesSeats]);
-
-  // ------------------------------
-  // Layout grid rows
-  // ------------------------------
-  const rows = Math.ceil(totalSeats / 5);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -97,8 +80,11 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
         </button>
 
         <div className="p-8">
+          {/* Header */}
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bus Layout Designer</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Bus Layout Designer ({layoutType})
+            </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Click seats to toggle between <b>Regular</b> and <b>Ladies Only</b>
             </p>
@@ -116,24 +102,42 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
             </div>
           </div>
 
-          {/* Bus Layout */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6 transition-colors">
-            <div className="space-y-3">
-              {Array.from({ length: rows }, (_, rowIndex) => (
-                <div key={rowIndex} className="flex items-center justify-center space-x-2">
-                  <div className="flex space-x-1">{[0, 1, 2].map((offset) => seatComponents[rowIndex * 5 + offset])}</div>
+          {/* Layout Grid */}
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6 transition-colors space-y-3">
+            {Array.from({ length: rows }).map((_, rowIndex) => {
+              const base = rowIndex * seatsPerRow;
+
+              return (
+                <div key={rowIndex} className="flex justify-center items-center space-x-4">
+                  {/* Left side seats */}
+                  <div className="flex space-x-2">
+                    {Array.from({ length: leftSeats }, (_, i) =>
+                      seatComponents[base + i] ?? null
+                    )}
+                  </div>
+
+                  {/* Aisle */}
                   <div className="w-8" />
-                  <div className="flex space-x-1">{[3, 4].map((offset) => seatComponents[rowIndex * 5 + offset])}</div>
+
+                  {/* Right side seats */}
+                  <div className="flex space-x-2">
+                    {Array.from({ length: rightSeats }, (_, i) =>
+                      seatComponents[base + leftSeats + i] ?? null
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           {/* Stats */}
           <div className="text-center mb-6">
             <p className="text-gray-600 dark:text-gray-400">
               Ladies-only seats:{" "}
-              <span className="font-bold text-pink-600 dark:text-pink-400">{ladiesSeats.size}</span> / {totalSeats}
+              <span className="font-bold text-pink-600 dark:text-pink-400">
+                {ladiesSeats.size}
+              </span>{" "}
+              / {totalSeats}
             </p>
           </div>
 
@@ -147,7 +151,7 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-lg font-semibold"
             >
               Cancel
             </button>

@@ -20,6 +20,7 @@ export interface BusInfo {
   arrivalTime: string;
   price: number;
   seatsAvailable: number;
+  totalSeats: number;
   stops: string[];
 }
 

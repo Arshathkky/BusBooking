@@ -283,8 +283,9 @@ const BusSearch: React.FC = () => {
                               Departure: {bus.departureTime} • Arrival: {bus.arrivalTime}
                             </p>
                             <p className="text-sm font-semibold text-green-600">
-                              Available Seats: {bus.seatsAvailable}
+                              Seats: {bus.seatsAvailable}/{bus.totalSeats} available
                             </p>
+
                             <p className="text-sm text-gray-600 dark:text-gray-400">
                               Rs. {bus.price.toLocaleString()} per seat
                             </p>

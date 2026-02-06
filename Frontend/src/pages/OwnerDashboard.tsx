@@ -57,44 +57,51 @@ const OwnerDashboard: React.FC = () => {
   }, [user]);
 
   const fetchOverview = async (month?: string, date?: string, bus?: string) => {
-    if (!user?.id) return;
-    setLoadingOverview(true);
-    try {
-      let url = `${API_URL}/${user.id}/overview?`;
-      if (date) url += `date=${date}`;
-      else url += `month=${month}`;
-      if (bus && bus !== "all") url += `&busId=${bus}`;
+  if (!user?.id) return;
+  setLoadingOverview(true);
+  try {
+    let url = `${API_URL}/${user.id}/overview?`;
 
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.success && data.data) {
-        setOverview({
-          totalBuses: data.data.totalBuses ?? 0,
-          activeBuses: data.data.activeBuses ?? 0,
-          totalConductors: data.data.totalConductors ?? 0,
-          totalBookings: data.data.totalBookings ?? 0,
-          totalRoutes: data.data.totalRoutes ?? 0,
-          activeRoutes: data.data.activeRoutes ?? 0,
-
-          // Today values: show filtered date values if a date is selected
-          todayBookings: date ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
-          todayEarnings: date ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
-
-          // Monthly earnings always for the selected month
-          monthlyEarnings: data.data.monthlyEarnings ?? 0,
-          totalRevenue: data.data.totalRevenue ?? 0,
-        });
-        setOverviewError(null);
-      } else {
-        setOverviewError(data.message || "Could not load overview data.");
-      }
-    } catch (err) {
-      console.error(err);
-      setOverviewError("Network error while loading dashboard.");
-    } finally {
-      setLoadingOverview(false);
+    // ✅ If month is selected, use month and ignore date
+    if (month) {
+      url += `month=${month}`;
+    } else if (date) {
+      url += `date=${date}`;
     }
-  };
+
+    if (bus && bus !== "all") url += `&busId=${bus}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.success && data.data) {
+      setOverview({
+        totalBuses: data.data.totalBuses ?? 0,
+        activeBuses: data.data.activeBuses ?? 0,
+        totalConductors: data.data.totalConductors ?? 0,
+        totalBookings: data.data.totalBookings ?? 0,
+        totalRoutes: data.data.totalRoutes ?? 0,
+        activeRoutes: data.data.activeRoutes ?? 0,
+
+        // Show bookings/earnings depending on selection
+        todayBookings: date && !month ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
+        todayEarnings: date && !month ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
+
+        // Monthly earnings will always update based on selected month
+        monthlyEarnings: data.data.filteredEarnings ?? 0,
+        totalRevenue: data.data.totalRevenue ?? 0,
+      });
+      setOverviewError(null);
+    } else {
+      setOverviewError(data.message || "Could not load overview data.");
+    }
+  } catch (err) {
+    console.error(err);
+    setOverviewError("Network error while loading dashboard.");
+  } finally {
+    setLoadingOverview(false);
+  }
+};
 
   // ---------------- Modals ----------------
   const [showBusModal, setShowBusModal] = useState(false);
@@ -147,72 +154,97 @@ const OwnerDashboard: React.FC = () => {
       </div>
 
       {/* ---------------- Overview ---------------- */}
-      {activeTab === "overview" && (
-        <div>
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 justify-end mb-6 items-end">
-            <div className="flex flex-col">
-              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Month</label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={e => setSelectedMonth(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
-              />
+{activeTab === "overview" && (
+  <div>
+    {/* Filters */}
+    <div className="flex flex-wrap gap-4 justify-end mb-6 items-end">
+      <div className="flex flex-col">
+        <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Month</label>
+        <input
+          type="month"
+          value={selectedMonth}
+          onChange={e => {
+            setSelectedMonth(e.target.value);
+            // reset selected date to first of the month
+            setSelectedDate(`${e.target.value}-01`);
+          }}
+          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+        />
+      </div>
+
+      <div className="flex flex-col">
+        <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Date</label>
+        {selectedMonth ? (() => {
+          // Calculate last day of month
+          const [yearStr, monthStr] = selectedMonth.split("-");
+          const year = parseInt(yearStr, 10);
+          const month = parseInt(monthStr, 10); // 1-based month
+          const lastDayOfMonth = new Date(year, month, 0).getDate();
+          const minDate = `${selectedMonth}-01`;
+          const maxDate = `${selectedMonth}-${lastDayOfMonth.toString().padStart(2, "0")}`;
+          return (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              min={minDate}
+              max={maxDate}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+            />
+          );
+        })() : null}
+      </div>
+
+      <div className="flex flex-col">
+        <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Bus</label>
+        <select
+          value={selectedBus}
+          onChange={e => setSelectedBus(e.target.value)}
+          className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
+        >
+          <option value="all">All Buses</option>
+          {ownerBuses.map(bus => <option key={bus.id} value={bus.id}>{bus.name}</option>)}
+        </select>
+      </div>
+
+      <button
+        onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+        className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-5 py-2 rounded-lg font-semibold shadow transition"
+      >
+        Apply
+      </button>
+    </div>
+
+    {loadingOverview && <p className="text-center text-gray-500 dark:text-gray-400">Loading analytics...</p>}
+    {overviewError && <p className="text-center text-red-500">{overviewError}</p>}
+
+    {overview && (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: "Total Buses", value: overview.totalBuses, icon: Bus },
+          { label: "Active Buses", value: overview.activeBuses, icon: Calendar },
+          { label: "Conductors", value: overview.totalConductors, icon: Users },
+          { label: "Total Routes", value: overview.totalRoutes, icon: Bus },
+          { label: "Active Routes", value: overview.activeRoutes, icon: Calendar },
+          { label: "Bookings (Selected Date)", value: overview.todayBookings, icon: Users },
+          { label: "Earnings (Selected Date)", value: `LKR ${overview.todayEarnings.toLocaleString()}`, icon: DollarSign },
+          { label: "Monthly Earnings", value: `LKR ${overview.monthlyEarnings.toLocaleString()}`, icon: DollarSign },
+        ].map((item, i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{item.label}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{item.value}</p>
             </div>
-            <div className="flex flex-col">
-              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Date</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-gray-700 dark:text-gray-300 font-medium mb-1">Bus</label>
-              <select
-                value={selectedBus}
-                onChange={e => setSelectedBus(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-yellow-400 transition"
-              >
-                <option value="all">All Buses</option>
-                {ownerBuses.map(bus => <option key={bus.id} value={bus.id}>{bus.name}</option>)}
-              </select>
-            </div>
-            <button
-              onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
-              className="bg-yellow-500 hover:bg-yellow-400 text-gray-900 px-5 py-2 rounded-lg font-semibold shadow transition"
-            >Apply</button>
+            <item.icon className="w-12 h-12 text-[#fdc106]" />
           </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
-          {loadingOverview && <p className="text-center text-gray-500 dark:text-gray-400">Loading analytics...</p>}
-          {overviewError && <p className="text-center text-red-500">{overviewError}</p>}
 
-          {overview && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { label: "Total Buses", value: overview.totalBuses, icon: Bus },
-                { label: "Active Buses", value: overview.activeBuses, icon: Calendar },
-                { label: "Conductors", value: overview.totalConductors, icon: Users },
-                { label: "Total Routes", value: overview.totalRoutes, icon: Bus },
-                { label: "Active Routes", value: overview.activeRoutes, icon: Calendar },
-                { label: selectedDate ? "Bookings (Selected Date)" : "Today's Bookings", value: overview.todayBookings, icon: Users },
-                { label: selectedDate ? "Earnings (Selected Date)" : "Today's Earnings", value: `LKR ${overview.todayEarnings.toLocaleString()}`, icon: DollarSign },
-                { label: "Monthly Earnings", value: `LKR ${overview.monthlyEarnings.toLocaleString()}`, icon: DollarSign },
-              ].map((item, i) => (
-                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{item.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{item.value}</p>
-                  </div>
-                  <item.icon className="w-12 h-12 text-[#fdc106]" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+
 
       {/* ---------------- Buses ---------------- */}
       {activeTab === "buses" && (

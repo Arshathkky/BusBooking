@@ -32,64 +32,78 @@ export const getOwnerOverview = async (req, res) => {
     let startDate, endDate;
     const today = new Date();
 
-    // Filter for filtered bookings (by selected date or month)
     if (date) {
       startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
       endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + 1);
+      endDate.setDate(startDate.getDate() + 1); // next day
     } else if (month) {
       const [year, mon] = month.split("-").map(Number);
       startDate = new Date(year, mon - 1, 1);
-      endDate = new Date(year, mon, 1);
+      endDate = new Date(year, mon, 1); // next month
     } else {
-      // default to current month
       startDate = new Date(today.getFullYear(), today.getMonth(), 1);
       endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     }
 
-    // ---------------- Bookings ----------------
-    // Total bookings (all-time for this owner's buses)
+    const startStr = startDate.toISOString().split("T")[0];
+    const endStr = endDate.toISOString().split("T")[0];
+
+    // ---------------- Total / Today / Filtered Bookings ----------------
     const totalBookings = await Booking.countDocuments({ "bus.id": { $in: busIds } });
 
-    // Today's bookings & earnings (based on searchData.date)
+    // Today's bookings & earnings
     const todayStr = today.toISOString().split("T")[0];
-    const todayBookingsAgg = await Booking.aggregate([
+    const todayAgg = await Booking.aggregate([
       { $match: { "bus.id": { $in: busIds }, "searchData.date": todayStr } },
       { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } },
     ]);
-    const todayBookings = todayBookingsAgg[0]?.count || 0;
-    const todayEarnings = todayBookingsAgg[0]?.total || 0;
+    const todayBookings = todayAgg[0]?.count || 0;
+    const todayEarnings = todayAgg[0]?.total || 0;
 
-    // Monthly earnings (all bookings in the selected month)
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-
-    const monthlyAgg = await Booking.aggregate([
+    // ---------------- Filtered Bookings / Earnings ----------------
+    const filteredAgg = await Booking.aggregate([
       { 
         $match: { 
           "bus.id": { $in: busIds },
-          "searchData.date": { $gte: monthStart.toISOString().split("T")[0], $lt: monthEnd.toISOString().split("T")[0] }
+          "searchData.date": { $gte: startStr, $lt: endStr }
         } 
       },
       { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } },
     ]);
+    const filteredBookings = filteredAgg[0]?.count || 0;
+    const filteredEarnings = filteredAgg[0]?.total || 0;
+
+    // ---------------- Monthly Earnings ----------------
+    // If month is selected, calculate earnings for that month
+    let monthlyAgg;
+    if (month) {
+      monthlyAgg = await Booking.aggregate([
+        { 
+          $match: { 
+            "bus.id": { $in: busIds },
+            "searchData.date": { $gte: startStr, $lt: endStr }
+          } 
+        },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]);
+    } else {
+      // Default to current month if no month selected
+      const currMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const currMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      monthlyAgg = await Booking.aggregate([
+        { 
+          $match: { 
+            "bus.id": { $in: busIds },
+            "searchData.date": { $gte: currMonthStart.toISOString().split("T")[0], $lt: currMonthEnd.toISOString().split("T")[0] }
+          } 
+        },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]);
+    }
     const monthlyEarnings = monthlyAgg[0]?.total || 0;
 
-    // Filtered bookings & earnings (based on filter date/month + bus)
-    const filteredBookingsAgg = await Booking.aggregate([
-      { 
-        $match: { 
-          "bus.id": { $in: busIds },
-          "searchData.date": date ? date : { $gte: startDate.toISOString().split("T")[0], $lt: endDate.toISOString().split("T")[0] }
-        } 
-      },
-      { $group: { _id: null, total: { $sum: "$totalAmount" }, count: { $sum: 1 } } },
-    ]);
-    const filteredBookings = filteredBookingsAgg[0]?.count || 0;
-    const filteredEarnings = filteredBookingsAgg[0]?.total || 0;
-
-    // Total revenue (all-time)
+    // ---------------- Total revenue (all-time) ----------------
     const totalRevenueAgg = await Booking.aggregate([
       { $match: { "bus.id": { $in: busIds } } },
       { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
@@ -107,9 +121,9 @@ export const getOwnerOverview = async (req, res) => {
         totalBookings,
         todayBookings,
         todayEarnings,
-        monthlyEarnings, // total for the month
         filteredBookings,
-        filteredEarnings, // this is for filtered date/month
+        filteredEarnings,
+        monthlyEarnings, // ✅ now always matches selected month
         totalRevenue,
       },
     });

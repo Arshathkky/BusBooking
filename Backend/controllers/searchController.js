@@ -1,6 +1,6 @@
 import Booking from "../models/bookingModel.js";
-import Route from "../models/routeModel.js"
-import Bus from "../models/busModel.js"
+import Route from "../models/routeModel.js";
+import Bus from "../models/busModel.js";
 
 export const searchBuses = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ export const searchBuses = async (req, res) => {
       return res.status(400).json({ message: "From, To, Date required" });
     }
 
-    // 1️⃣ Find matching routes (same as your code)
+    // 1️⃣ Find matching routes
     const routes = await Route.find({ status: "active" });
 
     const matchingRoutes = routes.filter(route => {
@@ -30,22 +30,25 @@ export const searchBuses = async (req, res) => {
       return res.json({ buses: [] });
     }
 
-    const routeIds = matchingRoutes.map(r => r._id.toString());
+    const routeIds = matchingRoutes.map(r => r._id);
 
+    // 2️⃣ Get buses
     const buses = await Bus.find({
       routeId: { $in: routeIds },
       status: "active",
     });
 
-    // 2️⃣ BOOKINGS FOR DATE
-    const bookings = await Booking.find({
+    // 3️⃣ Get PAID bookings ONLY (date-wise)
+    const paidBookings = await Booking.find({
       "searchData.date": date,
-      paymentStatus: { $in: ["PAID", "PENDING"] },
-      paymentExpiresAt: { $gt: new Date() }, // ⛔ expired ignored
+      paymentStatus: "PAID",
     });
 
+    const now = new Date();
+
     const results = buses.map(bus => {
-      const busBookings = bookings.filter(
+      // Booked seats (PAID only)
+      const busBookings = paidBookings.filter(
         b => b.bus.id.toString() === bus._id.toString()
       );
 
@@ -54,15 +57,16 @@ export const searchBuses = async (req, res) => {
         0
       );
 
+      // Held seats (real-time)
       const heldSeatsCount = bus.seats.filter(
-        s => s.isHeld && s.holdExpiresAt > new Date()
+        s => s.isHeld && s.holdExpiresAt && s.holdExpiresAt > now
       ).length;
 
       const seatsAvailable =
         bus.totalSeats - bookedSeatsCount - heldSeatsCount;
 
       const route = matchingRoutes.find(
-        r => r._id.toString() === bus.routeId
+        r => r._id.toString() === bus.routeId.toString()
       );
 
       return {
@@ -78,6 +82,7 @@ export const searchBuses = async (req, res) => {
         arrivalTime: bus.arrivalTime,
         duration: bus.duration,
         price: bus.price,
+        totalSeats: bus.totalSeats,                 // ✅ ADD
         seatsAvailable: Math.max(seatsAvailable, 0),
         status: bus.status,
       };
@@ -85,7 +90,7 @@ export const searchBuses = async (req, res) => {
 
     res.json({ buses: results });
   } catch (err) {
-    console.error(err);
+    console.error("Search error:", err);
     res.status(500).json({ message: "Search failed" });
   }
 };

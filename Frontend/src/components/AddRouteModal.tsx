@@ -56,7 +56,7 @@ const AddRouteModal: React.FC<AddRouteModalProps> = ({ onClose, editingRoute }) 
     "Colombo", "Kandy", "Galle", "Jaffna", "Negombo", "Anuradhapura",
     "Polonnaruwa", "Nuwara Eliya", "Batticaloa", "Trincomalee",
     "Matara", "Kurunegala", "Kattankudy", "Navatkuda", "Kallady",
-    "Urani", "Eravur",
+    "Urani", "Eravur","pasikuda","oddamavady"
   ];
 
   // ✅ Pre-fill form when editing

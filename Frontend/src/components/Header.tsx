@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bus, Sun, Moon, User, LogOut, Menu } from 'lucide-react';
+import {  Sun, Moon, User, LogOut, } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 

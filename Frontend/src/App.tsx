@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
@@ -7,6 +7,8 @@ import { ConductorProvider } from './contexts/conductorDataContext';
 import { RouteProvider } from './contexts/RouteDataContext';
 import { SearchProvider } from './contexts/searchContext';
 import { SeatProvider } from './contexts/seatSelectionContext';
+import { BookingProvider } from './contexts/BookingContext';
+import { OwnerProvider } from './contexts/OwnerContext';
 
 import Header from './components/Header';
 import AgentDashboard from './pages/AgentDashboard';
@@ -19,11 +21,12 @@ import SeatSelection from './pages/SeatSelection';
 import BookingConfirmation from './pages/BookingConfirmation';
 import PassengerDetails from './pages/PassengerDetails';
 import Payment from './pages/Payment';
-import './index.css';
-import { BookingProvider } from './contexts/BookingContext';
-import { OwnerProvider } from './contexts/OwnerContext';
+import Home from './components/Home';
+import AgentLogin from './components/AgentLogin';
 
-// Helper to get correct dashboard route
+import './index.css';
+
+// Helper to get dashboard route by role
 const getDashboardRoute = (role: string) => {
   switch (role) {
     case 'admin': return '/admin';
@@ -36,6 +39,13 @@ const getDashboardRoute = (role: string) => {
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // ✅ Handle logout function
+  const handleLogout = () => {
+    localStorage.removeItem('token'); // clear auth token
+    navigate('/login');
+  };
 
   if (loading) {
     return (
@@ -48,6 +58,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <Header />
+
       <main className="container mx-auto px-4 py-8">
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to={getDashboardRoute(user.role)} />} />
@@ -57,13 +68,26 @@ const AppContent: React.FC = () => {
           <Route path="/passenger-details" element={<PassengerDetails />} />
           <Route path="/payment" element={<Payment />} />
 
-          {/* Protected routes */}
-          <Route path="/agent" element={user?.role === 'agent' ? <AgentDashboard /> : <Navigate to="/login" />} />
+          {/* Protected Routes */}
+          <Route
+            path="/agent"
+            element={
+              user?.role === 'agent' ? (
+                <AgentDashboard
+                  agent={{ name: user.name, area: user.area || 'Unknown' }}
+                  onLogout={handleLogout}
+                />
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+          <Route path="/agent-place" element={<AgentLogin />} />
           <Route path="/owner" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
           <Route path="/conductor" element={user?.role === 'conductor' ? <ConductorDashboard /> : <Navigate to="/login" />} />
           <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
 
-          <Route path="/" element={user ? <Navigate to={getDashboardRoute(user.role)} /> : <BusSearch />} />
+          <Route path="/" element={user ? <Navigate to={getDashboardRoute(user.role)} /> : <Home />} />
         </Routes>
       </main>
     </div>
@@ -74,29 +98,25 @@ function App() {
   return (
     <ThemeProvider>
       <DataProvider>
-       
-          <BusProvider>
-            <ConductorProvider>
-              <RouteProvider>
-                <SearchProvider>
-                  {/* ✅ Move Router INSIDE SeatProvider */}
-                  <SeatProvider>
-                    <BookingProvider>
-                      <OwnerProvider>
-                         <AuthProvider>
-
-                       <Router>
-                        <AppContent />
-                      </Router>
-                         </AuthProvider>
-                      </OwnerProvider>
-                    </BookingProvider>
-                  </SeatProvider>
-                </SearchProvider>
-              </RouteProvider>
-            </ConductorProvider>
-          </BusProvider>
-        
+        <BusProvider>
+          <ConductorProvider>
+            <RouteProvider>
+              <SearchProvider>
+                <SeatProvider>
+                  <BookingProvider>
+                    <OwnerProvider>
+                      <AuthProvider>
+                        <Router>
+                          <AppContent />
+                        </Router>
+                      </AuthProvider>
+                    </OwnerProvider>
+                  </BookingProvider>
+                </SeatProvider>
+              </SearchProvider>
+            </RouteProvider>
+          </ConductorProvider>
+        </BusProvider>
       </DataProvider>
     </ThemeProvider>
   );

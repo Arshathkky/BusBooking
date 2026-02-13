@@ -7,6 +7,7 @@ export interface User {
   name: string;
   email: string;
   role: 'admin' | 'owner' | 'conductor' | 'agent';
+  area?: string; // ✅ Added for AgentDashboard
 }
 
 interface AuthContextType {
@@ -48,57 +49,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return adminUser;
       }
 
-      // ✅ Try Owner login
+      // ✅ Owner login
       try {
         const ownerResponse = await axios.post('https://bus-booking-nt91.onrender.com/api/owner/login', { email, password });
-        console.log('Owner login response:', ownerResponse.data);
-
         if (ownerResponse.data && ownerResponse.data._id) {
           const ownerUser: User = {
             id: ownerResponse.data._id,
             name: ownerResponse.data.name,
             email: ownerResponse.data.email,
             role: 'owner',
+            area: ownerResponse.data.area || 'Unknown',
           };
           setUser(ownerUser);
           localStorage.setItem('user', JSON.stringify(ownerUser));
           return ownerUser;
         }
       } catch (ownerErr) {
-        console.log('Owner login failed:', ownerErr);
+        console.error('Owner login failed:', ownerErr);
       }
 
-      // ✅ Try Conductor / Agent login
+      // ✅ Conductor / Agent login
       try {
-        const conductorResponse = await axios.post('https://bus-booking-nt91.onrender.com/api/conductors/login', { email, password });
-        console.log('Conductor login response:', conductorResponse.data);
-
-        const data = conductorResponse.data;
+        const condResp = await axios.post('https://bus-booking-nt91.onrender.com/api/conductors/login', { email, password });
+        const data = condResp.data;
         if (data && data._id) {
-          const conductorUser: User = {
+          const condUser: User = {
             id: data._id,
             name: data.name,
             email: data.email,
             role: data.role as 'conductor' | 'agent',
+            area: data.area || 'Unknown',
           };
-          setUser(conductorUser);
-          localStorage.setItem('user', JSON.stringify(conductorUser));
-          return conductorUser;
+          setUser(condUser);
+          localStorage.setItem('user', JSON.stringify(condUser));
+          return condUser;
         }
       } catch (condErr) {
-        console.log('Conductor login failed:', condErr);
+        console.error('Conductor/Agent login failed:', condErr);
       }
 
-      // ❌ If both failed
       return null;
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        console.error('Login error (Axios):', err.response?.data || err.message);
-      } else if (err instanceof Error) {
-        console.error('Login error:', err.message);
-      } else {
-        console.error('Unexpected error:', err);
-      }
+    } catch (err) {
+      console.error('Login error:', err);
       return null;
     }
   };
@@ -109,9 +101,5 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('user');
   };
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, login, logout, loading }}>{children}</AuthContext.Provider>;
 };

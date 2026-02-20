@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, User, Phone, Mail, Bus, Lock, Hash } from "lucide-react";
+import { X, User, Phone, Mail, Bus, Lock, Hash, MapPin } from "lucide-react";
 import { useBus } from "../contexts/busDataContexts";
 import { useConductor, ConductorType } from "../contexts/conductorDataContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,14 +25,15 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
     assignedBusId: "",
     status: "active" as "active" | "inactive",
     role: "conductor" as "conductor" | "agent",
-    agentCode: "", // ✅ added
+    agentCode: "",
+    city: "", // ✅ Added
   });
 
   const [error, setError] = useState<string | null>(null);
 
   const ownerBuses = buses.filter((bus) => bus.ownerId === user?.id);
 
-  // Prefill data (excluding password)
+  // Prefill data when editing
   useEffect(() => {
     if (editingConductor) {
       setFormData({
@@ -44,6 +45,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
         status: editingConductor.status,
         role: editingConductor.role,
         agentCode: editingConductor.agentCode || "",
+        city: editingConductor.city || "",
       });
     }
   }, [editingConductor]);
@@ -70,10 +72,16 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       return;
     }
 
-    // ✅ Require agentCode if role = agent
-    if (formData.role === "agent" && !formData.agentCode.trim()) {
-      setError("Agent Code is required for agents.");
-      return;
+    // Require agent fields
+    if (formData.role === "agent") {
+      if (!formData.agentCode.trim()) {
+        setError("Agent Code is required for agents.");
+        return;
+      }
+      if (!formData.city.trim()) {
+        setError("City is required for agents.");
+        return;
+      }
     }
 
     try {
@@ -86,12 +94,12 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           status: formData.status,
           role: formData.role,
           agentCode: formData.agentCode || undefined,
+          city: formData.city || undefined,
           ...(formData.password.trim() && { password: formData.password }),
         });
       } else {
         await addConductor({
           name: formData.name,
-          
           phone: formData.phone,
           email: formData.email,
           password: formData.password,
@@ -100,6 +108,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           status: formData.status,
           role: formData.role,
           agentCode: formData.agentCode || undefined,
+          city: formData.city || undefined,
         });
       }
 
@@ -129,11 +138,6 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               {editingConductor ? "Update Conductor" : "Add New Conductor"}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              {editingConductor
-                ? "Update details of your conductor or agent"
-                : "Add a conductor or agent to your team"}
-            </p>
           </div>
 
           {error && (
@@ -143,6 +147,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+
             {/* Name */}
             <div className="relative">
               <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
@@ -187,9 +192,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
               <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
               <input
                 type="password"
-                placeholder={
-                  editingConductor ? "New Password (optional)" : "Password"
-                }
+                placeholder={editingConductor ? "New Password (optional)" : "Password"}
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
@@ -225,19 +228,35 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
               <option value="agent">Agent</option>
             </select>
 
-            {/* ✅ Agent Code (only visible if role = agent) */}
+            {/* Agent Fields */}
             {formData.role === "agent" && (
-              <div className="relative">
-                <Hash className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Agent Code"
-                  value={formData.agentCode}
-                  onChange={(e) => handleInputChange("agentCode", e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
-                  required={formData.role === "agent"}
-                />
-              </div>
+              <>
+                {/* Agent Code */}
+                <div className="relative">
+                  <Hash className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Agent Code"
+                    value={formData.agentCode}
+                    onChange={(e) => handleInputChange("agentCode", e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+                    required
+                  />
+                </div>
+
+                {/* City */}
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
+                    required
+                  />
+                </div>
+              </>
             )}
 
             {/* Status */}
@@ -266,6 +285,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
                 {editingConductor ? "Update Conductor" : "Add Conductor"}
               </button>
             </div>
+
           </form>
         </div>
       </div>

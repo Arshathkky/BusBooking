@@ -5,7 +5,7 @@ const conductorSchema = new mongoose.Schema(
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
-    password: { type: String, required: true },  // ✅ NEW FIELD
+    password: { type: String, required: true },
 
     assignedBusId: { type: String, default: null },
     ownerId: { type: String, required: true },
@@ -21,8 +21,18 @@ const conductorSchema = new mongoose.Schema(
       enum: ["conductor", "agent"],
       default: "conductor",
     },
-    agentCode: { type: String, default: null },
 
+    agentCode: {
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true, // allows null values
+    },
+
+    city: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

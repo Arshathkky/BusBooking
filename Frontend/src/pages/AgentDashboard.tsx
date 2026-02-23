@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Bus, MapPin, Clock } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 interface BusDetails {
   name: string;
@@ -15,14 +16,13 @@ interface DashboardData {
 }
 
 const AgentDashboard: React.FC = () => {
+  const { user } = useAuth(); // ✅ Use AuthContext
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Get agent info from localStorage
-  const storedAgent = localStorage.getItem("agent");
-  const agent = storedAgent ? JSON.parse(storedAgent) : null;
-  const agentId = agent?._id;
+  const agentId = user?.id; // ✅ Get agent ID from AuthContext
+  const assignedBusId = user?.assignedBusId;
 
   useEffect(() => {
     if (!agentId) {
@@ -31,10 +31,16 @@ const AgentDashboard: React.FC = () => {
       return;
     }
 
+    if (!assignedBusId) {
+      setError("No bus assigned to this agent.");
+      setLoading(false);
+      return;
+    }
+
     const fetchDashboard = async () => {
       try {
         const res = await axios.get<DashboardData>(
-          `http://localhost:5000/api/agent/dashboard/${agentId}`
+          `https://bus-booking-nt91.onrender.com/api/agent/dashboard/${agentId}`
         );
         setData(res.data);
       } catch (err: unknown) {
@@ -52,7 +58,7 @@ const AgentDashboard: React.FC = () => {
     };
 
     fetchDashboard();
-  }, [agentId]);
+  }, [agentId, assignedBusId]);
 
   if (loading)
     return (

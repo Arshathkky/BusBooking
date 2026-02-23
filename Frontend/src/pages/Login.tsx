@@ -12,54 +12,55 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      const user = await login(formData.email, formData.password);
+  try {
+    const user = await login(formData.email, formData.password);
 
-      if (!user) {
-        setError('Invalid email or password');
-        setLoading(false);
-        return;
-      }
-
-      // 🔥 Role-based redirect
-      switch (user.role) {
-        case 'admin':
-          navigate('/admin/dashboard');
-          break;
-
-        case 'owner':
-          navigate('/owner/dashboard');
-          break;
-
-        case 'conductor':
-          navigate('/conductor/dashboard');
-          break;
-
-        case 'agent':
-          if (!user.assignedBusId) {
-            setError('No bus assigned to this agent.');
-            return;
-          }
-          navigate('/agent/dashboard');
-          break;
-
-        default:
-          navigate('/');
-      }
-
-    } catch (err) {
-      console.error('Login error:', err);
-      setError('Something went wrong. Please try again.');
+    if (!user) {
+      setError('Invalid email or password');
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
-  };
+    // 🔥 Log agent info if role is agent
+    if (user.role === 'agent') {
+      console.log('Agent ID:', user.id);
+      console.log('Assigned Bus ID:', user.assignedBusId);
+    }
 
+    // Role-based redirect
+    switch (user.role) {
+      case 'admin':
+        navigate('/admin/dashboard');
+        break;
+      case 'owner':
+        navigate('/owner/dashboard');
+        break;
+      case 'conductor':
+        navigate('/conductor/dashboard');
+        break;
+      case 'agent':
+        if (!user.assignedBusId) {
+          setError('No bus assigned to this agent.');
+          return;
+        }
+        navigate('/agent/dashboard');
+        break;
+      default:
+        navigate('/');
+    }
+
+  } catch (err) {
+    console.error('Login error:', err);
+    setError('Something went wrong. Please try again.');
+  }
+
+  setLoading(false);
+};
   return (
     <div className="max-w-md mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 transition-colors">

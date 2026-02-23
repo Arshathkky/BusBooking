@@ -9,22 +9,32 @@ function AnimatedBusBanner() {
   }, []);
 
   return (
-    <div className="relative h-[500px] bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 overflow-hidden">
-      <div className="absolute inset-0 bg-black opacity-10"></div>
+    <div className="relative h-[420px] md:h-[550px] bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 overflow-hidden">
 
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/10"></div>
+
+      {/* Floating Circles Background */}
       <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-20 left-10 w-20 h-20 bg-white rounded-full animate-float"></div>
-        <div className="absolute top-40 right-20 w-16 h-16 bg-white rounded-full animate-float-delayed"></div>
-        <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-white rounded-full animate-float"></div>
+        <div className="absolute top-16 left-6 md:left-10 w-14 md:w-20 h-14 md:h-20 bg-white rounded-full animate-float"></div>
+        <div className="absolute top-32 right-10 md:right-20 w-12 md:w-16 h-12 md:h-16 bg-white rounded-full animate-float-delayed"></div>
+        <div className="absolute bottom-24 left-1/4 w-10 md:w-12 h-10 md:h-12 bg-white rounded-full animate-float"></div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-800 to-transparent">
+      {/* Road */}
+      <div className="absolute bottom-0 left-0 right-0 h-28 md:h-32 bg-gradient-to-t from-gray-900 to-transparent">
         <div className="absolute bottom-0 left-0 right-0 h-2 bg-yellow-400"></div>
-        <div className="absolute bottom-2 left-0 right-0 h-1 bg-white opacity-50 animate-road-line"></div>
+        <div className="absolute bottom-3 left-0 right-0 h-1 bg-white opacity-50 animate-road-line"></div>
       </div>
 
-      <div className={`absolute bottom-16 left-0 ${animationClass}`}>
-        <svg width="200" height="100" viewBox="0 0 200 100" className="drop-shadow-2xl">
+      {/* Bus Animation */}
+      <div className={`absolute bottom-14 md:bottom-16 left-[-220px] ${animationClass}`}>
+        <svg
+          width="180"
+          height="90"
+          viewBox="0 0 200 100"
+          className="drop-shadow-2xl md:w-[200px] md:h-[100px]"
+        >
           <rect x="20" y="20" width="160" height="50" rx="10" fill="#FF6B6B" stroke="#C92A2A" strokeWidth="2"/>
 
           <rect x="30" y="28" width="30" height="20" rx="3" fill="#4FC3F7" opacity="0.8"/>
@@ -44,111 +54,89 @@ function AnimatedBusBanner() {
         </svg>
       </div>
 
-      <div className="relative z-10 h-full flex flex-col justify-center items-center text-white px-4">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 animate-fade-in text-center">
+      {/* Content */}
+      <div className="relative z-10 h-full flex flex-col justify-center items-center text-white px-4 text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 md:mb-6 animate-fade-in">
           Travel With Comfort
         </h1>
-        <p className="text-xl md:text-2xl mb-8 animate-fade-in-delayed text-center max-w-2xl">
+
+        <p className="text-base sm:text-lg md:text-2xl mb-6 md:mb-8 animate-fade-in-delayed max-w-2xl">
           Book your bus tickets easily and travel to your destination safely
         </p>
 
-        <div className="flex flex-wrap justify-center gap-8 mt-8 animate-slide-up">
-          <div className="flex items-center space-x-2 bg-white bg-opacity-20 backdrop-blur-md px-6 py-3 rounded-lg">
-            <MapPin className="w-6 h-6" />
-            <div>
-              <p className="text-sm opacity-90">500+ Routes</p>
-              <p className="font-bold">Nationwide</p>
+        {/* Stats */}
+        <div className="flex flex-col sm:flex-row flex-wrap justify-center gap-4 md:gap-8 mt-4 md:mt-8 animate-slide-up">
+
+          <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-md px-5 py-3 rounded-xl">
+            <MapPin className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-left">
+              <p className="text-xs md:text-sm opacity-90">500+ Routes</p>
+              <p className="font-bold text-sm md:text-base">Nationwide</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 bg-white bg-opacity-20 backdrop-blur-md px-6 py-3 rounded-lg">
-            <Clock className="w-6 h-6" />
-            <div>
-              <p className="text-sm opacity-90">24/7 Service</p>
-              <p className="font-bold">Always Available</p>
+
+          <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-md px-5 py-3 rounded-xl">
+            <Clock className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-left">
+              <p className="text-xs md:text-sm opacity-90">24/7 Service</p>
+              <p className="font-bold text-sm md:text-base">Always Available</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 bg-white bg-opacity-20 backdrop-blur-md px-6 py-3 rounded-lg">
-            <TrendingUp className="w-6 h-6" />
-            <div>
-              <p className="text-sm opacity-90">50k+ Bookings</p>
-              <p className="font-bold">Happy Customers</p>
+
+          <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-md px-5 py-3 rounded-xl">
+            <TrendingUp className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-left">
+              <p className="text-xs md:text-sm opacity-90">50k+ Bookings</p>
+              <p className="font-bold text-sm md:text-base">Happy Customers</p>
             </div>
           </div>
+
         </div>
       </div>
 
+      {/* Animations */}
       <style>{`
         @keyframes busEnter {
-          from {
-            transform: translateX(-250px);
-          }
-          to {
-            transform: translateX(calc(100vw - 200px));
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-
-        @keyframes floatDelayed {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-15px);
-          }
-        }
-
-        @keyframes roadLine {
           0% {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(100px);
+            transform: translateX(calc(100vw + 250px));
           }
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
+        }
+
+        @keyframes floatDelayed {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
+
+        @keyframes roadLine {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(100px); }
         }
 
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes fadeInDelayed {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .animate-bus-enter {
-          animation: busEnter 8s linear infinite;
+          animation: busEnter 10s linear infinite;
         }
 
         .animate-float {

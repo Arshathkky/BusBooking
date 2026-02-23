@@ -1,4 +1,5 @@
 import Conductor from "../models/conductorModel.js";
+import Bus from "../models/busModel.js";
 
 
 // ------------------------------------------------------
@@ -257,5 +258,86 @@ export const loginConductor = async (req, res) => {
     res.status(200).json(responseData);
   } catch (err) {
     res.status(500).json({ message: err.message || "Server error" });
+  }
+};
+
+// ------------------------------------------------------
+// Get Agent Assigned Bus
+
+
+// -------------------- Get Bus assigned to an agent --------------------
+export const getAgentBus = async (req, res) => {
+  try {
+    const agentId = req.params.id;
+
+    // Fetch the conductor
+    const conductor = await Conductor.findById(agentId);
+    if (!conductor) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    // Example: fetch the bus assigned to this agent
+    // Replace with your Bus model
+    const bus = conductor.assignedBusId
+      ? { name: "Express Luxury", busNumber: "EX123", route: "Colombo → Kandy", departureTime: "06:00" }
+      : null;
+
+    res.status(200).json({ bus });
+  } catch (err) {
+    res.status(500).json({ message: err instanceof Error ? err.message : "Server error" });
+  }
+};
+
+// -------------------- Get seats assigned to agent --------------------
+export const getAgentSeats = async (req, res) => {
+  try {
+    const agentId = req.query.agentId; // Or get from req.params
+
+    // Example: Replace with your Seat model query
+    const assignedSeats = [1, 2, 3, 4]; 
+
+    res.status(200).json({ assignedSeats });
+  } catch (err) {
+    res.status(500).json({ message: err instanceof Error ? err.message : "Server error" });
+  }
+};
+
+// -------------------- Agent Dashboard (bus + seats) --------------------
+// GET /api/agent/dashboard/:agentId
+export const getAgentDashboard = async (req, res) => {
+  try {
+    const { agentId } = req.params;
+
+    if (!agentId) return res.status(400).json({ message: "Agent ID not found" });
+
+    const agent = await Conductor.findById(agentId);
+
+    if (!agent) return res.status(404).json({ message: "Agent not found" });
+
+    if (!agent.assignedBusId) {
+      return res.status(404).json({ message: "No bus assigned" });
+    }
+
+    const bus = await Bus.findById(agent.assignedBusId);
+
+    const assignedSeats = await Seat.find({
+      agentId: agent._id,
+      isOccupied: false,  // or whatever your seat logic is
+    }).select("seatNumber -_id");
+
+    const seatNumbers = assignedSeats.map(s => s.seatNumber);
+
+    res.json({
+      bus: {
+        name: bus.name,
+        busNumber: bus.busNumber,
+        route: bus.route,
+        departureTime: bus.departureTime,
+      },
+      assignedSeats: seatNumbers,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch dashboard" });
   }
 };

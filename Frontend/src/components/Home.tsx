@@ -1,5 +1,6 @@
 import AnimatedBusBanner from "../components/AnimatedBusBanner";
 import BookingSection from "../components/BookingSection";
+import AboutSection from "./AboutSection";
 import FeedSection from "./FeedSection";
 
 const Home = () => {
@@ -7,6 +8,7 @@ const Home = () => {
     <>
       <AnimatedBusBanner />
       <BookingSection />
+      <AboutSection/>
       <FeedSection/>
     </>
   );

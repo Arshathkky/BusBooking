@@ -5,21 +5,41 @@ export const verifyAgentCode = async (req, res) => {
     const { code } = req.body;
 
     if (!code) {
-      return res.json({ success: false, message: "Agent code required" });
+      return res.status(400).json({
+        success: false,
+        message: "Agent code is required",
+      });
     }
 
-    const agent = await Conductor.findOne({ agentCode: code });
+    const agent = await Conductor.findOne({
+      agentCode: code,
+      role: "agent",
+      status: "active",
+    });
 
     if (!agent) {
-      return res.json({ success: false, message: "Invalid agent code" });
+      return res.status(404).json({
+        success: false,
+        message: "Invalid or inactive agent code",
+      });
     }
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      agentId: agent._id,
-      agentCode: agent.agentCode,
+      message: "Agent verified successfully",
+      agent: {
+        _id: agent._id,
+        name: agent.name,
+        agentCode: agent.agentCode,
+        assignedBusId: agent.assignedBusId,
+        city: agent.city,
+      },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Verification failed" });
+    console.error("Agent verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Verification failed",
+    });
   }
 };

@@ -20,13 +20,38 @@ const Login: React.FC = () => {
     try {
       const user = await login(formData.email, formData.password);
 
-      console.log('Login response:', user); // ✅ check what the backend returns
-
       if (!user) {
         setError('Invalid email or password');
-      } else {
-        navigate('/'); // App.js handles dashboard redirect
+        setLoading(false);
+        return;
       }
+
+      // 🔥 Role-based redirect
+      switch (user.role) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+
+        case 'owner':
+          navigate('/owner/dashboard');
+          break;
+
+        case 'conductor':
+          navigate('/conductor/dashboard');
+          break;
+
+        case 'agent':
+          if (!user.assignedBusId) {
+            setError('No bus assigned to this agent.');
+            return;
+          }
+          navigate('/agent/dashboard');
+          break;
+
+        default:
+          navigate('/');
+      }
+
     } catch (err) {
       console.error('Login error:', err);
       setError('Something went wrong. Please try again.');
@@ -39,8 +64,12 @@ const Login: React.FC = () => {
     <div className="max-w-md mx-auto">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 transition-colors">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Sign in to your account to continue</p>
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Welcome Back
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Sign in to your account to continue
+          </p>
         </div>
 
         {error && (
@@ -56,7 +85,9 @@ const Login: React.FC = () => {
               type="email"
               placeholder="Email Address"
               value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, email: e.target.value }))
+              }
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg"
               required
             />
@@ -68,7 +99,9 @@ const Login: React.FC = () => {
               type={showPassword ? 'text' : 'password'}
               placeholder="Password"
               value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              onChange={(e) =>
+                setFormData(prev => ({ ...prev, password: e.target.value }))
+              }
               className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg"
               required
             />
@@ -77,7 +110,11 @@ const Login: React.FC = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
             </button>
           </div>
 

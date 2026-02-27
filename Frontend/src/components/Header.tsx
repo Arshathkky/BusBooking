@@ -30,7 +30,8 @@ const Header: React.FC = () => {
     <header className="bg-white dark:bg-gray-800 shadow-md border-b-4 border-[#fdc106] sticky top-0 z-50">
       <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
 
-        <div className="flex items-center justify-between">
+        {/* Make parent relative to allow centering */}
+        <div className="relative flex items-center justify-between">
 
           {/* LOGO SECTION */}
           <Link to="/" className="flex items-center space-x-2">
@@ -58,8 +59,8 @@ const Header: React.FC = () => {
             </div>
           </Link>
 
-          {/* DESKTOP NAV */}
-          <nav className="hidden md:flex items-center space-x-6">
+          {/* CENTERED DESKTOP NAV */}
+          <nav className="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
             <Link
               to="/search"
               className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-[#fdc106] transition-colors"

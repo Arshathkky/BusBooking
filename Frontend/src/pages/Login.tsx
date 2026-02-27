@@ -35,10 +35,10 @@ const Login: React.FC = () => {
     // Role-based redirect
     switch (user.role) {
       case 'admin':
-        navigate('/admin/dashboard');
+        navigate('/admin');
         break;
       case 'owner':
-        navigate('/owner/dashboard');
+        navigate('/owner');
         break;
       case 'conductor':
         navigate('/conductor/dashboard');

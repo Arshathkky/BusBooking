@@ -2,6 +2,10 @@ import React, { createContext, useContext, useState, ReactNode, useCallback } fr
 import axios from "axios";
 
 // -------------------- Types --------------------
+
+export type SeatLayoutType = "2x2" | "2x3";
+export type LastRowType = 4 | 6;
+
 export interface Seat {
   seatNumber: number;
   isLadiesOnly: boolean;
@@ -19,6 +23,8 @@ export interface Bus {
   price: number;
   seats: Seat[];
   busNumber: string;
+  seatLayout: SeatLayoutType;   // main layout
+  lastRowSeats: LastRowType;    // last row layout
 }
 
 // Backend response wrapper
@@ -35,9 +41,12 @@ interface BusFromBackend {
   price: number;
   seats: Seat[];
   busNumber: string;
+  seatLayout?: SeatLayoutType;
+  lastRowSeats?: LastRowType;
 }
 
 // -------------------- Context Type --------------------
+
 interface SeatContextType {
   busSeats: Bus | null;
   selectedSeats: number[];
@@ -45,10 +54,14 @@ interface SeatContextType {
   deselectSeat: (seatNumber: number) => void;
   clearSelection: () => void;
   fetchBusSeats: (busId: string) => Promise<void>;
-  updateSeats: (busId: string, updatedSeats: { seatNumber: number; isOccupied: boolean }[]) => Promise<void>;
+  updateSeats: (
+    busId: string,
+    updatedSeats: { seatNumber: number; isOccupied: boolean }[]
+  ) => Promise<void>;
 }
 
 // -------------------- Context --------------------
+
 const SeatContext = createContext<SeatContextType | undefined>(undefined);
 
 export const useSeat = (): SeatContextType => {
@@ -58,12 +71,14 @@ export const useSeat = (): SeatContextType => {
 };
 
 // -------------------- Provider --------------------
+
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+
   const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
 
-  // -------------------- Fetch bus seats from backend --------------------
+  // -------------------- Fetch bus seats --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
     try {
       const res = await axios.get<BusResponse>(`${API_URL}/${busId}`);
@@ -78,6 +93,8 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         totalSeats: busData.totalSeats,
         price: busData.price,
         busNumber: busData.busNumber,
+        seatLayout: busData.seatLayout ?? "2x2",      // default main layout
+        lastRowSeats: busData.lastRowSeats ?? 6,      // default last row seats
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,
@@ -96,7 +113,10 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // -------------------- Update seat occupancy --------------------
   const updateSeats = useCallback(
-    async (busId: string, updatedSeats: { seatNumber: number; isOccupied: boolean }[]) => {
+    async (
+      busId: string,
+      updatedSeats: { seatNumber: number; isOccupied: boolean }[]
+    ) => {
       if (!busSeats) return;
 
       const newSeats: Seat[] = busSeats.seats.map((seat) => {
@@ -142,4 +162,4 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       {children}
     </SeatContext.Provider>
   );
-};
+};  

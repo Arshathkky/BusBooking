@@ -30,9 +30,9 @@ const Header: React.FC = () => {
     <header className="bg-white dark:bg-gray-800 shadow-md border-b-4 border-[#fdc106] sticky top-0 z-50">
       <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
 
-        <div className="relative flex items-center justify-between">
+        <div className="flex items-center justify-between">
 
-          {/* LEFT - TouchMe+ */}
+          {/* LEFT - TouchMe+ Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <img
               src="/WhatsApp Image 2025-08-18 at 19.30.28_16689637.jpg"
@@ -44,8 +44,8 @@ const Header: React.FC = () => {
             </span>
           </Link>
 
-          {/* CENTER - Search */}
-          <nav className="hidden md:flex items-center space-x-6 absolute left-1/2 transform -translate-x-1/2">
+          {/* CENTER MENU (Desktop) */}
+          <nav className="hidden md:flex items-center space-x-6">
             <Link
               to="/search"
               className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-[#fdc106] transition-colors"
@@ -66,16 +66,16 @@ const Header: React.FC = () => {
           </nav>
 
           {/* RIGHT SIDE */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
 
-            {/* PARTNER LOGO + NAME (Desktop) */}
-            <div className="hidden md:flex items-center space-x-2 border-l pl-4 border-gray-300 dark:border-gray-600">
+            {/* PARTNER LOGO + NAME */}
+            <div className="flex items-center space-x-2 border-l pl-3 border-gray-300 dark:border-gray-600">
               <img
                 src="/Partner-logo.jpeg"
                 alt="Partner"
-                className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
               />
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
                 NPTA
               </span>
             </div>
@@ -139,18 +139,6 @@ const Header: React.FC = () => {
         {/* MOBILE MENU */}
         {isOpen && (
           <div className="md:hidden mt-4 bg-gray-50 dark:bg-gray-700 rounded-xl p-4 space-y-4 shadow-lg">
-
-            {/* Partner Logo + Name (Mobile) */}
-            <div className="flex items-center space-x-3 border-b pb-3 border-gray-300 dark:border-gray-600">
-              <img
-                src="/Partner-logo.jpeg"
-                alt="Partner"
-                className="w-9 h-9 object-contain"
-              />
-              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                NPTA
-              </span>
-            </div>
 
             <Link
               to="/search"

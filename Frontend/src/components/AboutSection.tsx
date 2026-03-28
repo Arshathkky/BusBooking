@@ -14,10 +14,10 @@ const AboutSection: React.FC = () => {
             We are Touch Me+, Eastern Province’s leading online bus and coach reservation platform,
             transforming the way passengers travel across Sri Lanka.
           </p>
-          <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
+          {/* <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
             We are expanding our services through collaboration with the National  Passenger Transport Authority and with a special focus
             on the Eastern Province private bus sector, to introduce a modern and efficient online reservation system for Eastern private buses
-          </p>
+          </p> */}
         </div>
 
         {/* Two Column Content */}

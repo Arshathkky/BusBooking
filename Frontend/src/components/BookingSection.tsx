@@ -32,13 +32,13 @@ function BookingSection() {
 
           {/* Agent Login */}
           <button
-            onClick={() => navigate('/agent-place')}
+            onClick={() => navigate('/#')}
             className="group bg-gradient-to-r from-orange-500 to-red-500 text-white py-10 sm:py-12 rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex flex-col items-center"
           >
             <MapPin className="w-12 h-12 sm:w-16 sm:h-16 mb-4" />
-            <p className="text-xl sm:text-2xl font-bold">Login as Agent</p>
+            <p className="text-xl sm:text-2xl font-bold">Rent A Vehicle</p>
             <p className="text-sm mt-2 opacity-90">
-              Manage your bus fleet
+              You can hire a van for traveling
             </p>
             <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 mt-4 group-hover:translate-x-2 transition-transform duration-300" />
           </button>

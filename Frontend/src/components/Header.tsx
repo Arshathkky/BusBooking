@@ -46,7 +46,7 @@ const Header: React.FC = () => {
                 TouchMe+
               </span>
 
-              <div className="flex items-center space-x-1">
+              {/* <div className="flex items-center space-x-1">
                 <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                   Partner:
                 </span>
@@ -55,7 +55,7 @@ const Header: React.FC = () => {
                   alt="Partner"
                   className="w-5 h-5 sm:w-6 sm:h-6 object-contain"
                 />
-              </div>
+              </div> */}
             </div>
           </Link>
 

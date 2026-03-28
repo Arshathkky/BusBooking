@@ -2,7 +2,6 @@ import Bus from "../models/busModel.js";
 import Route from "../models/routeModel.js";
 import Conductor from "../models/conductorModel.js";
 
-
 // --------------------
 // Add a new bus (with ladies + agent seats)
 // --------------------
@@ -28,6 +27,8 @@ export const addBus = async (req, res) => {
       ladiesOnlySeats = [],
       agentSeats = [], // 👈 Added field
       busNumber,
+      seatLayout = "2x2",
+      lastRowSeats= 4,
     } = req.body;
 
     // ✅ Validate required fields
@@ -109,6 +110,8 @@ export const addBus = async (req, res) => {
       seats,
       status: "active",
       busNumber: busNumber || `BUS-${Date.now()}`,
+      seatLayout,
+      lastRowSeats,
     });
 
     res.status(201).json({
@@ -167,6 +170,18 @@ export const updateBus = async (req, res) => {
   try {
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    // Validate busConfiguration if updated
+    const allowedSeatLayouts = ["2x2", "2x3"];
+    const allowedLastRowSeats = [4, 6];
+
+      if (req.body.seatLayout && !allowedSeatLayouts.includes(req.body.seatLayout)) {
+        return res.status(400).json({ success: false, message: "Invalid seat layout" });
+      }
+
+      if (req.body.lastRowSeats && !allowedLastRowSeats.includes(req.body.lastRowSeats)) {
+        return res.status(400).json({ success: false, message: "Invalid last row seats" });
+      }
 
     Object.assign(bus, req.body);
     await bus.save();
@@ -398,7 +413,7 @@ export const holdSeats = async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
-};
+};  
 
 // ✅ Release expired holds (call before fetching seats)
 export const releaseExpiredHolds = async (bus) => {
@@ -418,7 +433,7 @@ export const releaseExpiredHolds = async (bus) => {
 };
 export const getSeatLayout = async (req, res) => {
   try {
-    const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price busNumber");
+    const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price busNumber seatLayout lastRowSeats");
     if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
     // Release expired holds before sending to frontend

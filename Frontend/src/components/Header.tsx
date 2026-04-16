@@ -69,16 +69,16 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-2 sm:space-x-3">
 
             {/* PARTNER LOGO + NAME */}
-            <div className="flex items-center space-x-2 border-l pl-3 border-gray-300 dark:border-gray-600">
+            {/* <div className="flex items-center space-x-2 border-l pl-3 border-gray-300 dark:border-gray-600">
               <img
                 src="/Partner-logo.jpeg"
                 alt="Partner"
                 className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
-              />
-              <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
+              /> */}
+              {/* <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200">
                 NPTA
-              </span>
-            </div>
+              </span> */}
+            {/* </div> */}
 
             {/* Theme Toggle */}
             <button

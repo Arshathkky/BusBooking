@@ -24,6 +24,7 @@ type LastRowType = 4 | 6;
 interface SeatLayoutProps {
   totalSeats: number;
   occupiedSeats: Set<number>;
+  heldSeats: Map<number, number>;
   ladiesOnlySeats: Set<number>;
   agentSeatMap: Map<number, string>;
   selectedSeats: number[];
@@ -33,47 +34,50 @@ interface SeatLayoutProps {
   lastRowSeats: LastRowType;
 }
 
-// -------------------- SeatLayout Component --------------------
+
+
+// -------------------- Seat Layout --------------------
 
 const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
+  heldSeats,
   ladiesOnlySeats,
   agentSeatMap,
   selectedSeats,
   onSeatClick,
   maxSeats,
   seatLayout,
-  lastRowSeats
+  lastRowSeats,
 }) => {
-
-  const seats: JSX.Element[] = [];
-
-  const getSeatElement = (i: number) => {
+  const renderSeat = (i: number) => {
     const isOccupied = occupiedSeats.has(i);
-    const isLadiesOnly = ladiesOnlySeats.has(i);
+    const isHeld = heldSeats.has(i);
+    const holdTime = heldSeats.get(i);
+
+    const isLadies = ladiesOnlySeats.has(i);
     const agentId = agentSeatMap.get(i);
-    const isAgentSeat = Boolean(agentId);
+    const isAgent = Boolean(agentId);
     const isSelected = selectedSeats.includes(i);
 
-    let seatClass =
-      "w-12 h-12 rounded-lg border-2 text-xs font-semibold transition-all duration-200 flex flex-col items-center justify-center ";
+    let style =
+      "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
 
-    if (isOccupied)
-      seatClass += "bg-gray-400 border-gray-500 text-white cursor-not-allowed";
-    else if (isAgentSeat)
-      seatClass +=
-        agentId === "AGENT_1"
-          ? "bg-purple-300 border-purple-500 text-purple-900 cursor-not-allowed"
-          : "bg-blue-300 border-blue-500 text-blue-900 cursor-not-allowed";
-    else if (isLadiesOnly)
-      seatClass += isSelected
-        ? "bg-[#fdc106] border-[#e6ad05] scale-105 cursor-pointer"
-        : "bg-pink-300 border-pink-300 hover:bg-pink-300 cursor-pointer";
-    else if (isSelected)
-      seatClass += "bg-[#fdc106] border-[#e6ad05] scale-105 cursor-pointer";
-    else
-      seatClass += "bg-gray-200 border-gray-300 hover:bg-gray-300 cursor-pointer";
+    if (isOccupied) {
+      style += " bg-gray-500 text-white cursor-not-allowed";
+    } else if (isHeld && !isSelected) {
+      style += " bg-orange-300 cursor-not-allowed";
+    } else if (isAgent) {
+      style += " bg-purple-300 cursor-not-allowed";
+    } else if (isLadies) {
+      style += isSelected
+        ? " bg-yellow-400 cursor-pointer"
+        : " bg-pink-300 cursor-pointer";
+    } else if (isSelected) {
+      style += " bg-yellow-400 cursor-pointer";
+    } else {
+      style += " bg-gray-200 hover:bg-gray-300 cursor-pointer";
+    }
 
     return (
       <button
@@ -81,83 +85,68 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         onClick={() => onSeatClick(i)}
         disabled={
           isOccupied ||
-          isAgentSeat ||
+          isAgent ||
+          (isHeld && !isSelected) ||
           (!isSelected && selectedSeats.length >= maxSeats)
         }
-        className={seatClass}
+        className={style}
       >
         {isOccupied ? (
-          <UserX className="w-4 h-4 mb-1" />
-        ) : isAgentSeat ? (
-          <span className="text-[10px] font-bold">
-            {agentId === "AGENT_1" ? "A1" : "A2"}
-          </span>
+          <UserX className="w-4 h-4" />
+        ) : isHeld ? (
+          <span className="text-[10px]">{holdTime ? `${holdTime}s` : "H"}</span>
         ) : isSelected ? (
-          <User className="w-4 h-4 mb-1" />
-        ) : isLadiesOnly ? (
-          <span className="text-[10px] font-bold">L</span>
+          <User className="w-4 h-4" />
+        ) : isAgent ? (
+          <span className="text-[10px]">{agentId}</span>
+        ) : isLadies ? (
+          <span className="text-[10px]">L</span>
         ) : null}
+
         <div className="text-[11px]">{i}</div>
       </button>
     );
   };
 
-  for (let i = 1; i <= totalSeats; i++) {
-    seats.push(getSeatElement(i));
-  }
+  const seats = Array.from({ length: totalSeats }, (_, i) => renderSeat(i + 1));
 
   const seatsPerRow = seatLayout === "2x2" ? 4 : 5;
 
   return (
-    <>
-      <div className="bg-gray-50 rounded-lg p-6">
-        <div className="mb-6 flex justify-end">
-          <div className="bg-gray-300 w-16 h-10 rounded-t-lg flex items-center justify-center">
-            <Steering className="w-6 h-6 text-gray-600" />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {Array.from({ length: Math.ceil(totalSeats / seatsPerRow) }).map(
-            (_, row) => {
-              const start = row * seatsPerRow;
-              const isLastRow =
-                row === Math.floor(totalSeats / seatsPerRow);
-              const currentRowSeats = isLastRow
-                ? seats.slice(start, start + lastRowSeats)
-                : seats.slice(start, start + seatsPerRow);
-
-              if (seatLayout === "2x2") {
-                return (
-                  <div key={row} className="flex justify-center space-x-2">
-                    <div className="flex space-x-1">{currentRowSeats.slice(0, 2)}</div>
-                    <div className="w-8" />
-                    <div className="flex space-x-1">{currentRowSeats.slice(2)}</div>
-                  </div>
-                );
-              }
-
-              // 2x3 or other layouts
-              return (
-                <div key={row} className="flex justify-center space-x-2">
-                  <div className="flex space-x-1">{currentRowSeats.slice(0, 2)}</div>
-                  <div className="w-8" />
-                  <div className="flex space-x-1">{currentRowSeats.slice(2)}</div>
-                </div>
-              );
-            }
-          )}
+    <div className="bg-gray-50 p-6 rounded-lg">
+      <div className="flex justify-end mb-4">
+        <div className="w-16 h-10 bg-gray-300 flex items-center justify-center rounded-t-lg">
+          <Steering className="w-6 h-6" />
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-        <Legend color="bg-gray-400" label="Booked" />
-        <Legend color="bg-[#fdc106]" label="Selected" />
+      {Array.from({ length: Math.ceil(totalSeats / seatsPerRow) }).map(
+        (_, row) => {
+          const start = row * seatsPerRow;
+          const isLast = row === Math.floor(totalSeats / seatsPerRow);
+
+          const rowSeats = isLast
+            ? seats.slice(start, start + lastRowSeats)
+            : seats.slice(start, start + seatsPerRow);
+
+          return (
+            <div key={row} className="flex justify-center space-x-2 mb-2">
+              <div className="flex space-x-1">{rowSeats.slice(0, 2)}</div>
+              <div className="w-8" />
+              <div className="flex space-x-1">{rowSeats.slice(2)}</div>
+            </div>
+          );
+        }
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4 text-sm">
+        <Legend color="bg-gray-500" label="Booked" />
+        <Legend color="bg-yellow-400" label="Selected" />
+        <Legend color="bg-orange-300" label="Held" />
         <Legend color="bg-pink-300" label="Ladies" />
-        <Legend color="bg-purple-300" label="Agent 1" />
-        <Legend color="bg-blue-300" label="Agent 2" />
+        <Legend color="bg-purple-300" label="Agent" />
       </div>
-    </>
+    </div>
   );
 };
 
@@ -168,7 +157,7 @@ const Legend = ({ color, label }: { color: string; label: string }) => (
   </div>
 );
 
-// -------------------- SeatSelection Component --------------------
+// -------------------- MAIN --------------------
 
 const HOLD_DURATION = 10 * 60;
 
@@ -179,101 +168,122 @@ const SeatSelection: React.FC = () => {
 
   const searchData = location.state?.searchData as SearchData;
 
-  const { busSeats, selectedSeats, fetchBusSeats, selectSeat, deselectSeat, clearSelection } =
-    useSeat();
+  const {
+    busSeats,
+    selectedSeats,
+    fetchBusSeats,
+    selectSeat,
+    deselectSeat,
+    clearSelection,
+  } = useSeat();
 
-  const [dateOccupiedSeats, setDateOccupiedSeats] = useState<Set<number>>(new Set());
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [occupiedSeats, setOccupiedSeats] = useState<Set<number>>(new Set());
+  const [heldSeats, setHeldSeats] = useState<Map<number, number>>(new Map());
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionId = useRef(
+  sessionStorage.getItem("sessionId") ||
+  crypto.randomUUID()
+);
 
-  const fetchDateBooking = useCallback(async () => {
+useEffect(() => {
+  sessionStorage.setItem("sessionId", sessionId.current);
+}, []);
+
+  // ---------------- FETCH OCCUPIED ----------------
+  const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
-    try {
-      const res = await axios.get<OccupiedSeatsResponse>(
-        `https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats`,
-        { params: { busId, date: searchData.date } }
-      );
+    const res = await axios.get<OccupiedSeatsResponse>(
+      `https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats`,
+      { params: { busId, date: searchData.date } }
+    );
 
-      if (res.data.success) {
-        setDateOccupiedSeats(new Set(res.data.occupiedSeats || []));
-      } else {
-        setDateOccupiedSeats(new Set());
-      }
-    } catch (err) {
-      console.error("Failed to fetch occupied seats:", err);
-    }
+    setOccupiedSeats(new Set(res.data.occupiedSeats || []));
   }, [busId, searchData?.date]);
 
+  // ---------------- INIT ----------------
   useEffect(() => {
     if (!busId) return;
 
     fetchBusSeats(busId);
-    fetchDateBooking();
+    fetchOccupied();
 
     return () => clearSelection();
-  }, [busId, fetchBusSeats, fetchDateBooking]);
+  }, [busId]);
 
+  // ---------------- TIMER ----------------
   useEffect(() => {
-    if (selectedSeats.length > 0 && timeLeft === null) setTimeLeft(HOLD_DURATION);
-    if (selectedSeats.length === 0) {
-      setTimeLeft(null);
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  }, [selectedSeats]);
-
-  useEffect(() => {
-    if (timeLeft === null) return;
-
     timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (!prev || prev <= 1) {
-          clearInterval(timerRef.current!);
-          alert("Seat hold expired. Please select again.");
-          clearSelection();
-          navigate(-1);
-          return null;
+      setHeldSeats((prev) => {
+        const now = Date.now();
+        const updated = new Map(prev);
+
+        for (const [seat, expiry] of updated.entries()) {
+          if (expiry <= now) updated.delete(seat);
         }
-        return prev - 1;
+
+        return updated;
       });
     }, 1000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [timeLeft, clearSelection, navigate]);
-
+  }, []);
+      if (!busId) {
+        return <p>Invalid Bus ID</p>;
+      }
+  // ---------------- CLICK SEAT ----------------
   const handleSeatClick = async (seat: number) => {
-    if (dateOccupiedSeats.has(seat)) return;
+    if (occupiedSeats.has(seat)) return;
+    if (heldSeats.has(seat)) return;
 
     if (selectedSeats.includes(seat)) {
-      deselectSeat(seat);
-      await axios.post(
-        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`,
-        { seatNumbers: [seat], date: searchData.date }
-      );
-    } else {
-      selectSeat(seat);
-      await axios.post(
-        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`,
-        { seatNumbers: [seat], date: searchData.date, holdDuration: HOLD_DURATION }
-      );
+  deselectSeat(seat);
+
+  // 🔥 RELEASE API CALL
+  await axios.post(
+    `https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`,
+    {
+      seatNumbers: [seat],
+      sessionId: sessionId.current,
     }
-  };
-
-  if (!searchData || !busSeats) {
-    return <p className="text-center mt-8">Loading...</p>;
-  }
-
-  const occupiedSeats = dateOccupiedSeats;
-
-  const ladiesOnlySeats = new Set(
-    busSeats.seats.filter((s) => s.isLadiesOnly).map((s) => s.seatNumber)
   );
 
-  const agentSeatMap = new Map<number, string>();
-  busSeats.seats.forEach((s) => {
-    if (s.isReservedForAgent) agentSeatMap.set(s.seatNumber, s.agentId ?? "AGENT_1");
+  // 🔥 REFRESH SEATS AFTER RELEASE
+   fetchBusSeats(busId);
+    } else {
+  selectSeat(seat);
+
+  const expiry = Date.now() + HOLD_DURATION * 1000;
+
+  setHeldSeats((prev) => new Map(prev).set(seat, expiry));
+
+  // 🔥 HOLD API CALL
+  await axios.post(
+    `https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`,
+    {
+      busId,
+      seatNumbers: [seat],
+      sessionId: sessionId.current,
+    }
+  );
+
+  // 🔥 REFRESH SEATS AFTER HOLD
+  fetchBusSeats(busId);
+} 
+  };
+
+  if (!searchData || !busSeats) return <p>Loading...</p>;
+
+  const ladiesSeats = new Set(
+    busSeats.seats.filter((s: any) => s.isLadiesOnly).map((s: any) => s.seatNumber)
+  );
+
+  const agentMap = new Map<number, string>();
+  busSeats.seats.forEach((s: any) => {
+    if (s.isReservedForAgent) agentMap.set(s.seatNumber, s.agentId || "A");
   });
 
   return (
@@ -282,23 +292,17 @@ const SeatSelection: React.FC = () => {
         <ArrowLeft /> Back
       </button>
 
-      {timeLeft !== null && (
-        <div className="text-center font-bold text-red-600 mb-4">
-          Seat hold expires in {Math.floor(timeLeft / 60)}:
-          {(timeLeft % 60).toString().padStart(2, "0")}
-        </div>
-      )}
-
       <SeatLayout
         totalSeats={busSeats.totalSeats}
         occupiedSeats={occupiedSeats}
-        ladiesOnlySeats={ladiesOnlySeats}
-        agentSeatMap={agentSeatMap}
+        heldSeats={heldSeats}
+        ladiesOnlySeats={ladiesSeats}
+        agentSeatMap={agentMap}
         selectedSeats={selectedSeats}
         onSeatClick={handleSeatClick}
         maxSeats={searchData.passengers}
-        seatLayout={busSeats.seatLayout}        // updated
-        lastRowSeats={busSeats.lastRowSeats}    // updated
+        seatLayout={busSeats.seatLayout}
+        lastRowSeats={busSeats.lastRowSeats}
       />
 
       <button
@@ -313,7 +317,7 @@ const SeatSelection: React.FC = () => {
             },
           })
         }
-        className="w-full mt-6 py-4 bg-[#fdc106] rounded-lg font-bold disabled:bg-gray-300"
+        className="w-full mt-6 py-4 bg-yellow-400 rounded-lg font-bold disabled:bg-gray-300"
       >
         Continue
       </button>

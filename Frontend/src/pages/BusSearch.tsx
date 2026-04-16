@@ -43,7 +43,7 @@ const BusSearch: React.FC = () => {
   const companies = Object.keys(results.busesByCompany || {});
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto mt-[20px]">
       {/* Search Form */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 mb-8 transition-colors">
         <div className="text-center mb-8">

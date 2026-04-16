@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users, ArrowRight } from 'lucide-react';
+import {  Users, ArrowRight } from 'lucide-react';
 
 function BookingSection() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ function BookingSection() {
         </h2>
 
         {/* Buttons Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
 
           {/* Book Seat */}
           <button
@@ -31,7 +31,7 @@ function BookingSection() {
           </button>
 
           {/* Agent Login */}
-          <button
+          {/* <button
             onClick={() => navigate('/#')}
             className="group bg-gradient-to-r from-orange-500 to-red-500 text-white py-10 sm:py-12 rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex flex-col items-center"
           >
@@ -41,7 +41,7 @@ function BookingSection() {
               You can hire a van for traveling
             </p>
             <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 mt-4 group-hover:translate-x-2 transition-transform duration-300" />
-          </button>
+          </button> */}
 
         </div>
 

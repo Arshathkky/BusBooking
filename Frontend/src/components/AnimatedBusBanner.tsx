@@ -9,7 +9,7 @@ function AnimatedBusBanner() {
   }, []);
 
   return (
-    <div className="relative h-[420px] md:h-[550px] bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 overflow-hidden">
+    <div className="relative  h-[420px] md:h-[550px] bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 overflow-hidden">
 
       {/* Dark Overlay */}
       <div className="absolute inset-0 bg-black/10"></div>

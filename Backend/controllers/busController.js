@@ -3,6 +3,30 @@ import Route from "../models/routeModel.js";
 import Conductor from "../models/conductorModel.js";
 
 // --------------------
+
+const cleanExpiredHolds = (bus) => {
+  const now = new Date();
+  let updated = false;
+
+  bus.seats = bus.seats.map((seat) => {
+    if (
+      seat.isHeld &&
+      seat.holdExpiresAt &&
+      new Date(seat.holdExpiresAt).getTime() <= now.getTime()
+    ) {
+      updated = true;
+      return {
+        ...seat.toObject(),
+        isHeld: false,
+        heldBy: null,
+        holdExpiresAt: null,
+      };
+    }
+    return seat;
+  });
+
+  return updated;
+};
 // Add a new bus (with ladies + agent seats)
 // --------------------
 export const addBus = async (req, res) => {
@@ -383,43 +407,158 @@ export const removeAgentSeats = async (req, res) => {
 
 
 // ✅ Hold seats temporarily for 10 minutes
+// ✅ Hold seats temporarily for 10 minutes
 export const holdSeats = async (req, res) => {
   try {
-    const { busId, seatNumbers, sessionId } = req.body; // sessionId = unique per user
+    const { busId, seatNumbers, sessionId, holdDuration } = req.body;
+
+    if (!busId || !Array.isArray(seatNumbers) || !sessionId) {
+      return res.status(400).json({
+        success: false,
+        message: "busId, seatNumbers and sessionId are required",
+      });
+    }
+
+    const bus = await Bus.findById(busId);
+    if (!bus) {
+      return res.status(404).json({
+        success: false,
+        message: "Bus not found",
+      });
+    }
+
+    const now = Date.now();
+
+    // ===============================
+    // 🔥 1. CLEAN EXPIRED HOLDS FIRST
+    // ===============================
+    let updated = false;
+
+    bus.seats = bus.seats.map((seat) => {
+      if (
+        seat.isHeld &&
+        seat.holdExpiresAt &&
+        new Date(seat.holdExpiresAt).getTime() <= now
+      ) {
+        updated = true;
+        return {
+          ...seat.toObject(),
+          isHeld: false,
+          heldBy: null,
+          holdExpiresAt: null,
+        };
+      }
+      return seat;
+    });
+
+    // ===============================
+    // 🔥 2. VALIDATION
+    // ===============================
+    for (const seat of bus.seats) {
+      if (!seatNumbers.includes(seat.seatNumber)) continue;
+
+      // ❌ already booked
+      if (seat.isOccupied) {
+        return res.status(400).json({
+          success: false,
+          message: `Seat ${seat.seatNumber} already booked`,
+        });
+      }
+
+      // ❌ locked by another user
+      if (
+        seat.isHeld &&
+        seat.heldBy &&
+        seat.heldBy !== sessionId &&
+        seat.holdExpiresAt &&
+        new Date(seat.holdExpiresAt).getTime() > now
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Seat ${seat.seatNumber} is locked by another user`,
+        });
+      }
+    }
+
+    // ===============================
+    // 🔥 3. APPLY HOLD
+    // ===============================
+    const holdTime = holdDuration || 10 * 60 * 1000;
+    const holdExpiresAt = new Date(now + holdTime);
+
+    bus.seats = bus.seats.map((seat) => {
+      if (!seatNumbers.includes(seat.seatNumber)) return seat;
+
+      return {
+        ...seat.toObject(),
+        isHeld: true,
+        heldBy: sessionId,
+        holdExpiresAt,
+      };
+    });
+
+    await bus.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Seats held successfully",
+      holdExpiresAt,
+      updatedExpiredSeats: updated,
+      bus,
+    });
+
+  } catch (err) {
+    console.error("Hold Seats Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Internal server error",
+    });
+  }
+};
+
+
+export const releaseSeats = async (req, res) => {
+  try {
+    const { busId, seatNumbers, sessionId } = req.body;
+
     const bus = await Bus.findById(busId);
     if (!bus) return res.status(404).json({ message: "Bus not found" });
 
-    const now = new Date();
-    const holdExpiresAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 min from now
-
     bus.seats = bus.seats.map((seat) => {
       if (seatNumbers.includes(seat.seatNumber)) {
-        if (seat.isOccupied || seat.isHeld) {
-          throw new Error(`Seat ${seat.seatNumber} is already occupied/held`);
-        }
+
+        // only owner can release
+        if (seat.heldBy !== sessionId) return seat;
+
         return {
           ...seat.toObject(),
-          isHeld: true,
-          heldBy: sessionId,
-          holdExpiresAt,
+          isHeld: false,
+          heldBy: null,
+          holdExpiresAt: null,
         };
       }
       return seat;
     });
 
     await bus.save();
-    res.status(200).json({ success: true, message: "Seats held", bus });
+
+    res.json({ success: true, message: "Seats released" });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
-};  
+};
 
 // ✅ Release expired holds (call before fetching seats)
 export const releaseExpiredHolds = async (bus) => {
   const now = new Date();
+
   bus.seats = bus.seats.map((seat) => {
-    if (seat.isHeld && seat.holdExpiresAt && new Date(seat.holdExpiresAt) <= now) {
+    if (
+      seat.isHeld &&
+      seat.holdExpiresAt &&
+      new Date(seat.holdExpiresAt).getTime() <= now.getTime()
+    ) {
       return {
         ...seat.toObject(),
         isHeld: false,
@@ -429,19 +568,72 @@ export const releaseExpiredHolds = async (bus) => {
     }
     return seat;
   });
+
   await bus.save();
 };
 export const getSeatLayout = async (req, res) => {
   try {
-    const bus = await Bus.findById(req.params.id).select("seats totalSeats name type price busNumber seatLayout lastRowSeats");
-    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+    const { id } = req.params;
 
-    // Release expired holds before sending to frontend
-    await releaseExpiredHolds(bus);
+    // 1️⃣ Validate ID
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Bus ID is required",
+      });
+    }
 
-    res.status(200).json({ success: true, data: bus });
+    // 2️⃣ Fetch bus
+    const bus = await Bus.findById(id).select(
+      "seats totalSeats name type price busNumber seatLayout lastRowSeats"
+    );
+
+    if (!bus) {
+      return res.status(404).json({
+        success: false,
+        message: "Bus not found",
+      });
+    }
+
+    // 3️⃣ Release expired holds (VERY IMPORTANT 🔥)
+    const now = new Date();
+
+    let updated = false;
+
+    bus.seats = bus.seats.map((seat) => {
+      if (
+        seat.isHeld &&
+        seat.holdExpiresAt &&
+        new Date(seat.holdExpiresAt) <= now
+      ) {
+        updated = true;
+
+        return {
+          ...seat.toObject(),
+          isHeld: false,
+          heldBy: null,
+          holdExpiresAt: null,
+        };
+      }
+      return seat;
+    });
+
+    // 4️⃣ Save only if changes happened (OPTIMIZED)
+    if (updated) {
+      await bus.save();
+    }
+
+    // 5️⃣ Send response
+    res.status(200).json({
+      success: true,
+      data: bus,
+    });
   } catch (error) {
-    console.error("Get Seat Layout Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch seat layout" });
+    console.error("❌ Get Seat Layout Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch seat layout",
+    });
   }
 };

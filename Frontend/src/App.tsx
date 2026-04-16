@@ -33,7 +33,7 @@ const getDashboardRoute = (role: string) => {
     case 'owner': return '/owner';
     case 'conductor': return '/conductor';
     case 'agent': return '/agent';
-    default: return '/search';
+    default: return '/';
   }
 };
 
@@ -69,7 +69,7 @@ const AppContent: React.FC = () => {
           <Route path="/payment" element={<Payment />} />
 
           {/* Protected Routes */}
-          <Route
+          {/* <Route
             path="/agent"
             element={
               user?.role === 'agent' ? (
@@ -81,7 +81,7 @@ const AppContent: React.FC = () => {
                 <Navigate to="/login" />
               )
             }
-          />
+          /> */}
           <Route path="/agent-place" element={<AgentLogin />} />
           <Route path="/owner" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
           <Route path="/conductor" element={user?.role === 'conductor' ? <ConductorDashboard /> : <Navigate to="/login" />} />

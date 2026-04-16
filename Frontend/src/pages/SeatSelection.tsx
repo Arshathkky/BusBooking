@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
 import { useSeat } from "../contexts/seatSelectionContext";
+import { useBooking } from "../contexts/BookingContext";
 import axios from "axios";
 
 // -------------------- Types --------------------
@@ -16,6 +17,7 @@ interface SearchData {
 interface OccupiedSeatsResponse {
   success: boolean;
   occupiedSeats: number[];
+  reservedSeats?: number[];
 }
 
 type SeatLayoutType = "2x2" | "2x3";
@@ -24,7 +26,9 @@ type LastRowType = 4 | 6;
 interface SeatLayoutProps {
   totalSeats: number;
   occupiedSeats: Set<number>;
+  reservedSeats: Set<number>;
   heldSeats: Map<number, number>;
+  backendHeldSeats: Set<number>;
   ladiesOnlySeats: Set<number>;
   agentSeatMap: Map<number, string>;
   selectedSeats: number[];
@@ -41,7 +45,9 @@ interface SeatLayoutProps {
 const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
+  reservedSeats,
   heldSeats,
+  backendHeldSeats,
   ladiesOnlySeats,
   agentSeatMap,
   selectedSeats,
@@ -52,7 +58,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 }) => {
   const renderSeat = (i: number) => {
     const isOccupied = occupiedSeats.has(i);
-    const isHeld = heldSeats.has(i);
+    const isReserved = reservedSeats.has(i);
+    const isHeld = heldSeats.has(i) || backendHeldSeats.has(i);
     const holdTime = heldSeats.get(i);
 
     const isLadies = ladiesOnlySeats.has(i);
@@ -64,17 +71,21 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
 
     if (isOccupied) {
+      // Booked (PAID) → gray
       style += " bg-gray-500 text-white cursor-not-allowed";
-    } else if (isHeld && !isSelected) {
-      style += " bg-orange-300 cursor-not-allowed";
+    } else if (isSelected) {
+      // Current user's selection → yellow (check BEFORE reserved so own seats stay yellow)
+      style += " bg-yellow-400 border-yellow-500 cursor-pointer";
+    } else if (isReserved) {
+      // Reserved by another user (PENDING booking) → orange (NOT gray!)
+      style += " bg-orange-400 text-white cursor-not-allowed";
+    } else if (isHeld) {
+      // Held by another user (before booking) → blue
+      style += " bg-blue-300 text-white cursor-not-allowed";
     } else if (isAgent) {
       style += " bg-purple-300 cursor-not-allowed";
     } else if (isLadies) {
-      style += isSelected
-        ? " bg-yellow-400 cursor-pointer"
-        : " bg-pink-300 cursor-pointer";
-    } else if (isSelected) {
-      style += " bg-yellow-400 cursor-pointer";
+      style += " bg-pink-300 cursor-pointer";
     } else {
       style += " bg-gray-200 hover:bg-gray-300 cursor-pointer";
     }
@@ -85,6 +96,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         onClick={() => onSeatClick(i)}
         disabled={
           isOccupied ||
+          (isReserved && !isSelected) ||
           isAgent ||
           (isHeld && !isSelected) ||
           (!isSelected && selectedSeats.length >= maxSeats)
@@ -93,10 +105,12 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       >
         {isOccupied ? (
           <UserX className="w-4 h-4" />
-        ) : isHeld ? (
-          <span className="text-[10px]">{holdTime ? `${holdTime}s` : "H"}</span>
         ) : isSelected ? (
           <User className="w-4 h-4" />
+        ) : isReserved ? (
+          <span className="text-[10px]">R</span>
+        ) : isHeld ? (
+          <span className="text-[10px]">{holdTime ? `${holdTime}s` : "H"}</span>
         ) : isAgent ? (
           <span className="text-[10px]">{agentId}</span>
         ) : isLadies ? (
@@ -108,9 +122,17 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     );
   };
 
-  const seats = Array.from({ length: totalSeats }, (_, i) => renderSeat(i + 1));
-
+  // ---- Compute row structure: last row first, then standard rows ----
   const seatsPerRow = seatLayout === "2x2" ? 4 : 5;
+  const leftCols = seatLayout === "2x2" ? 2 : 2;
+  const rightCols = seatLayout === "2x2" ? 2 : 3;
+
+  // Fill last row first, then divide the rest into standard rows
+  const normalSeatCount = totalSeats - lastRowSeats;
+  const normalRowCount = Math.ceil(normalSeatCount / seatsPerRow);
+
+  // Build all seat buttons
+  const allSeats = Array.from({ length: totalSeats }, (_, i) => renderSeat(i + 1));
 
   return (
     <div className="bg-gray-50 p-6 rounded-lg">
@@ -120,29 +142,33 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         </div>
       </div>
 
-      {Array.from({ length: Math.ceil(totalSeats / seatsPerRow) }).map(
-        (_, row) => {
-          const start = row * seatsPerRow;
-          const isLast = row === Math.floor(totalSeats / seatsPerRow);
+      {/* Normal rows (2x2 or 2x3) */}
+      {Array.from({ length: normalRowCount }).map((_, row) => {
+        const start = row * seatsPerRow;
+        const end = Math.min(start + seatsPerRow, normalSeatCount);
+        const rowSeats = allSeats.slice(start, end);
 
-          const rowSeats = isLast
-            ? seats.slice(start, start + lastRowSeats)
-            : seats.slice(start, start + seatsPerRow);
+        return (
+          <div key={row} className="flex justify-center space-x-2 mb-2">
+            <div className="flex space-x-1">{rowSeats.slice(0, leftCols)}</div>
+            <div className="w-8" />
+            <div className="flex space-x-1">{rowSeats.slice(leftCols, leftCols + rightCols)}</div>
+          </div>
+        );
+      })}
 
-          return (
-            <div key={row} className="flex justify-center space-x-2 mb-2">
-              <div className="flex space-x-1">{rowSeats.slice(0, 2)}</div>
-              <div className="w-8" />
-              <div className="flex space-x-1">{rowSeats.slice(2)}</div>
-            </div>
-          );
-        }
+      {/* Last row (fills across the full width) */}
+      {lastRowSeats > 0 && (
+        <div key="lastRow" className="flex justify-center space-x-1 mb-2 mt-1 border-t pt-2 border-dashed border-gray-300">
+          {allSeats.slice(normalSeatCount, normalSeatCount + lastRowSeats)}
+        </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4 text-sm">
-        <Legend color="bg-gray-500" label="Booked" />
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-4 text-sm">
+        <Legend color="bg-gray-500" label="Booked (Paid)" />
+        <Legend color="bg-orange-400" label="Reserved (Pending)" />
         <Legend color="bg-yellow-400" label="Selected" />
-        <Legend color="bg-orange-300" label="Held" />
+        <Legend color="bg-blue-300" label="Held" />
         <Legend color="bg-pink-300" label="Ladies" />
         <Legend color="bg-purple-300" label="Agent" />
       </div>
@@ -159,7 +185,7 @@ const Legend = ({ color, label }: { color: string; label: string }) => (
 
 // -------------------- MAIN --------------------
 
-const HOLD_DURATION = 10 * 60;
+const HOLD_DURATION = 15 * 60;
 
 const SeatSelection: React.FC = () => {
   const { busId } = useParams<{ busId: string }>();
@@ -177,18 +203,23 @@ const SeatSelection: React.FC = () => {
     clearSelection,
   } = useSeat();
 
+  const { addBooking } = useBooking();
+
   const [occupiedSeats, setOccupiedSeats] = useState<Set<number>>(new Set());
+  const [reservedSeats, setReservedSeats] = useState<Set<number>>(new Set());
   const [heldSeats, setHeldSeats] = useState<Map<number, number>>(new Map());
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionId = useRef(
-  sessionStorage.getItem("sessionId") ||
-  crypto.randomUUID()
-);
+    sessionStorage.getItem("sessionId") ||
+    crypto.randomUUID()
+  );
 
-useEffect(() => {
-  sessionStorage.setItem("sessionId", sessionId.current);
-}, []);
+  useEffect(() => {
+    sessionStorage.setItem("sessionId", sessionId.current);
+  }, []);
 
   // ---------------- FETCH OCCUPIED ----------------
   const fetchOccupied = useCallback(async () => {
@@ -200,6 +231,7 @@ useEffect(() => {
     );
 
     setOccupiedSeats(new Set(res.data.occupiedSeats || []));
+    setReservedSeats(new Set(res.data.reservedSeats || []));
   }, [busId, searchData?.date]);
 
   // ---------------- INIT ----------------
@@ -209,7 +241,16 @@ useEffect(() => {
     fetchBusSeats(busId);
     fetchOccupied();
 
-    return () => clearSelection();
+    // Poll every 5 seconds so other users see reserved/held seats in real-time
+    const pollInterval = setInterval(() => {
+      fetchOccupied();
+      fetchBusSeats(busId);
+    }, 5000);
+
+    return () => {
+      clearSelection();
+      clearInterval(pollInterval);
+    };
   }, [busId]);
 
   // ---------------- TIMER ----------------
@@ -231,54 +272,59 @@ useEffect(() => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
-      if (!busId) {
-        return <p>Invalid Bus ID</p>;
-      }
+  if (!busId) {
+    return <p>Invalid Bus ID</p>;
+  }
   // ---------------- CLICK SEAT ----------------
   const handleSeatClick = async (seat: number) => {
     if (occupiedSeats.has(seat)) return;
+    if (reservedSeats.has(seat)) return;
     if (heldSeats.has(seat)) return;
 
     if (selectedSeats.includes(seat)) {
-  deselectSeat(seat);
+      deselectSeat(seat);
 
-  // 🔥 RELEASE API CALL
-  await axios.post(
-    `https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`,
-    {
-      seatNumbers: [seat],
-      sessionId: sessionId.current,
-    }
-  );
+      // 🔥 RELEASE API CALL
+      await axios.post(
+        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/release-seats`,
+        {
+          seatNumbers: [seat],
+          sessionId: sessionId.current,
+        }
+      );
 
-  // 🔥 REFRESH SEATS AFTER RELEASE
-   fetchBusSeats(busId);
+      // 🔥 REFRESH SEATS AFTER RELEASE
+      fetchBusSeats(busId);
     } else {
-  selectSeat(seat);
+      selectSeat(seat);
 
-  const expiry = Date.now() + HOLD_DURATION * 1000;
+      const expiry = Date.now() + HOLD_DURATION * 1000;
 
-  setHeldSeats((prev) => new Map(prev).set(seat, expiry));
+      setHeldSeats((prev) => new Map(prev).set(seat, expiry));
 
-  // 🔥 HOLD API CALL
-  await axios.post(
-    `https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`,
-    {
-      busId,
-      seatNumbers: [seat],
-      sessionId: sessionId.current,
+      // 🔥 HOLD API CALL
+      await axios.post(
+        `https://bus-booking-nt91.onrender.com/api/buses/${busId}/hold-seats`,
+        {
+          busId,
+          seatNumbers: [seat],
+          sessionId: sessionId.current,
+        }
+      );
+
+      // 🔥 REFRESH SEATS AFTER HOLD
+      fetchBusSeats(busId);
     }
-  );
-
-  // 🔥 REFRESH SEATS AFTER HOLD
-  fetchBusSeats(busId);
-} 
   };
 
   if (!searchData || !busSeats) return <p>Loading...</p>;
 
   const ladiesSeats = new Set(
     busSeats.seats.filter((s: any) => s.isLadiesOnly).map((s: any) => s.seatNumber)
+  );
+
+  const backendHeld = new Set(
+    busSeats.seats.filter((s: any) => s.isHeld).map((s: any) => s.seatNumber)
   );
 
   const agentMap = new Map<number, string>();
@@ -295,7 +341,9 @@ useEffect(() => {
       <SeatLayout
         totalSeats={busSeats.totalSeats}
         occupiedSeats={occupiedSeats}
+        reservedSeats={reservedSeats}
         heldSeats={heldSeats}
+        backendHeldSeats={backendHeld}
         ladiesOnlySeats={ladiesSeats}
         agentSeatMap={agentMap}
         selectedSeats={selectedSeats}
@@ -305,21 +353,60 @@ useEffect(() => {
         lastRowSeats={busSeats.lastRowSeats}
       />
 
+      {continueError && (
+        <p className="mt-4 text-red-600 text-sm font-medium text-center">{continueError}</p>
+      )}
+
       <button
-        disabled={selectedSeats.length !== searchData.passengers}
-        onClick={() =>
-          navigate("/passenger-details", {
-            state: {
-              bus: busSeats,
-              selectedSeats,
+        disabled={selectedSeats.length !== searchData.passengers || isContinuing}
+        onClick={async () => {
+          if (!busSeats || !busId) return;
+          setContinueError(null);
+          setIsContinuing(true);
+          try {
+            // Create a PENDING booking immediately to lock the seats
+            const newBooking = await addBooking({
+              bus: {
+                id: busSeats.id,
+                name: busSeats.name,
+                type: busSeats.type,
+                busNumber: busSeats.busNumber,
+              },
               searchData,
+              selectedSeats: selectedSeats.map(String),
               totalAmount: busSeats.price * selectedSeats.length,
-            },
-          })
-        }
+              passengerDetails: { name: "", phone: "", address: "", nic: "" },
+              paymentStatus: "Pending",
+            });
+
+            if (!newBooking) {
+              setContinueError("Failed to reserve seats. They may have just been taken. Please try again.");
+              // Refresh seats so user sees updated availability
+              fetchOccupied();
+              fetchBusSeats(busId);
+              return;
+            }
+
+            navigate("/passenger-details", {
+              state: {
+                bus: busSeats,
+                selectedSeats,
+                searchData,
+                totalAmount: busSeats.price * selectedSeats.length,
+                bookingMongoId: newBooking._id,
+                bookingId: newBooking.bookingId,
+                referenceId: newBooking.referenceId,
+              },
+            });
+          } catch (err) {
+            setContinueError("An error occurred. Please try again.");
+          } finally {
+            setIsContinuing(false);
+          }
+        }}
         className="w-full mt-6 py-4 bg-yellow-400 rounded-lg font-bold disabled:bg-gray-300"
       >
-        Continue
+        {isContinuing ? "Reserving seats..." : "Continue"}
       </button>
     </div>
   );

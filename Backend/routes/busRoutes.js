@@ -11,7 +11,8 @@
     getAgentSeats,        // ✅ Add this
     getSeatLayout,  
     removeAgentSeats ,
-    holdSeats
+    holdSeats,
+    releaseSeats
 
   } from "../controllers/busController.js";
 
@@ -38,6 +39,7 @@
   router.get("/:id/layout", getSeatLayout);
   router.patch("/:id/agent-seats/remove", removeAgentSeats);
   router.put("/:id/hold-seats", holdSeats);
+  router.post("/:id/release-seats", releaseSeats);
 
 
   export default router;

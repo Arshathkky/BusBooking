@@ -197,14 +197,15 @@ export const updateBus = async (req, res) => {
 
     // Validate busConfiguration if updated
     const allowedSeatLayouts = ["2x2", "2x3"];
-    const allowedLastRowSeats = [4, 6];
-
       if (req.body.seatLayout && !allowedSeatLayouts.includes(req.body.seatLayout)) {
         return res.status(400).json({ success: false, message: "Invalid seat layout" });
       }
 
-      if (req.body.lastRowSeats && !allowedLastRowSeats.includes(req.body.lastRowSeats)) {
-        return res.status(400).json({ success: false, message: "Invalid last row seats" });
+      if (req.body.lastRowSeats) {
+        const val = Number(req.body.lastRowSeats);
+        if (isNaN(val) || val < 1 || val > 10) {
+          return res.status(400).json({ success: false, message: "lastRowSeats must be between 1 and 10" });
+        }
       }
 
     Object.assign(bus, req.body);

@@ -55,9 +55,10 @@ const busSchema = new mongoose.Schema(
 
     lastRowSeats: {
       type: Number,
-      enum: [4, 6],
       default: 4,
       required: true,
+      min: 1,
+      max: 10,
     },
   },
   { timestamps: true }

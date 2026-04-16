@@ -48,7 +48,7 @@ const BusSeatLayout: React.FC<BusSeatLayoutProps> = ({
     const baseClass =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-200";
 
-    if (seat.isOccupied) return baseClass + " bg-gray-400 text-white cursor-not-allowed";
+    if (seat.isOccupied) return baseClass + " bg-gray-500 text-white cursor-not-allowed";
     if (isSelected) return baseClass + " bg-yellow-300 text-black border-yellow-400 hover:bg-yellow-400";
     if (seat.isLadiesOnly) return baseClass + " bg-pink-200 dark:bg-pink-800 border-pink-300 dark:border-pink-700 text-pink-800 dark:text-pink-200";
     return baseClass + " bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500";
@@ -66,7 +66,7 @@ const BusSeatLayout: React.FC<BusSeatLayoutProps> = ({
           disabled={seat.isOccupied}
           title={
             seat.isOccupied
-              ? "Occupied"
+              ? "Booked"
               : seat.isLadiesOnly
               ? "Ladies Only"
               : "Available"
@@ -138,8 +138,8 @@ const BusSeatLayout: React.FC<BusSeatLayoutProps> = ({
             </div>
           )}
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-gray-400 text-white border border-gray-500 rounded" />
-            <span className="text-gray-700 dark:text-gray-300">Occupied</span>
+            <div className="w-4 h-4 bg-gray-500 text-white border border-gray-600 rounded" />
+            <span className="text-gray-700 dark:text-gray-300">Booked</span>
           </div>
         </div>
 

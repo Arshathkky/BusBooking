@@ -13,6 +13,9 @@ export interface Seat {
   agentAssigned?: boolean;
   isReservedForAgent?: boolean;
   agentId?: string | null;
+  isHeld?: boolean;
+  heldBy?: string | null;
+  holdExpiresAt?: string | null;
 }
 
 export interface Bus {
@@ -75,8 +78,7 @@ export const useSeat = (): SeatContextType => {
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
+  const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
 
   // -------------------- Fetch bus seats --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
@@ -102,6 +104,9 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           agentAssigned: s.agentAssigned ?? false,
           isReservedForAgent: s.isReservedForAgent ?? false,
           agentId: s.agentId ?? null,
+          isHeld: s.isHeld ?? false,
+          heldBy: s.heldBy ?? null,
+          holdExpiresAt: s.holdExpiresAt ?? null,
         })),
       });
 

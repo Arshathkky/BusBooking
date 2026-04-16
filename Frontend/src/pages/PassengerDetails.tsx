@@ -29,16 +29,19 @@ interface LocationState {
     date: string;
   };
   totalAmount: number;
+  bookingMongoId?: string;   // ✅ pre-created booking ID from SeatSelection
+  bookingId?: number;
+  referenceId?: string;
 }
 
 const PassengerDetails: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addBooking, loading } = useBooking();
+  const { addBooking, updateBookingDetails, loading } = useBooking();
   const { updateSeats } = useSeat();
 
   const state = location.state as LocationState | undefined;
-  const { bus, selectedSeats, searchData, totalAmount } = state || {};
+  const { bus, selectedSeats, searchData, totalAmount, bookingMongoId, bookingId: existingBookingId, referenceId: existingReferenceId } = state || {};
 
   const [passengerDetails, setPassengerDetails] = useState<PassengerDetailsType>({
     name: "",
@@ -47,38 +50,10 @@ const PassengerDetails: React.FC = () => {
     nic: "", // New field for NIC
   });
 
-  const [otp, setOtp] = useState<string>("");
-  const [sentOtp, setSentOtp] = useState<string | null>(null);
-  const [otpVerified, setOtpVerified] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-  const [otpError, setOtpError] = useState<string | null>(null);
 
   const handleInputChange = (field: keyof PassengerDetailsType, value: string) => {
     setPassengerDetails(prev => ({ ...prev, [field]: value }));
-  };
-
-  // -------------------- OTP Handling --------------------
-  const sendOtp = () => {
-    if (!passengerDetails.phone.match(/^\d{10}$/)) {
-      setOtpError("Enter a valid 10-digit mobile number.");
-      return;
-    }
-    setOtpError(null);
-    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setSentOtp(generatedOtp);
-    alert(`OTP sent: ${generatedOtp}`); // In real app, send via SMS API
-  };
-
-  const verifyOtp = () => {
-    if (otp === sentOtp) {
-      setOtpVerified(true);
-      setOtpError(null);
-      alert("OTP verified successfully!");
-    } else {
-      setOtpError("Incorrect OTP. Please try again.");
-      setOtpVerified(false);
-    }
   };
 
   // -------------------- Handle Booking & Seat Update --------------------
@@ -90,39 +65,35 @@ const PassengerDetails: React.FC = () => {
       return;
     }
 
-    if (!otpVerified) {
-      setError("Please verify your mobile number.");
-      return;
-    }
-
     try {
       setError(null);
       const busId = bus._id || bus.id;
       if (!busId) throw new Error("Missing bus ID");
 
-      // ✅ Create booking
-      const newBooking = await addBooking({
-        bus: { id: busId, name: bus.name, type: bus.type || "Standard",busNumber: bus.busNumber },
-        searchData,
-        selectedSeats: selectedSeats.map(String),
-        totalAmount: totalAmount ?? 0,
-        passengerDetails,
-        paymentStatus: "Pending",
-      });
+      let newBooking;
 
-     if (!newBooking) throw new Error("Failed to create booking.");
+      if (bookingMongoId) {
+        // ✅ Booking was pre-created at SeatSelection — just update passenger details
+        newBooking = await updateBookingDetails(bookingMongoId, { passengerDetails });
+        if (!newBooking) throw new Error("Failed to update booking details.");
+      } else {
+        // 🔄 Fallback: create booking (shouldn't happen in normal flow)
+        newBooking = await addBooking({
+          bus: { id: busId, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
+          searchData,
+          selectedSeats: selectedSeats.map(String),
+          totalAmount: totalAmount ?? 0,
+          passengerDetails,
+          paymentStatus: "Pending",
+        });
+        if (!newBooking) throw new Error("Failed to create booking.");
+      }
 
-    // 🔹 LOG bookingId and referenceId to console
-        console.log("Booking created successfully!");
-        console.log("Booking ID:", newBooking.bookingId);
-        console.log("Reference ID:", newBooking.referenceId);
-        console.log( bus.busNumber)
+      console.log("Booking updated successfully!");
+      console.log("Booking ID:", newBooking.bookingId);
+      console.log("Reference ID:", newBooking.referenceId);
 
-      // ✅ Update seat occupancy
-      await updateSeats(
-        busId,
-        selectedSeats.map(num => ({ seatNumber: Number(num), isOccupied: true }))
-      );
+
 
       // ✅ Navigate to payment page
       navigate("/payment", {
@@ -168,8 +139,7 @@ const PassengerDetails: React.FC = () => {
     passengerDetails.name &&
     passengerDetails.phone &&
     passengerDetails.address &&
-    passengerDetails.nic &&
-    otpVerified;
+    passengerDetails.nic;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -232,48 +202,19 @@ const PassengerDetails: React.FC = () => {
               </div>
 
               {/* Phone */}
-              <div className="relative flex items-center">
+              <div className="relative">
                 <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                 <input
                   type="tel"
                   placeholder="Phone Number"
                   value={passengerDetails.phone}
-                  onChange={e => {
-                    handleInputChange("phone", e.target.value);
-                    setOtpVerified(false); // Reset OTP if phone changes
-                  }}
-                  className="w-full pl-10 pr-28 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  onChange={e => handleInputChange("phone", e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={sendOtp}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-[#fdc106] hover:bg-[#e6ad05] rounded-lg font-semibold"
-                >
-                  Send OTP
-                </button>
               </div>
 
-              {/* OTP */}
-              {sentOtp && !otpVerified && (
-                <div className="relative flex items-center">
-                  <Key className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Enter OTP"
-                    value={otp}
-                    onChange={e => setOtp(e.target.value)}
-                    className="w-full pl-10 pr-28 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={verifyOtp}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-[#32cd32] hover:bg-[#28a828] rounded-lg font-semibold text-white"
-                  >
-                    Verify
-                  </button>
-                </div>
-              )}
+
 
               {/* Address */}
               <div className="relative">
@@ -291,9 +232,6 @@ const PassengerDetails: React.FC = () => {
 
             {error && (
               <p className="mt-4 text-red-600 dark:text-red-400 text-sm font-medium">{error}</p>
-            )}
-            {otpError && (
-              <p className="mt-2 text-red-600 dark:text-red-400 text-sm font-medium">{otpError}</p>
             )}
           </div>
         </div>

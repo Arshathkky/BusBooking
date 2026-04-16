@@ -11,18 +11,6 @@ cron.schedule("*/1 * * * *", async () => {
   });
 
   for (const booking of expiredBookings) {
-    // Release seats
-    await Bus.updateOne(
-      { _id: booking.busId },
-      {
-        $pull: {
-          heldSeats: {
-            seatNumber: { $in: booking.selectedSeats }
-          }
-        }
-      }
-    );
-
     booking.paymentStatus = "CANCELLED";
     await booking.save();
 

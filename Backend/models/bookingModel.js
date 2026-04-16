@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 
 const passengerSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  phone: { type: String, required: true },
-  address: { type: String, required: true },
+  name: { type: String },
+  phone: { type: String },
+  address: { type: String },
   nic: { type: String },
 });
 

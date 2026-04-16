@@ -13,7 +13,7 @@ export interface PassengerDetails {
   name: string;
   phone: string;
   address: string;
-  nic:string
+  nic: string
 }
 export interface BusInfo {
   id: string;
@@ -58,6 +58,7 @@ interface BookingContextType {
   fetchBookings: () => Promise<void>;
   addBooking: (booking: Omit<Booking, "_id" | "bookingId" | "referenceId">) => Promise<Booking | null>;
   updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
+  updateBookingDetails: (id: string, details: Partial<Booking>) => Promise<Booking | null>;
   getBookingById: (id: string) => Promise<Booking | null>;
 
   // 📊 Today helpers
@@ -199,6 +200,34 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  /* -------------------- Update Booking Details -------------------- */
+  const updateBookingDetails = async (
+    id: string,
+    details: Partial<Booking>
+  ): Promise<Booking | null> => {
+    try {
+      setLoading(true);
+
+      const { data } = await axios.put<{
+        success: boolean;
+        booking: Booking;
+      }>(`${API_URL}/${id}`, details);
+
+      if (data.success) {
+        setBookings((prev) =>
+          prev.map((b) => (b._id === id ? data.booking : b))
+        );
+        return data.booking;
+      }
+      return null;
+    } catch (err) {
+      handleError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* -------------------- Today Helpers -------------------- */
 
   const today = new Date().toISOString().split("T")[0];
@@ -234,6 +263,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
         fetchBookings,
         addBooking,
         updatePaymentStatus,
+        updateBookingDetails,
         getBookingById,
         todayBookings,
         totalPassengersToday,

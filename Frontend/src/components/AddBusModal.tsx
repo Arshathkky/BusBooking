@@ -101,10 +101,52 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   const availableAmenities = ["wifi", "ac", "refreshments", "entertainment", "charging", "blanket"];
 
   // ------------------------------
+  // Auto-calculate seat layout from total seats
+  // Logic: fill last row first, then divide remaining into 2x2 or 2x3
+  // ------------------------------
+  const computeSeatLayout = (total: number): { layout: SeatLayoutType; lastRow: LastRowType } => {
+    // Try 2x3 layout (5 seats per row) with last row of 5 or 6
+    // Try 2x2 layout (4 seats per row) with last row of 4
+
+    // Option A: 2x3 with lastRow=6 → remaining should divide by 5
+    if ((total - 6) > 0 && (total - 6) % 5 === 0) {
+      return { layout: "2x3", lastRow: 6 };
+    }
+    // Option B: 2x2 with lastRow=4 → remaining should divide by 4
+    if ((total - 4) > 0 && (total - 4) % 4 === 0) {
+      return { layout: "2x2", lastRow: 4 };
+    }
+    // Option C: 2x3 with lastRow=6 (allow partial last normal row)
+    if ((total - 6) > 0) {
+      return { layout: "2x3", lastRow: 6 };
+    }
+    // Option D: 2x2 with lastRow=4 (allow partial last normal row)
+    if ((total - 4) > 0) {
+      return { layout: "2x2", lastRow: 4 };
+    }
+    // Fallback
+    return { layout: "2x2", lastRow: 4 };
+  };
+
+  // ------------------------------
   // Handlers
   // ------------------------------
   const handleInputChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+
+      // Auto-calculate layout when totalSeats changes
+      if (field === "totalSeats") {
+        const total = value as number;
+        if (total >= 20 && total <= 80) {
+          const { layout, lastRow } = computeSeatLayout(total);
+          updated.seatLayout = layout;
+          updated.lastRowSeats = lastRow;
+        }
+      }
+
+      return updated;
+    });
   };
 
   const handleAmenityToggle = (amenity: string) => {
@@ -178,6 +220,11 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     }
   };
 
+  // Compute display info for the user
+  const seatsPerRow = formData.seatLayout === "2x2" ? 4 : 5;
+  const normalSeats = formData.totalSeats - formData.lastRowSeats;
+  const normalRows = Math.ceil(normalSeats / seatsPerRow);
+
   // ------------------------------
   // Render
   // ------------------------------
@@ -217,24 +264,48 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                 <input type="text" placeholder="Duration" value={formData.duration} onChange={(e) => handleInputChange("duration", e.target.value)} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]" required />
               </div>
 
-              {/* Bus Type, Total Seats, Seat Layout, Last Row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {/* Bus Type & Total Seats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <select value={formData.busType} onChange={(e) => handleInputChange("busType", e.target.value)} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]">
                   {busTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
 
-                <input type="number" placeholder="Total Seats" value={formData.totalSeats} onChange={(e) => handleInputChange("totalSeats", Number(e.target.value))} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]" min={20} max={60} />
+                <input type="number" placeholder="Total Seats" value={formData.totalSeats} onChange={(e) => handleInputChange("totalSeats", Number(e.target.value))} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]" min={10} max={80} />
+              </div>
 
-                {/* Seat Layout Dropdown */}
-                <select value={formData.seatLayout} onChange={(e) => handleSeatLayoutChange(e.target.value as SeatLayoutType)} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#fdc106]">
-                  <option value="2x2">2x2 Layout</option>
-                  <option value="2x3">2x3 Layout</option>
-                </select>
+              {/* Auto-calculated layout info + override options */}
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                <p className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-2">
+                  Auto Layout: {formData.seatLayout} | {normalRows} rows × {seatsPerRow} seats + Last row {formData.lastRowSeats} seats
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  {/* Seat Layout Override */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Row Layout (Override)</label>
+                    <select value={formData.seatLayout} onChange={(e) => handleSeatLayoutChange(e.target.value as SeatLayoutType)} className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#fdc106]">
+                      <option value="2x2">2×2 Layout (4 per row)</option>
+                      <option value="2x3">2×3 Layout (5 per row)</option>
+                    </select>
+                  </div>
 
-                <select value={formData.lastRowSeats} onChange={(e) => handleInputChange("lastRowSeats", Number(e.target.value) as LastRowType)} className="w-full px-4 py-3 border rounded-lg">
-                  <option value={4}>Last Row 4 Seats</option>
-                  <option value={6}>Last Row 6 Seats</option>
-                </select>
+                  {/* Last Row Seats Override */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Last Row Seats (Override)</label>
+                    <input
+                      type="number"
+                      value={formData.lastRowSeats}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (val >= 1 && val <= Math.min(formData.totalSeats, 10)) {
+                          handleInputChange("lastRowSeats", val as LastRowType);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#fdc106]"
+                      min={1}
+                      max={10}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Price & Route */}

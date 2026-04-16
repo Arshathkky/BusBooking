@@ -91,7 +91,7 @@ const AssignAgentTab: React.FC = () => {
 
     setRemoving(true);
     try {
-      await axios.patch(`http://localhost:5000/api/buses/${selectedBusId}/agent-seats/remove`, {
+      await axios.patch(`https://bus-booking-nt91.onrender.com/api/buses/${selectedBusId}/agent-seats/remove`, {
         seatNumbers: selectedSeats,
       });
       alert("✅ Agent seat assignment removed!");

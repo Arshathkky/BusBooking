@@ -8,6 +8,7 @@ interface BusLayoutDesignerProps {
   totalSeats: number;
   currentLadiesSeats: number[];
   seatLayout: SeatLayoutType;
+  seatNumberingType: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
   onSave: (ladiesSeats: number[]) => void;
   onClose: () => void;
@@ -17,6 +18,7 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
   totalSeats,
   currentLadiesSeats,
   seatLayout,
+  seatNumberingType,
   lastRowSeats,
   onSave,
   onClose,
@@ -88,6 +90,10 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
 
       }
 
+      if (seatNumberingType === "door_side") {
+        rowSeats.reverse();
+      }
+
       let grid;
 
       if (seatLayout === "2x2") {
@@ -136,6 +142,10 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
         seatNumber++;
       }
 
+    }
+
+    if (seatNumberingType === "door_side") {
+      lastRowSeatsArr.reverse();
     }
 
     let lastRowGrid;

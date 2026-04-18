@@ -26,9 +26,9 @@ const Login: React.FC = () => {
       return;
     }
 
-    // 🔥 Log agent info if role is agent
-    if (user.role === 'agent') {
-      console.log('Agent ID:', user.id);
+    // 🔥 Log conductor info if role is conductor
+    if (user.role === 'conductor') {
+      console.log('Conductor ID:', user.id);
       console.log('Assigned Bus ID:', user.assignedBusId);
     }
 
@@ -43,12 +43,12 @@ const Login: React.FC = () => {
       case 'conductor':
         navigate('/conductor/dashboard');
         break;
-      case 'agent':
+      case 'conductor':
         if (!user.assignedBusId) {
-          setError('No bus assigned to this agent.');
+          setError('No bus assigned to this conductor.');
           return;
         }
-        navigate('/agent/dashboard');
+        navigate('/conductor/dashboard');
         break;
       default:
         navigate('/');

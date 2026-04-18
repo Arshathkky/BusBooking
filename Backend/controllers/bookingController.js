@@ -209,32 +209,57 @@ export const getOccupiedSeatsForDate = async (req, res) => {
 };
 
 /* ===========================
-   ASSIGN AGENT SEATS (LAYOUT)
+   CANCEL BOOKING (WITH REMARK)
 =========================== */
-export const assignAgentSeats = async (req, res) => {
+export const cancelBooking = async (req, res) => {
   try {
-    const { agentId, seatNumbers } = req.body;
+    const { id } = req.params;
+    const { remark, cancelledBy } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    booking.paymentStatus = "CANCELLED";
+    booking.cancelRemark = remark || "No remark provided";
+    booking.cancelledBy = cancelledBy || "conductor";
+    await booking.save();
+
+    res.status(200).json({ success: true, message: "Booking cancelled", booking });
+  } catch (error) {
+    console.error("Cancel Booking Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ===========================
+   ASSIGN CONDUCTOR SEATS (REPLACING AGENT)
+=========================== */
+export const assignConductorSeats = async (req, res) => {
+  try {
+    const { conductorId, seatNumbers } = req.body;
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ message: "Bus not found" });
 
-    const agent = await Conductor.findById(agentId);
-    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    const conductor = await Conductor.findById(conductorId);
+    if (!conductor) return res.status(404).json({ message: "Conductor not found" });
 
     bus.seats = bus.seats.map((seat) => {
       if (seatNumbers.includes(seat.seatNumber)) {
         return {
           ...seat.toObject(),
-          agentAssigned: true,
-          agentId,
-          agentCode: agent.agentCode,
-          isReservedForAgent: true,
+          conductorAssigned: true,
+          conductorId,
+          conductorCode: conductor.conductorCode,
+          isReservedForConductor: true,
         };
       }
       return seat;
     });
 
     await bus.save();
-    res.status(200).json({ message: "Agent seats assigned", bus });
+    res.status(200).json({ message: "Conductor seats assigned", bus });
   } catch (error) {
     res.status(500).json({ message: "Failed", error });
   }

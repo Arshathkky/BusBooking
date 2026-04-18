@@ -4,24 +4,24 @@ import { useConductor } from "../../contexts/conductorDataContext";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 
-const AssignAgentTab: React.FC = () => {
+const AssignConductorTab: React.FC = () => {
   const { user } = useAuth();
   const { buses, fetchBuses, loading } = useBus();
   const { conductors } = useConductor();
 
   const [selectedBusId, setSelectedBusId] = useState<string>("");
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [selectedConductorId, setSelectedConductorId] = useState<string>("");
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [removing, setRemoving] = useState(false);
 
-  // Filter buses and agents for this owner
+  // Filter buses and conductors for this owner
   const ownerBuses = useMemo(
     () => buses.filter((b) => b.ownerId === user?.id),
     [buses, user]
   );
-  const agents = useMemo(
-    () => conductors.filter((c) => c.role === "agent" && c.ownerId === user?.id),
+  const ownerConductors = useMemo(
+    () => conductors.filter((c) => c.role === "conductor" && c.ownerId === user?.id),
     [conductors, user]
   );
 
@@ -32,13 +32,13 @@ const AssignAgentTab: React.FC = () => {
     if (!selectedBus) return [];
     return selectedBus.seats.map((seat) => ({
       ...seat,
-      highlight: selectedAgentId ? seat.agentId === selectedAgentId : false,
+      highlight: selectedConductorId ? seat.conductorId === selectedConductorId : false,
       displayName:
-        seat.agentAssigned && seat.agentId
-          ? `${seat.agentCode?.[0] || "A"}${seat.seatNumber}`
+        seat.conductorAssigned && seat.conductorId
+          ? `${seat.conductorCode?.[0] || "A"}${seat.seatNumber}`
           : "",
     }));
-  }, [selectedBus, selectedAgentId]);
+  }, [selectedBus, selectedConductorId]);
 
   const rows = Math.ceil(seatLayout.length / 5);
 
@@ -47,8 +47,8 @@ const AssignAgentTab: React.FC = () => {
     // Block normal occupied seats
     if (seat.isOccupied) return;
 
-    // Allow selection if empty OR assigned to selected agent
-    if (seat.agentAssigned && seat.agentId !== selectedAgentId) return;
+    // Allow selection if empty OR assigned to selected conductor
+    if (seat.conductorAssigned && seat.conductorId !== selectedConductorId) return;
 
     setSelectedSeats((prev) =>
       prev.includes(seat.seatNumber)
@@ -57,17 +57,18 @@ const AssignAgentTab: React.FC = () => {
     );
   };
 
-  // Assign seats to agent
-  const assignSeatsToAgent = async () => {
-    if (!selectedBusId || !selectedAgentId || selectedSeats.length === 0) {
-      alert("⚠️ Select bus, agent, and seats first");
+  // Assign seats to conductor
+  const assignSeatsToConductor = async () => {
+    if (!selectedBusId || !selectedConductorId || selectedSeats.length === 0) {
+      alert("⚠️ Select bus, conductor, and seats first");
       return;
     }
 
     setAssigning(true);
+    const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/buses`;
     try {
-      await axios.put(`https://bus-booking-nt91.onrender.com/api/buses/${selectedBusId}/agent-seats`, {
-        agentId: selectedAgentId,
+      await axios.put(`${API_URL}/${selectedBusId}/conductor-seats`, {
+        conductorId: selectedConductorId,
         seatNumbers: selectedSeats,
         markAsOccupied: false,
       });
@@ -82,19 +83,20 @@ const AssignAgentTab: React.FC = () => {
     }
   };
 
-  // Remove selected agent seats
-  const removeAgentSeats = async () => {
-    if (!selectedBusId || !selectedAgentId || selectedSeats.length === 0) {
-      alert("⚠️ Select bus, agent, and seats to remove");
+  // Remove selected conductor seats
+  const removeConductorSeats = async () => {
+    if (!selectedBusId || !selectedConductorId || selectedSeats.length === 0) {
+      alert("⚠️ Select bus, conductor, and seats to remove");
       return;
     }
 
     setRemoving(true);
+    const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/buses`;
     try {
-      await axios.patch(`https://bus-booking-nt91.onrender.com/api/buses/${selectedBusId}/agent-seats/remove`, {
+      await axios.patch(`${API_URL}/${selectedBusId}/conductor-seats/remove`, {
         seatNumbers: selectedSeats,
       });
-      alert("✅ Agent seat assignment removed!");
+      alert("✅ Conductor seat assignment removed!");
       setSelectedSeats([]);
       await fetchBuses();
     } catch (err) {
@@ -108,7 +110,7 @@ const AssignAgentTab: React.FC = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-        Assign / Remove Agent Seats
+        Assign / Remove Conductor Seats
       </h3>
 
       {/* Bus Select */}
@@ -128,33 +130,45 @@ const AssignAgentTab: React.FC = () => {
         ))}
       </select>
 
-      {/* Agent Select */}
+      {/* Conductor Select */}
       <select
-        value={selectedAgentId}
+        value={selectedConductorId}
         onChange={(e) => {
-          setSelectedAgentId(e.target.value);
+          setSelectedConductorId(e.target.value);
           setSelectedSeats([]);
         }}
         className="w-full mb-4 p-2 border rounded-lg bg-gray-50 dark:bg-gray-700"
       >
-        <option value="">Select Agent</option>
-        {agents.map((agent) => (
-          <option key={agent.id} value={agent.id}>
-            {agent.name} ({agent.agentCode})
+        <option value="">Select Conductor</option>
+        {ownerConductors.map((conductor) => (
+          <option key={conductor.id} value={conductor.id}>
+            {conductor.name} ({conductor.conductorCode})
           </option>
         ))}
       </select>
 
       {/* Seat Layout */}
-      {selectedBus && selectedAgentId && (
+      {selectedBus && selectedConductorId && (
         <div className="mb-4">
           <div className="grid gap-2">
-            {Array.from({ length: rows }, (_, rowIndex) => (
+            {Array.from({ length: rows }, (_, rowIndex) => {
+              const seatsPerRow = selectedBus.seatLayout === "2x2" ? 4 : 5;
+              const start = rowIndex * seatsPerRow;
+              // Normally, last row might have more/less seats, but assuming standard rows here for simplicity 
+              const end = Math.min(start + seatsPerRow, seatLayout.length);
+              let rowSeats = seatLayout.slice(start, end);
+
+              if (selectedBus.seatNumberingType === "door_side") {
+                rowSeats = [...rowSeats].reverse();
+              }
+
+              const leftCols = 2;
+              const rightCols = seatsPerRow === 4 ? 2 : 3;
+
+              return (
               <div key={rowIndex} className="flex justify-center space-x-2">
                 <div className="flex space-x-1">
-                  {[0, 1, 2].map((i) => {
-                    const seat = seatLayout[rowIndex * 5 + i];
-                    if (!seat) return null;
+                  {rowSeats.slice(0, leftCols).map((seat) => {
                     const isSelected = selectedSeats.includes(seat.seatNumber);
                     return (
                       <button
@@ -164,9 +178,9 @@ const AssignAgentTab: React.FC = () => {
                           ${
                             seat.isOccupied
                               ? "bg-gray-400 text-white cursor-not-allowed"
-                              : seat.agentAssigned && seat.agentId !== selectedAgentId
+                              : seat.conductorAssigned && seat.conductorId !== selectedConductorId
                               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                              : seat.agentId === selectedAgentId
+                              : seat.conductorId === selectedConductorId
                               ? "bg-yellow-300 text-black border-yellow-500"
                               : isSelected
                               ? "bg-blue-300 border-blue-500"
@@ -179,8 +193,8 @@ const AssignAgentTab: React.FC = () => {
                             ? "Occupied"
                             : seat.isLadiesOnly
                             ? "Ladies Only"
-                            : seat.agentAssigned
-                            ? `Agent: ${seat.agentCode}`
+                            : seat.conductorAssigned
+                            ? `Conductor: ${seat.conductorCode}`
                             : "Available"
                         }
                       >
@@ -191,9 +205,7 @@ const AssignAgentTab: React.FC = () => {
                 </div>
                 <div className="w-8" />
                 <div className="flex space-x-1">
-                  {[3, 4].map((i) => {
-                    const seat = seatLayout[rowIndex * 5 + i];
-                    if (!seat) return null;
+                  {rowSeats.slice(leftCols, leftCols + rightCols).map((seat) => {
                     const isSelected = selectedSeats.includes(seat.seatNumber);
                     return (
                       <button
@@ -203,9 +215,9 @@ const AssignAgentTab: React.FC = () => {
                           ${
                             seat.isOccupied
                               ? "bg-gray-400 text-white cursor-not-allowed"
-                              : seat.agentAssigned && seat.agentId !== selectedAgentId
+                              : seat.conductorAssigned && seat.conductorId !== selectedConductorId
                               ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                              : seat.agentId === selectedAgentId
+                              : seat.conductorId === selectedConductorId
                               ? "bg-yellow-300 text-black border-yellow-500"
                               : isSelected
                               ? "bg-blue-300 border-blue-500"
@@ -218,8 +230,8 @@ const AssignAgentTab: React.FC = () => {
                             ? "Occupied"
                             : seat.isLadiesOnly
                             ? "Ladies Only"
-                            : seat.agentAssigned
-                            ? `Agent: ${seat.agentCode}`
+                            : seat.conductorAssigned
+                            ? `Conductor: ${seat.conductorCode}`
                             : "Available"
                         }
                       >
@@ -229,7 +241,7 @@ const AssignAgentTab: React.FC = () => {
                   })}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -237,7 +249,7 @@ const AssignAgentTab: React.FC = () => {
       {/* Action Buttons */}
       <div className="flex gap-2">
         <button
-          onClick={assignSeatsToAgent}
+          onClick={assignSeatsToConductor}
           disabled={assigning || loading}
           className={`flex-1 py-2 rounded-lg font-medium ${
             assigning || loading
@@ -248,7 +260,7 @@ const AssignAgentTab: React.FC = () => {
           {assigning ? "Assigning..." : "Assign Seats"}
         </button>
         <button
-          onClick={removeAgentSeats}
+          onClick={removeConductorSeats}
           disabled={removing || loading}
           className={`flex-1 py-2 rounded-lg font-medium ${
             removing || loading
@@ -263,4 +275,4 @@ const AssignAgentTab: React.FC = () => {
   );
 };
 
-export default AssignAgentTab;
+export default AssignConductorTab;

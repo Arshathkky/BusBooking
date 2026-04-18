@@ -5,7 +5,8 @@ import {
   getBookingById,
   updatePaymentStatus,
   getOccupiedSeatsForDate,
-  updateBooking
+  updateBooking,
+  cancelBooking
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get("/", getAllBookings); // Get all bookings
 router.get("/:id", getBookingById); // Get one booking
 router.put("/:id", updateBooking); // Update booking details
 router.put("/:id/payment", updatePaymentStatus); // Update payment status
+router.patch("/:id/cancel", cancelBooking); // Cancel booking with remark
 
 export default router;

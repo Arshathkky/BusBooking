@@ -6,17 +6,11 @@ const seatSchema = new mongoose.Schema({
 
   isLadiesOnly: { type: Boolean, default: false },
 
-  // Agent info
-  agentAssigned: { type: Boolean, default: false },
-  agentCode: { type: String, default: null },
-  agentId: { type: String, default: null },
-  isReservedForAgent: { type: Boolean, default: false },
-
-  // 🔥 SEAT HOLD
-  isHeld: { type: Boolean, default: false },
-  heldBy: { type: String, default: null }, // sessionId / userId
-  holdExpiresAt: { type: Date, default: null },
-
+  // Conductor info
+  conductorAssigned: { type: Boolean, default: false },
+  conductorCode: { type: String, default: null },
+  conductorId: { type: String, default: null },
+  isReservedForConductor: { type: Boolean, default: false },
   // Permanent occupancy
   isOccupied: { type: Boolean, default: false },
 });
@@ -53,6 +47,13 @@ const busSchema = new mongoose.Schema(
       required: true,
     },
 
+    seatNumberingType: {
+      type: String,
+      enum: ["driver_side", "door_side"],
+      default: "driver_side",
+      required: true,
+    },
+
     lastRowSeats: {
       type: Number,
       default: 4,
@@ -60,6 +61,19 @@ const busSchema = new mongoose.Schema(
       min: 1,
       max: 10,
     },
+
+    // ✅ New: Define which seats are available for online booking
+    onlineSeatRange: {
+      start: { type: Number, default: 1 },
+      end: { type: Number, default: 30 }
+    },
+
+    // ✅ New: Days-based scheduling (Monday, Tuesday, etc.)
+    schedule: {
+      type: [String],
+      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    }
   },
   { timestamps: true }
 );

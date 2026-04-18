@@ -10,12 +10,9 @@ export interface Seat {
   seatNumber: number;
   isLadiesOnly: boolean;
   isOccupied: boolean;
-  agentAssigned?: boolean;
-  isReservedForAgent?: boolean;
-  agentId?: string | null;
-  isHeld?: boolean;
-  heldBy?: string | null;
-  holdExpiresAt?: string | null;
+  conductorAssigned?: boolean;
+  isReservedForConductor?: boolean;
+  conductorId?: string | null;
 }
 
 export interface Bus {
@@ -26,8 +23,10 @@ export interface Bus {
   price: number;
   seats: Seat[];
   busNumber: string;
-  seatLayout: SeatLayoutType;   // main layout
-  lastRowSeats: LastRowType;    // last row layout
+  seatLayout: SeatLayoutType;
+  lastRowSeats: LastRowType;
+  seatNumberingType: "driver_side" | "door_side"; // 👈 NEW
+  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
 }
 
 // Backend response wrapper
@@ -46,6 +45,8 @@ interface BusFromBackend {
   busNumber: string;
   seatLayout?: SeatLayoutType;
   lastRowSeats?: LastRowType;
+  seatNumberingType?: "driver_side" | "door_side"; // 👈 NEW
+  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
 }
 
 // -------------------- Context Type --------------------
@@ -95,18 +96,17 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         totalSeats: busData.totalSeats,
         price: busData.price,
         busNumber: busData.busNumber,
-        seatLayout: busData.seatLayout ?? "2x2",      // default main layout
-        lastRowSeats: busData.lastRowSeats ?? 6,      // default last row seats
+        seatLayout: busData.seatLayout ?? "2x2",
+        lastRowSeats: busData.lastRowSeats ?? 6,
+        seatNumberingType: busData.seatNumberingType ?? "driver_side", // 👈 NEW
+        onlineSeatRange: busData.onlineSeatRange, // 👈 NEW
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,
           isOccupied: s.isOccupied ?? false,
-          agentAssigned: s.agentAssigned ?? false,
-          isReservedForAgent: s.isReservedForAgent ?? false,
-          agentId: s.agentId ?? null,
-          isHeld: s.isHeld ?? false,
-          heldBy: s.heldBy ?? null,
-          holdExpiresAt: s.holdExpiresAt ?? null,
+          conductorAssigned: s.conductorAssigned ?? false,
+          isReservedForConductor: s.isReservedForConductor ?? false,
+          conductorId: s.conductorId ?? null,
         })),
       });
 

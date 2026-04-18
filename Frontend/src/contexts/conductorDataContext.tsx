@@ -11,8 +11,8 @@ export interface ConductorType {
   assignedBusId?: string;
   ownerId: string;
   status: "active" | "inactive";
-  role: "conductor" | "agent";
-  agentCode?:string;
+  role: "conductor";
+  conductorCode?:string;
   city?: string;
 }
 
@@ -46,7 +46,7 @@ export const ConductorProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/conductors";
+  const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/conductors`;
 
   // -------------------- Fetch --------------------
   const fetchConductors = async (ownerId?: string): Promise<void> => {

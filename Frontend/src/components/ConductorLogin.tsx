@@ -5,10 +5,10 @@ import axios from "axios";
 
 interface Area {
   name: string;
-  agents: number;
+  conductors: number;
 }
 
-function AgentLogin() {
+function ConductorLogin() {
   const navigate = useNavigate();
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ function AgentLogin() {
   const fetchCities = async () => {
     try {
       const res = await axios.get(
-        "https://bus-booking-nt91.onrender.com/api/conductors/agent-cities/list"
+        "https://bus-booking-nt91.onrender.com/api/conductors/conductor-cities/list"
       );
       setAreas(res.data);
     } catch (err) {
@@ -60,7 +60,7 @@ function AgentLogin() {
                   <MapPin className="w-8 h-8 mx-auto mb-2 text-blue-600" />
                   <p className="font-semibold text-gray-800">{area.name}</p>
                   <p className="text-sm text-gray-500">
-                    {area.agents} agents
+                    {area.conductors} conductors
                   </p>
                 </button>
               ))}
@@ -68,7 +68,7 @@ function AgentLogin() {
 
             {areas.length === 0 && (
               <p className="text-center text-gray-500">
-                No agent cities available
+                No conductor cities available
               </p>
             )}
           </div>
@@ -78,4 +78,4 @@ function AgentLogin() {
   );
 }
 
-export default AgentLogin;
+export default ConductorLogin;

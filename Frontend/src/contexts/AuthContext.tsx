@@ -13,12 +13,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "owner" | "conductor" | "agent";
+  role: "admin" | "owner" | "conductor";
 
   // Optional fields
   area?: string;
   assignedBusId?: string | null;
-  agentCode?: string;
+  conductorCode?: string;
 }
 
 interface AuthContextType {
@@ -119,12 +119,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             id: data._id,
             name: data.name,
             email: data.email,
-            role: data.role as "conductor" | "agent",
+            role: data.role as "conductor",
             area: data.city || "Unknown",
 
-            // 🔥 Important for agent dashboard
+            // 🔥 Important for conductor dashboard
             assignedBusId: data.assignedBusId || null,
-            agentCode: data.agentCode || null,
+            conductorCode: data.conductorCode || null,
           };
 
           setUser(condUser);

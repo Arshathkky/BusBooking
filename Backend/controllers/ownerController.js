@@ -1,14 +1,14 @@
-const Owner = require("../models/ownerModel");
-const Bus = require("../models/busModel");
-const Conductor = require("../models/conductorModel");
-const Route = require("../models/routeModel");
-const Booking = require("../models/bookingModel");
-const bcrypt = require("bcryptjs");
+import Owner from "../models/ownerModel.js";
+import Bus from "../models/busModel.js";
+import Conductor from "../models/conductorModel.js";
+import Route from "../models/routeModel.js";
+import Booking from "../models/bookingModel.js";
+import bcrypt from "bcryptjs";
 
 // ------------------------------
 // Get all owners
 // ------------------------------
-exports.getOwners = async (req, res) => {
+export const getOwners = async (req, res) => {
   try {
     const owners = await Owner.find().sort({ createdAt: -1 }).select("-password");
     res.json(owners);
@@ -21,7 +21,7 @@ exports.getOwners = async (req, res) => {
 // ------------------------------
 // Get single owner by ID
 // ------------------------------
-exports.getOwnerById = async (req, res) => {
+export const getOwnerById = async (req, res) => {
   try {
     const owner = await Owner.findById(req.params.id).select("-password");
     if (!owner) return res.status(404).json({ message: "Owner not found" });
@@ -35,7 +35,7 @@ exports.getOwnerById = async (req, res) => {
 // ------------------------------
 // Get owner details with stats
 // ------------------------------
-exports.getOwnerDetails = async (req, res) => {
+export const getOwnerDetails = async (req, res) => {
   try {
     const ownerId = req.params.id;
     const owner = await Owner.findById(ownerId);
@@ -103,7 +103,7 @@ exports.getOwnerDetails = async (req, res) => {
 // ------------------------------
 // Owner login
 // ------------------------------
-exports.loginOwner = async (req, res) => {
+export const loginOwner = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -124,7 +124,7 @@ exports.loginOwner = async (req, res) => {
 // ------------------------------
 // Add new owner
 // ------------------------------
-exports.addOwner = async (req, res) => {
+export const addOwner = async (req, res) => {
   try {
     const {
       name,
@@ -166,7 +166,7 @@ exports.addOwner = async (req, res) => {
 // ------------------------------
 // Update owner
 // ------------------------------
-exports.updateOwner = async (req, res) => {
+export const updateOwner = async (req, res) => {
   try {
     const fields = [
       "name",
@@ -202,7 +202,7 @@ exports.updateOwner = async (req, res) => {
 // ------------------------------
 // Delete owner
 // ------------------------------
-exports.deleteOwner = async (req, res) => {
+export const deleteOwner = async (req, res) => {
   try {
     const owner = await Owner.findByIdAndDelete(req.params.id);
     if (!owner) return res.status(404).json({ message: "Owner not found" });

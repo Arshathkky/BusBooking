@@ -4,30 +4,8 @@ import Conductor from "../models/conductorModel.js";
 
 // --------------------
 
-const cleanExpiredHolds = (bus) => {
-  const now = new Date();
-  let updated = false;
 
-  bus.seats = bus.seats.map((seat) => {
-    if (
-      seat.isHeld &&
-      seat.holdExpiresAt &&
-      new Date(seat.holdExpiresAt).getTime() <= now.getTime()
-    ) {
-      updated = true;
-      return {
-        ...seat.toObject(),
-        isHeld: false,
-        heldBy: null,
-        holdExpiresAt: null,
-      };
-    }
-    return seat;
-  });
-
-  return updated;
-};
-// Add a new bus (with ladies + agent seats)
+// Add a new bus (with ladies + conductor seats)
 // --------------------
 export const addBus = async (req, res) => {
   try {
@@ -49,7 +27,7 @@ export const addBus = async (req, res) => {
       isSpecial = false,
       specialTime = null,
       ladiesOnlySeats = [],
-      agentSeats = [], // 👈 Added field
+      conductorSeats = [], // 👈 Added field
       busNumber,
       seatLayout = "2x2",
       lastRowSeats= 4,
@@ -94,21 +72,21 @@ export const addBus = async (req, res) => {
         }));
     }
 
-    // ✅ Initialize seat layout with ladies + agent seats
+    // ✅ Initialize seat layout with ladies + conductor seats
     const seats = Array.from({ length: totalSeats }, (_, i) => {
       const seatNumber = i + 1;
       const isLadiesOnly = ladiesOnlySeats.includes(seatNumber);
 
-      const agentSeat = agentSeats.find((s) => s.seatNumber === seatNumber);
-      const isAgentSeat = !!agentSeat;
+      const conductorSeat = conductorSeats.find((s) => s.seatNumber === seatNumber);
+      const isConductorSeat = !!conductorSeat;
 
       return {
         seatNumber,
         isLadiesOnly,
         isOccupied: false,
-        agentAssigned: isAgentSeat,
-        agentCode: isAgentSeat ? agentSeat.agentCode : null,
-        agentId: isAgentSeat ? agentSeat.agentId || null : null,
+        conductorAssigned: isConductorSeat,
+        conductorCode: isConductorSeat ? conductorSeat.conductorCode : null,
+        conductorId: isConductorSeat ? conductorSeat.conductorId || null : null,
       };
     });
 
@@ -140,7 +118,7 @@ export const addBus = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Bus created successfully with ladies and agent seats",
+      message: "Bus created successfully with ladies and conductor seats",
       data: bus,
     });
   } catch (error) {
@@ -248,9 +226,9 @@ export const updateSeatLayout = async (req, res) => {
 
       seat.isOccupied = updatedSeat.isOccupied ?? seat.isOccupied;
       seat.isLadiesOnly = updatedSeat.isLadiesOnly ?? seat.isLadiesOnly;
-      seat.agentAssigned = updatedSeat.agentAssigned ?? seat.agentAssigned;
-      seat.agentCode = updatedSeat.agentCode ?? seat.agentCode;
-      seat.agentId = updatedSeat.agentId ?? seat.agentId;
+      seat.conductorAssigned = updatedSeat.conductorAssigned ?? seat.conductorAssigned;
+      seat.conductorCode = updatedSeat.conductorCode ?? seat.conductorCode;
+      seat.conductorId = updatedSeat.conductorId ?? seat.conductorId;
     }
 
     await bus.save();
@@ -261,24 +239,24 @@ export const updateSeatLayout = async (req, res) => {
   }
 };
 
-export const verifyAgentCode = async (req, res) => {
+export const verifyConductorCode = async (req, res) => {
   try {
     const { code } = req.body;
 
     if (!code) {
-      return res.json({ success: false, message: "Agent code required" });
+      return res.json({ success: false, message: "Conductor code required" });
     }
 
-    const agent = await Conductor.findOne({ agentCode: code });
+    const conductor = await Conductor.findOne({ conductorCode: code });
 
-    if (!agent) {
-      return res.json({ success: false, message: "Invalid agent code" });
+    if (!conductor) {
+      return res.json({ success: false, message: "Invalid conductor code" });
     }
 
     res.json({
       success: true,
-      agentId: agent._id,
-      agentCode: agent.agentCode,
+      conductorId: conductor._id,
+      conductorCode: conductor.conductorCode,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Verification failed" });
@@ -286,18 +264,18 @@ export const verifyAgentCode = async (req, res) => {
 };
 
 // --------------------
-// Get all agent-assigned seats
+// Get all conductor-assigned seats
 // --------------------
-export const getAgentSeats = async (req, res) => {
+export const getConductorSeats = async (req, res) => {
   try {
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    const agentSeats = bus.seats.filter((s) => s.agentAssigned);
-    res.status(200).json({ success: true, data: agentSeats });
+    const conductorSeats = bus.seats.filter((s) => s.conductorAssigned);
+    res.status(200).json({ success: true, data: conductorSeats });
   } catch (error) {
-    console.error("Get Agent Seats Error:", error);
-    res.status(500).json({ success: false, message: "Failed to fetch agent seats" });
+    console.error("Get Conductor Seats Error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch conductor seats" });
   }
 };
 
@@ -344,26 +322,26 @@ export const toggleBusStatus = async (req, res) => {
 
 
 
-// ✅ PUT /api/buses/:id/agent-seats
-export const assignAgentSeats = async (req, res) => {
+// ✅ PUT /api/buses/:id/conductor-seats
+export const assignConductorSeats = async (req, res) => {
   try {
-    const { agentId, seatNumbers, markAsOccupied } = req.body;
+    const { conductorId, seatNumbers, markAsOccupied } = req.body;
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ message: "Bus not found" });
 
-    // Get agent details (for agentCode)
-    const agent = await Conductor.findById(agentId);
-    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    // Get conductor details (for conductorCode)
+    const conductor = await Conductor.findById(conductorId);
+    if (!conductor) return res.status(404).json({ message: "Conductor not found" });
 
     bus.seats = bus.seats.map((seat) => {
       if (seatNumbers.includes(seat.seatNumber)) {
         return {
           ...seat.toObject(),
-          agentAssigned: true,
-          agentId,
-          agentCode: agent.agentCode,
+          conductorAssigned: true,
+          conductorId,
+          conductorCode: conductor.conductorCode,
           isOccupied: markAsOccupied, // Only mark if selected
-          isReservedForAgent: !markAsOccupied,
+          isReservedForConductor: !markAsOccupied,
         };
       }
       return seat;
@@ -377,8 +355,8 @@ export const assignAgentSeats = async (req, res) => {
   }
 };
 
-// ✅ PATCH /api/buses/:id/agent-seats/remove
-export const removeAgentSeats = async (req, res) => {
+// ✅ PATCH /api/buses/:id/conductor-seats/remove
+export const removeConductorSeats = async (req, res) => {
   try {
     const { seatNumbers } = req.body;
     const bus = await Bus.findById(req.params.id);
@@ -388,190 +366,26 @@ export const removeAgentSeats = async (req, res) => {
       if (seatNumbers.includes(seat.seatNumber)) {
         return {
           ...seat.toObject(),
-          agentAssigned: false,
-          agentId: null,
-          agentCode: null,
+          conductorAssigned: false,
+          conductorId: null,
+          conductorCode: null,
           isOccupied: false,
-          isReservedForAgent: false,
+          isReservedForConductor: false,
         };
       }
       return seat;
     });
 
     await bus.save();
-    res.status(200).json({ message: "Agent assignment removed", bus });
+    res.status(200).json({ message: "Conductor assignment removed", bus });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Failed to remove agent assignment", error });
+    res.status(500).json({ message: "Failed to remove conductor assignment", error });
   }
 };
 
 
-// ✅ Hold seats temporarily for 10 minutes
-// ✅ Hold seats temporarily for 10 minutes
-export const holdSeats = async (req, res) => {
-  try {
-    const { busId, seatNumbers, sessionId, holdDuration } = req.body;
 
-    if (!busId || !Array.isArray(seatNumbers) || !sessionId) {
-      return res.status(400).json({
-        success: false,
-        message: "busId, seatNumbers and sessionId are required",
-      });
-    }
-
-    const bus = await Bus.findById(busId);
-    if (!bus) {
-      return res.status(404).json({
-        success: false,
-        message: "Bus not found",
-      });
-    }
-
-    const now = Date.now();
-
-    // ===============================
-    // 🔥 1. CLEAN EXPIRED HOLDS FIRST
-    // ===============================
-    let updated = false;
-
-    bus.seats = bus.seats.map((seat) => {
-      if (
-        seat.isHeld &&
-        seat.holdExpiresAt &&
-        new Date(seat.holdExpiresAt).getTime() <= now
-      ) {
-        updated = true;
-        return {
-          ...seat.toObject(),
-          isHeld: false,
-          heldBy: null,
-          holdExpiresAt: null,
-        };
-      }
-      return seat;
-    });
-
-    // ===============================
-    // 🔥 2. VALIDATION
-    // ===============================
-    for (const seat of bus.seats) {
-      if (!seatNumbers.includes(seat.seatNumber)) continue;
-
-      // ❌ already booked
-      if (seat.isOccupied) {
-        return res.status(400).json({
-          success: false,
-          message: `Seat ${seat.seatNumber} already booked`,
-        });
-      }
-
-      // ❌ locked by another user
-      if (
-        seat.isHeld &&
-        seat.heldBy &&
-        seat.heldBy !== sessionId &&
-        seat.holdExpiresAt &&
-        new Date(seat.holdExpiresAt).getTime() > now
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: `Seat ${seat.seatNumber} is locked by another user`,
-        });
-      }
-    }
-
-    // ===============================
-    // 🔥 3. APPLY HOLD
-    // ===============================
-    const holdTime = holdDuration || 10 * 60 * 1000;
-    const holdExpiresAt = new Date(now + holdTime);
-
-    bus.seats = bus.seats.map((seat) => {
-      if (!seatNumbers.includes(seat.seatNumber)) return seat;
-
-      return {
-        ...seat.toObject(),
-        isHeld: true,
-        heldBy: sessionId,
-        holdExpiresAt,
-      };
-    });
-
-    await bus.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Seats held successfully",
-      holdExpiresAt,
-      updatedExpiredSeats: updated,
-      bus,
-    });
-
-  } catch (err) {
-    console.error("Hold Seats Error:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: err.message || "Internal server error",
-    });
-  }
-};
-
-
-export const releaseSeats = async (req, res) => {
-  try {
-    const { busId, seatNumbers, sessionId } = req.body;
-
-    const bus = await Bus.findById(busId);
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
-
-    bus.seats = bus.seats.map((seat) => {
-      if (seatNumbers.includes(seat.seatNumber)) {
-
-        // only owner can release
-        if (seat.heldBy !== sessionId) return seat;
-
-        return {
-          ...seat.toObject(),
-          isHeld: false,
-          heldBy: null,
-          holdExpiresAt: null,
-        };
-      }
-      return seat;
-    });
-
-    await bus.save();
-
-    res.json({ success: true, message: "Seats released" });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// ✅ Release expired holds (call before fetching seats)
-export const releaseExpiredHolds = async (bus) => {
-  const now = new Date();
-
-  bus.seats = bus.seats.map((seat) => {
-    if (
-      seat.isHeld &&
-      seat.holdExpiresAt &&
-      new Date(seat.holdExpiresAt).getTime() <= now.getTime()
-    ) {
-      return {
-        ...seat.toObject(),
-        isHeld: false,
-        heldBy: null,
-        holdExpiresAt: null,
-      };
-    }
-    return seat;
-  });
-
-  await bus.save();
-};
 export const getSeatLayout = async (req, res) => {
   try {
     const { id } = req.params;
@@ -596,32 +410,9 @@ export const getSeatLayout = async (req, res) => {
       });
     }
 
-    // 3️⃣ Release expired holds (VERY IMPORTANT 🔥)
-    const now = new Date();
-
-    let updated = false;
-
-    bus.seats = bus.seats.map((seat) => {
-      if (
-        seat.isHeld &&
-        seat.holdExpiresAt &&
-        new Date(seat.holdExpiresAt) <= now
-      ) {
-        updated = true;
-
-        return {
-          ...seat.toObject(),
-          isHeld: false,
-          heldBy: null,
-          holdExpiresAt: null,
-        };
-      }
-      return seat;
-    });
-
     // 4️⃣ Save only if changes happened (OPTIMIZED)
     if (updated) {
-      await bus.save();
+      // await bus.save();
     }
 
     // 5️⃣ Send response
@@ -636,5 +427,40 @@ export const getSeatLayout = async (req, res) => {
       success: false,
       message: "Failed to fetch seat layout",
     });
+  }
+};
+
+// ✅ PATCH /api/buses/:id/online-range
+export const updateOnlineSeatRange = async (req, res) => {
+  try {
+    const { start, end } = req.body;
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+    bus.onlineSeatRange = { start, end };
+    await bus.save();
+
+    res.status(200).json({ success: true, message: "Online seat range updated", data: bus.onlineSeatRange });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PUT /api/buses/:id/schedule
+export const updateSchedule = async (req, res) => {
+  console.log("📅 Updating schedule for bus:", req.params.id, "Data:", req.body);
+  try {
+    const { schedule } = req.body;
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    bus.schedule = schedule;
+    await bus.save();
+
+    console.log("✅ Schedule saved successfully");
+    res.status(200).json({ success: true, message: "Schedule updated", data: bus.schedule });
+  } catch (error) {
+    console.error("❌ Schedule update error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

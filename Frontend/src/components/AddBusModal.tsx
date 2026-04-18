@@ -35,6 +35,7 @@ interface FormData {
   endTime: string;
   duration: string;
   seatLayout: SeatLayoutType;
+  seatNumberingType: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
 }
 
@@ -62,6 +63,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     endTime: "",
     duration: "",
     seatLayout: "2x2",
+    seatNumberingType: "driver_side",
     lastRowSeats: 6,
   });
 
@@ -89,6 +91,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         endTime: editingBus.arrivalTime,
         duration: editingBus.duration,
         seatLayout: editingBus.seatLayout || "2x2",
+        seatNumberingType: editingBus.seatNumberingType || "driver_side",
         lastRowSeats: editingBus.lastRowSeats || 6,
       });
     }
@@ -178,9 +181,9 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       seatNumber: i + 1,
       isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
       isOccupied: false,
-      agentAssigned: false,
-      agentCode: null,
-      agentId: null,
+      conductorAssigned: false,
+      conductorCode: null,
+      conductorId: null,
     }));
 
     const busPayload: Omit<BusType, "id"> = {
@@ -202,6 +205,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       ownerId: user.id,
       seats,
       seatLayout: formData.seatLayout,
+      seatNumberingType: formData.seatNumberingType,
       lastRowSeats: formData.lastRowSeats,
     };
 
@@ -285,6 +289,15 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     <select value={formData.seatLayout} onChange={(e) => handleSeatLayoutChange(e.target.value as SeatLayoutType)} className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#fdc106]">
                       <option value="2x2">2×2 Layout (4 per row)</option>
                       <option value="2x3">2×3 Layout (5 per row)</option>
+                    </select>
+                  </div>
+
+                  {/* Seat Numbering System */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Seat Numbering System</label>
+                    <select value={formData.seatNumberingType} onChange={(e) => handleInputChange("seatNumberingType", e.target.value as "driver_side" | "door_side")} className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#fdc106]">
+                      <option value="driver_side">Starts from Driver Side</option>
+                      <option value="door_side">Starts from Door Side</option>
                     </select>
                   </div>
 
@@ -377,6 +390,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
           totalSeats={formData.totalSeats}
           currentLadiesSeats={formData.ladiesOnlySeats}
           seatLayout={formData.seatLayout}
+          seatNumberingType={formData.seatNumberingType}
           lastRowSeats={formData.lastRowSeats}
           onSave={handleLayoutSave}
           onClose={() => setShowLayoutDesigner(false)}

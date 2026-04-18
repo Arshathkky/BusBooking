@@ -8,9 +8,9 @@ export interface SeatType {
   seatNumber: number;
   isLadiesOnly: boolean;
   isOccupied: boolean;
-  agentAssigned?: boolean;
-  agentCode?: string | null;
-  agentId?: string | null;
+  conductorAssigned?: boolean;
+  conductorCode?: string | null;
+  conductorId?: string | null;
 }
 
 // Seat layout type
@@ -40,7 +40,10 @@ export interface BusType {
   seats: SeatType[];
   busNumber: string;
   seatLayout: SeatLayoutType; // main layout
+  seatNumberingType: "driver_side" | "door_side";
   lastRowSeats?: LastRowType;  // last row layout
+  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
+  schedule?: string[]; // 👈 NEW
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {
@@ -91,7 +94,7 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/buses";
+  const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/buses`;
 
   // ------------------------------
   // Map _id to id

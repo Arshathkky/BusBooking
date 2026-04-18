@@ -15,10 +15,11 @@ import { BusType, useBus } from "../contexts/busDataContexts";
 import { useConductor, ConductorType } from "../contexts/conductorDataContext";
 import { useRouteData, RouteType } from "../contexts/RouteDataContext";
 import AddRouteModal from "../components/AddRouteModal";
-import AssignAgentTab from "./ownerDashboard/AssignTab";
+import AssignConductorTab from "./ownerDashboard/AssignTab";
+import ScheduleTab from "./ownerDashboard/ScheduleTab";
 
 const OwnerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignAgent">("overview"); 
+  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule">("overview"); 
   const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
 
   // ---------------- Owner Overview ----------------
@@ -127,8 +128,8 @@ const OwnerDashboard: React.FC = () => {
   const handleEditBus = (bus: BusType) => { setEditingBus(bus); setShowBusModal(true); };
   const handleEditConductor = (c: ConductorType) => { setEditingConductor(c); setShowAddConductorModal(true); };
 
-  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignAgent"> =
-    ["overview", "buses", "conductors", "routes", "assignAgent"];
+  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule"> =
+    ["overview", "buses", "conductors", "routes", "assignConductor", "schedule"];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -454,11 +455,14 @@ const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ---------------- Assign Agent Tab ---------------- */}
-      {activeTab === "assignAgent" && (
-        <div>
-          <AssignAgentTab />
-        </div>
+      {/* ---------------- Assign Conductor Tab ---------------- */}
+      {activeTab === "assignConductor" && (
+        <AssignConductorTab />
+      )}
+
+      {/* ---------------- Schedule Tab ---------------- */}
+      {activeTab === "schedule" && (
+        <ScheduleTab />
       )}
     </div>
   );

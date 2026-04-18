@@ -5,7 +5,7 @@ export interface SeatLayoutItem {
   number: string;
   isOccupied?: boolean;
   isLadiesOnly?: boolean;
-  assignedAgentId?: string;
+  assignedConductorId?: string;
 }
 
 interface BusSeatLayoutProps {

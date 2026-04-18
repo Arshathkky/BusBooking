@@ -18,11 +18,11 @@ const conductorSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["conductor", "agent"],
+      enum: ["conductor"],
       default: "conductor",
     },
 
-    agentCode: {
+    conductorCode: {
       type: String,
       default: null,
       unique: true,

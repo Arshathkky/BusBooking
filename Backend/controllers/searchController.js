@@ -31,11 +31,17 @@ export const searchBuses = async (req, res) => {
     }
 
     const routeIds = matchingRoutes.map(r => r._id);
+    
+    // Calculate Day of Week
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const searchDateObj = new Date(date);
+    const dayOfWeek = days[searchDateObj.getDay()];
 
-    // 2️⃣ Get buses
+    // 2️⃣ Get buses that run on this day
     const buses = await Bus.find({
       routeId: { $in: routeIds },
       status: "active",
+      schedule: { $in: [dayOfWeek] }
     });
 
     // 3️⃣ Get PAID bookings ONLY (date-wise)
@@ -57,13 +63,8 @@ export const searchBuses = async (req, res) => {
         0
       );
 
-      // Held seats (real-time)
-      const heldSeatsCount = bus.seats.filter(
-        s => s.isHeld && s.holdExpiresAt && s.holdExpiresAt > now
-      ).length;
-
       const seatsAvailable =
-        bus.totalSeats - bookedSeatsCount - heldSeatsCount;
+        bus.totalSeats - bookedSeatsCount;
 
       const route = matchingRoutes.find(
         r => r._id.toString() === bus.routeId.toString()

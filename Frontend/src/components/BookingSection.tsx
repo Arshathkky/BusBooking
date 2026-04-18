@@ -30,7 +30,7 @@ function BookingSection() {
             <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 mt-4 group-hover:translate-x-2 transition-transform duration-300" />
           </button>
 
-          {/* Agent Login */}
+          {/* Conductor Login */}
           {/* <button
             onClick={() => navigate('/#')}
             className="group bg-gradient-to-r from-orange-500 to-red-500 text-white py-10 sm:py-12 rounded-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex flex-col items-center"

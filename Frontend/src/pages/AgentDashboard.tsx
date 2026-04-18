@@ -15,24 +15,24 @@ interface DashboardData {
   assignedSeats: number[];
 }
 
-const AgentDashboard: React.FC = () => {
+const ConductorDashboard: React.FC = () => {
   const { user } = useAuth(); // ✅ Use AuthContext
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const agentId = user?.id; // ✅ Get agent ID from AuthContext
+  const conductorId = user?.id; // ✅ Get conductor ID from AuthContext
   const assignedBusId = user?.assignedBusId;
 
   useEffect(() => {
-    if (!agentId) {
-      setError("Agent ID is missing. Please login again.");
+    if (!conductorId) {
+      setError("Conductor ID is missing. Please login again.");
       setLoading(false);
       return;
     }
 
     if (!assignedBusId) {
-      setError("No bus assigned to this agent.");
+      setError("No bus assigned to this conductor.");
       setLoading(false);
       return;
     }
@@ -40,7 +40,7 @@ const AgentDashboard: React.FC = () => {
     const fetchDashboard = async () => {
       try {
         const res = await axios.get<DashboardData>(
-          `https://bus-booking-nt91.onrender.com/api/agent/dashboard/${agentId}`
+          `https://bus-booking-nt91.onrender.com/api/conductor/dashboard/${conductorId}`
         );
         setData(res.data);
       } catch (err: unknown) {
@@ -58,7 +58,7 @@ const AgentDashboard: React.FC = () => {
     };
 
     fetchDashboard();
-  }, [agentId, assignedBusId]);
+  }, [conductorId, assignedBusId]);
 
   if (loading)
     return (
@@ -133,4 +133,4 @@ const AgentDashboard: React.FC = () => {
   );
 };
 
-export default AgentDashboard;
+export default ConductorDashboard;

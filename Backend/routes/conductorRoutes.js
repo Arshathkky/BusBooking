@@ -8,10 +8,10 @@ import {
   deleteConductor,
   toggleConductorStatus,
   loginConductor,
-   getAgentCities,
-   getAgentBus,       // ✅ added
-  getAgentSeats,     // ✅ added
-  getAgentDashboard  //
+   getConductorCities,
+   getConductorBus,       // ✅ added
+  getConductorSeats,     // ✅ added
+  getConductorDashboard  //
 } from "../controllers/conductorController.js"; // <-- Must include `.js`
 
 const router = express.Router();
@@ -25,10 +25,10 @@ router.put("/:id", updateConductor);
 router.delete("/:id", deleteConductor);
 router.patch("/:id/toggle", toggleConductorStatus);
 router.post("/login", loginConductor);
-router.get("/agent-cities/list", getAgentCities);
-router.get("/agent/:id/bus", getAgentBus);
-router.get("/agent-seats", getAgentSeats);
-router.get("/dashboard/:agentId", getAgentDashboard);
+router.get("/conductor-cities/list", getConductorCities);
+router.get("/conductor/:id/bus", getConductorBus);
+router.get("/conductor-seats", getConductorSeats);
+router.get("/dashboard/:conductorId", getConductorDashboard);
 
 export default router;
     

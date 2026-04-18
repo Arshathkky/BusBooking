@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 const ownerSchema = new mongoose.Schema(
   {
@@ -44,4 +44,5 @@ ownerSchema.pre("findOneAndUpdate", async function (next) {
   next();
 });
 
-module.exports = mongoose.model("Owner", ownerSchema);
+const Owner = mongoose.model("Owner", ownerSchema);
+export default Owner;

@@ -1,9 +1,9 @@
-const express = require("express");
+import express from "express";
 const router = express.Router();
 
 // Controllers
-const ownerController = require("../controllers/ownerController");
-const overviewController = require("../controllers/overviewController");
+import * as ownerController from "../controllers/ownerController.js";
+import * as overviewController from "../controllers/overviewController.js";
 
 // Owner login
 router.post("/login", ownerController.loginOwner);
@@ -20,4 +20,4 @@ router.delete("/:id", ownerController.deleteOwner);
 router.get("/:id/overview", overviewController.getOwnerOverview);
 
 
-module.exports = router;
+export default router;

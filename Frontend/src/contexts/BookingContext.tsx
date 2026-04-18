@@ -44,6 +44,8 @@ export interface Booking {
   totalAmount: number;
   passengerDetails: PassengerDetails;
   paymentStatus?: PaymentStatus;
+  cancelRemark?: string;  // ✅ ADDED
+  cancelledBy?: string;   // ✅ ADDED
   createdAt?: string;
   updatedAt?: string;
 }
@@ -90,9 +92,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
-  const API_URL = import.meta.env.VITE_API_URL
-    ? `${import.meta.env.VITE_API_URL}/bookings`
-    : "https://bus-booking-nt91.onrender.com/api/bookings";
+  const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/bookings`;
 
   /* -------------------- Error Handler -------------------- */
 

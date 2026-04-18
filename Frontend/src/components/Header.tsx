@@ -21,7 +21,6 @@ const Header: React.FC = () => {
       case 'admin': return '/admin';
       case 'owner': return '/owner';
       case 'conductor': return '/conductor';
-      case 'agent': return '/agent';
       default: return '/';
     }
   };

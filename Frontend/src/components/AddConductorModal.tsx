@@ -24,8 +24,8 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
     password: "",
     assignedBusId: "",
     status: "active" as "active" | "inactive",
-    role: "conductor" as "conductor" | "agent",
-    agentCode: "",
+    role: "conductor" as "conductor" | "conductor",
+    conductorCode: "",
     city: "", // ✅ Added
   });
 
@@ -44,7 +44,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
         assignedBusId: editingConductor.assignedBusId || "",
         status: editingConductor.status,
         role: editingConductor.role,
-        agentCode: editingConductor.agentCode || "",
+        conductorCode: editingConductor.conductorCode || "",
         city: editingConductor.city || "",
       });
     }
@@ -72,14 +72,14 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
       return;
     }
 
-    // Require agent fields
-    if (formData.role === "agent") {
-      if (!formData.agentCode.trim()) {
-        setError("Agent Code is required for agents.");
+    // Require conductor fields
+    if (formData.role === "conductor") {
+      if (!formData.conductorCode.trim()) {
+        setError("Conductor Code is required for conductors.");
         return;
       }
       if (!formData.city.trim()) {
-        setError("City is required for agents.");
+        setError("City is required for conductors.");
         return;
       }
     }
@@ -93,7 +93,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           assignedBusId: formData.assignedBusId || undefined,
           status: formData.status,
           role: formData.role,
-          agentCode: formData.agentCode || undefined,
+          conductorCode: formData.conductorCode || undefined,
           city: formData.city || undefined,
           ...(formData.password.trim() && { password: formData.password }),
         });
@@ -107,7 +107,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           ownerId: user.id,
           status: formData.status,
           role: formData.role,
-          agentCode: formData.agentCode || undefined,
+          conductorCode: formData.conductorCode || undefined,
           city: formData.city || undefined,
         });
       }
@@ -225,20 +225,20 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
               required
             >
               <option value="conductor">Conductor</option>
-              <option value="agent">Agent</option>
+              <option value="conductor">Conductor</option>
             </select>
 
-            {/* Agent Fields */}
-            {formData.role === "agent" && (
+            {/* Conductor Fields */}
+            {formData.role === "conductor" && (
               <>
-                {/* Agent Code */}
+                {/* Conductor Code */}
                 <div className="relative">
                   <Hash className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Agent Code"
-                    value={formData.agentCode}
-                    onChange={(e) => handleInputChange("agentCode", e.target.value)}
+                    placeholder="Conductor Code"
+                    value={formData.conductorCode}
+                    onChange={(e) => handleInputChange("conductorCode", e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
                     required
                   />

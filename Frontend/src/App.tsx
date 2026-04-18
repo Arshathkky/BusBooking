@@ -11,9 +11,8 @@ import { BookingProvider } from './contexts/BookingContext';
 import { OwnerProvider } from './contexts/OwnerContext';
 
 import Header from './components/Header';
-import AgentDashboard from './pages/AgentDashboard';
-import OwnerDashboard from './pages/OwnerDashboard';
 import ConductorDashboard from './pages/ConductorDashboard';
+import OwnerDashboard from './pages/OwnerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import BusSearch from './pages/BusSearch';
@@ -22,7 +21,7 @@ import BookingConfirmation from './pages/BookingConfirmation';
 import PassengerDetails from './pages/PassengerDetails';
 import Payment from './pages/Payment';
 import Home from './components/Home';
-import AgentLogin from './components/AgentLogin';
+import ConductorLogin from "./components/ConductorLogin";
 
 import './index.css';
 
@@ -32,7 +31,6 @@ const getDashboardRoute = (role: string) => {
     case 'admin': return '/admin';
     case 'owner': return '/owner';
     case 'conductor': return '/conductor';
-    case 'agent': return '/agent';
     default: return '/';
   }
 };
@@ -70,11 +68,11 @@ const AppContent: React.FC = () => {
 
           {/* Protected Routes */}
           {/* <Route
-            path="/agent"
+            path="/conductor"
             element={
-              user?.role === 'agent' ? (
-                <AgentDashboard
-                  agent={{ name: user.name, area: user.area || 'Unknown' }}
+              user?.role === 'conductor' ? (
+                <ConductorDashboard
+                  conductor={{ name: user.name, area: user.area || 'Unknown' }}
                   onLogout={handleLogout}
                 />
               ) : (
@@ -82,7 +80,7 @@ const AppContent: React.FC = () => {
               )
             }
           /> */}
-          <Route path="/agent-place" element={<AgentLogin />} />
+          <Route path="/conductor-place" element={<ConductorLogin />} />
           <Route path="/owner" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
           <Route path="/conductor" element={user?.role === 'conductor' ? <ConductorDashboard /> : <Navigate to="/login" />} />
           <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />

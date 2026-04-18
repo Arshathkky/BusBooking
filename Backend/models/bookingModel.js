@@ -43,6 +43,8 @@ const bookingSchema = new mongoose.Schema(
 
     // 🔥 NEW FIELDS
     paymentExpiresAt: { type: Date, required: true },
+    cancelRemark: { type: String, default: "" },
+    cancelledBy: { type: String, enum: ["customer", "conductor", "admin"], default: null },
   },
   { timestamps: true }
 );

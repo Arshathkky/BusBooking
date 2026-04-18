@@ -3,7 +3,7 @@ import Bus from "../models/busModel.js";
 
 
 // ------------------------------------------------------
-// Create Conductor / Agent
+// Create Conductor / Conductor
 // ------------------------------------------------------
 export const createConductor = async (req, res) => {
   try {
@@ -16,7 +16,7 @@ export const createConductor = async (req, res) => {
       status,
       role,
       password,
-      agentCode,
+      conductorCode,
       city,
     } = req.body;
 
@@ -24,21 +24,21 @@ export const createConductor = async (req, res) => {
       return res.status(400).json({ message: "Password is required" });
     }
 
-    // Require agent fields
-    if (role === "agent") {
-      if (!agentCode) {
-        return res.status(400).json({ message: "Agent Code is required" });
+    // Require conductor fields
+    if (role === "conductor") {
+      if (!conductorCode) {
+        return res.status(400).json({ message: "Conductor Code is required" });
       }
       if (!city) {
-        return res.status(400).json({ message: "City is required for agent" });
+        return res.status(400).json({ message: "City is required for conductor" });
       }
     }
 
-    // Prevent duplicate agentCode
-    if (agentCode) {
-      const existing = await Conductor.findOne({ agentCode });
+    // Prevent duplicate conductorCode
+    if (conductorCode) {
+      const existing = await Conductor.findOne({ conductorCode });
       if (existing) {
-        return res.status(400).json({ message: "Agent Code already exists" });
+        return res.status(400).json({ message: "Conductor Code already exists" });
       }
     }
 
@@ -51,8 +51,8 @@ export const createConductor = async (req, res) => {
       status: status || "active",
       role: role || "conductor",
       password,
-      agentCode: role === "agent" ? agentCode : null,
-      city: role === "agent" ? city : null,
+      conductorCode: role === "conductor" ? conductorCode : null,
+      city: role === "conductor" ? city : null,
     });
 
     const saved = await conductor.save();
@@ -80,23 +80,23 @@ export const getAllConductors = async (req, res) => {
 };
 
 // ------------------------------------------------------
-// Get Unique Agent Cities
+// Get Unique Conductor Cities
 // ------------------------------------------------------
-export const getAgentCities = async (req, res) => {
+export const getConductorCities = async (req, res) => {
   try {
     const cities = await Conductor.aggregate([
-      { $match: { role: "agent", city: { $ne: null } } },
+      { $match: { role: "conductor", city: { $ne: null } } },
       {
         $group: {
           _id: "$city",
-          agentCount: { $sum: 1 },
+          conductorCount: { $sum: 1 },
         },
       },
       {
         $project: {
           _id: 0,
           name: "$_id",
-          agents: "$agentCount",
+          conductors: "$conductorCount",
         },
       },
       { $sort: { name: 1 } },
@@ -153,7 +153,7 @@ export const updateConductor = async (req, res) => {
       "status",
       "role",
       "password",
-      "agentCode",
+      "conductorCode",
       "city",
     ];
 
@@ -163,13 +163,13 @@ export const updateConductor = async (req, res) => {
       }
     });
 
-    // If role updated to agent → require agent fields
-    if (updateData.role === "agent") {
-      if (!updateData.agentCode) {
-        return res.status(400).json({ message: "Agent Code is required" });
+    // If role updated to conductor → require conductor fields
+    if (updateData.role === "conductor") {
+      if (!updateData.conductorCode) {
+        return res.status(400).json({ message: "Conductor Code is required" });
       }
       if (!updateData.city) {
-        return res.status(400).json({ message: "City is required for agent" });
+        return res.status(400).json({ message: "City is required for conductor" });
       }
     }
 
@@ -232,7 +232,7 @@ export const toggleConductorStatus = async (req, res) => {
 
 
 // ------------------------------------------------------
-// Login Conductor / Agent
+// Login Conductor / Conductor
 // ------------------------------------------------------
 export const loginConductor = async (req, res) => {
   const { email, password } = req.body;
@@ -262,21 +262,21 @@ export const loginConductor = async (req, res) => {
 };
 
 // ------------------------------------------------------
-// Get Agent Assigned Bus
+// Get Conductor Assigned Bus
 
 
-// -------------------- Get Bus assigned to an agent --------------------
-export const getAgentBus = async (req, res) => {
+// -------------------- Get Bus assigned to an conductor --------------------
+export const getConductorBus = async (req, res) => {
   try {
-    const agentId = req.params.id;
+    const conductorId = req.params.id;
 
     // Fetch the conductor
-    const conductor = await Conductor.findById(agentId);
+    const conductor = await Conductor.findById(conductorId);
     if (!conductor) {
-      return res.status(404).json({ message: "Agent not found" });
+      return res.status(404).json({ message: "Conductor not found" });
     }
 
-    // Example: fetch the bus assigned to this agent
+    // Example: fetch the bus assigned to this conductor
     // Replace with your Bus model
     const bus = conductor.assignedBusId
       ? { name: "Express Luxury", busNumber: "EX123", route: "Colombo → Kandy", departureTime: "06:00" }
@@ -288,10 +288,10 @@ export const getAgentBus = async (req, res) => {
   }
 };
 
-// -------------------- Get seats assigned to agent --------------------
-export const getAgentSeats = async (req, res) => {
+// -------------------- Get seats assigned to conductor --------------------
+export const getConductorSeats = async (req, res) => {
   try {
-    const agentId = req.query.agentId; // Or get from req.params
+    const conductorId = req.query.conductorId; // Or get from req.params
 
     // Example: Replace with your Seat model query
     const assignedSeats = [1, 2, 3, 4]; 
@@ -302,26 +302,26 @@ export const getAgentSeats = async (req, res) => {
   }
 };
 
-// -------------------- Agent Dashboard (bus + seats) --------------------
-// GET /api/agent/dashboard/:agentId
-export const getAgentDashboard = async (req, res) => {
+// -------------------- Conductor Dashboard (bus + seats) --------------------
+// GET /api/conductor/dashboard/:conductorId
+export const getConductorDashboard = async (req, res) => {
   try {
-    const { agentId } = req.params;
+    const { conductorId } = req.params;
 
-    if (!agentId) return res.status(400).json({ message: "Agent ID not found" });
+    if (!conductorId) return res.status(400).json({ message: "Conductor ID not found" });
 
-    const agent = await Conductor.findById(agentId);
+    const conductor = await Conductor.findById(conductorId);
 
-    if (!agent) return res.status(404).json({ message: "Agent not found" });
+    if (!conductor) return res.status(404).json({ message: "Conductor not found" });
 
-    if (!agent.assignedBusId) {
+    if (!conductor.assignedBusId) {
       return res.status(404).json({ message: "No bus assigned" });
     }
 
-    const bus = await Bus.findById(agent.assignedBusId);
+    const bus = await Bus.findById(conductor.assignedBusId);
 
     const assignedSeats = await Seat.find({
-      agentId: agent._id,
+      conductorId: conductor._id,
       isOccupied: false,  // or whatever your seat logic is
     }).select("seatNumber -_id");
 

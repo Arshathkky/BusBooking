@@ -41,11 +41,9 @@ const Login: React.FC = () => {
         navigate('/owner');
         break;
       case 'conductor':
-        navigate('/conductor/dashboard');
-        break;
-      case 'conductor':
         if (!user.assignedBusId) {
           setError('No bus assigned to this conductor.');
+          setLoading(false);
           return;
         }
         navigate('/conductor/dashboard');

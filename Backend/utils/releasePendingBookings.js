@@ -30,4 +30,6 @@ export const releasePendingBookings = async () => {
 };
 
 // Run every minute
-setInterval(releasePendingBookings, 60 * 1000);
+export const startReleaseInterval = () => {
+  setInterval(releasePendingBookings, 60 * 1000);
+};

@@ -109,8 +109,6 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           conductorId: s.conductorId ?? null,
         })),
       });
-
-      setSelectedSeats([]);
     } catch (err) {
       console.error("❌ Failed to fetch bus seats:", err);
     }

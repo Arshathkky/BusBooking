@@ -265,22 +265,25 @@ export const loginConductor = async (req, res) => {
 // Get Conductor Assigned Bus
 
 
-// -------------------- Get Bus assigned to an conductor --------------------
+// -------------------- Get Bus assigned to a conductor --------------------
 export const getConductorBus = async (req, res) => {
   try {
     const conductorId = req.params.id;
 
-    // Fetch the conductor
     const conductor = await Conductor.findById(conductorId);
     if (!conductor) {
       return res.status(404).json({ message: "Conductor not found" });
     }
 
-    // Example: fetch the bus assigned to this conductor
-    // Replace with your Bus model
-    const bus = conductor.assignedBusId
-      ? { name: "Express Luxury", busNumber: "EX123", route: "Colombo → Kandy", departureTime: "06:00" }
-      : null;
+    if (!conductor.assignedBusId) {
+      return res.status(200).json({ bus: null });
+    }
+
+    // ✅ Fetch the real bus from the database
+    const bus = await Bus.findById(conductor.assignedBusId);
+    if (!bus) {
+      return res.status(200).json({ bus: null });
+    }
 
     res.status(200).json({ bus });
   } catch (err) {
@@ -291,10 +294,20 @@ export const getConductorBus = async (req, res) => {
 // -------------------- Get seats assigned to conductor --------------------
 export const getConductorSeats = async (req, res) => {
   try {
-    const conductorId = req.query.conductorId; // Or get from req.params
+    const conductorId = req.query.conductorId;
 
-    // Example: Replace with your Seat model query
-    const assignedSeats = [1, 2, 3, 4]; 
+    const conductor = await Conductor.findById(conductorId);
+    if (!conductor || !conductor.assignedBusId) {
+      return res.status(200).json({ assignedSeats: [] });
+    }
+
+    // ✅ Read embedded seats from the bus document
+    const bus = await Bus.findById(conductor.assignedBusId);
+    if (!bus) return res.status(200).json({ assignedSeats: [] });
+
+    const assignedSeats = bus.seats
+      .filter((s) => s.conductorId === conductorId.toString())
+      .map((s) => s.seatNumber);
 
     res.status(200).json({ assignedSeats });
   } catch (err) {
@@ -320,12 +333,13 @@ export const getConductorDashboard = async (req, res) => {
 
     const bus = await Bus.findById(conductor.assignedBusId);
 
-    const assignedSeats = await Seat.find({
-      conductorId: conductor._id,
-      isOccupied: false,  // or whatever your seat logic is
-    }).select("seatNumber -_id");
+    if (!bus) {
+      return res.status(404).json({ message: "Assigned bus not found" });
+    }
 
-    const seatNumbers = assignedSeats.map(s => s.seatNumber);
+    const assignedSeats = bus.seats
+      .filter(s => s.conductorId === conductorId.toString() && !s.isOccupied)
+      .map(s => s.seatNumber);
 
     res.json({
       bus: {

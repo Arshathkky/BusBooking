@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useBus } from "../contexts/busDataContexts";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 
 type SeatBookingRow = {
   id: string; // booking mongo id
@@ -49,8 +49,11 @@ const ConductorDashboard: React.FC = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [selectedBusId, setSelectedBusId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // ✅ Derive assigned bus from the logged-in conductor — read-only, set by owner
+  const assignedConductor = conductors.find((c) => c.email === user?.email);
+  const selectedBusId = assignedConductor?.assignedBusId ?? null;
 
   const [onlineRange, setOnlineRange] = useState({ start: 1, end: 32 });
   const [schedule, setSchedule] = useState<string[]>([]);
@@ -124,13 +127,7 @@ const ConductorDashboard: React.FC = () => {
 
   const currentBus = buses.find(b => b.id === selectedBusId);
 
-  useEffect(() => {
-    if (!user) return;
-    const conductor = conductors.find((c) => c.email === user.email);
-    if (conductor && conductor.assignedBusId) {
-      setSelectedBusId(conductor.assignedBusId);
-    }
-  }, [user, conductors]);
+  // ✅ No longer needed — selectedBusId is derived directly from assignedConductor
 
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
@@ -282,18 +279,18 @@ const ConductorDashboard: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-sm flex items-center gap-2 border dark:border-gray-700">
-               <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1"><Filter className="w-3 h-3"/> Bus</div>
-               <select 
-                value={selectedBusId || ""} 
-                onChange={e => setSelectedBusId(e.target.value)}
-                className="font-bold text-gray-800 dark:bg-gray-700 dark:text-white rounded border-none focus:ring-0 text-sm"
-              >
-                <option value="">Choose Bus...</option>
-                {buses.map(b => (
-                  <option key={b.id} value={b.id}>{b.name} ({b.busNumber})</option>
-                ))}
-              </select>
+            {/* ✅ Read-only: show only the bus assigned by the owner */}
+            <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-xl shadow-sm flex items-center gap-3 border dark:border-gray-700">
+              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                <Bus className="w-3 h-3"/> Assigned Bus
+              </div>
+              {currentBus ? (
+                <span className="font-bold text-gray-800 dark:text-white text-sm">
+                  {currentBus.name} <span className="text-gray-400 font-normal">({currentBus.busNumber})</span>
+                </span>
+              ) : (
+                <span className="text-sm text-red-500 font-semibold">No bus assigned by owner</span>
+              )}
             </div>
 
             <button 
@@ -449,7 +446,8 @@ const ConductorDashboard: React.FC = () => {
           {!selectedBusId ? (
             <div className="py-20 text-center text-gray-400">
                <Bus className="w-16 h-16 mx-auto mb-4 opacity-10" />
-               <p className="font-black">Please select a bus to view bookings</p>
+               <p className="font-black">No bus has been assigned to you yet.</p>
+               <p className="text-xs mt-2">Please contact the bus owner to get assigned.</p>
             </div>
           ) : (
             <div className="border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden">

@@ -35,7 +35,7 @@ interface SeatLayoutProps {
   seatLayout: SeatLayoutType;
   seatNumberingType?: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
-  onlineRange?: { start: number; end: number }; // 👈 NEW
+  seatsData: any[]; // 👈 Array of SeatType objects
 }
 
 
@@ -54,9 +54,10 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   seatLayout,
   seatNumberingType = "driver_side",
   lastRowSeats,
-  onlineRange = { start: 1, end: 100 }, // Default wide 👈 NEW
+  seatsData,
 }) => {
   const renderSeat = (i: number) => {
+    const seatObj = seatsData.find(s => s.seatNumber === i);
     const isOccupied = occupiedSeats.has(i);
     const isReserved = reservedSeats.has(i);
     const isLadies = ladiesOnlySeats.has(i);
@@ -65,7 +66,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isSelected = selectedSeats.includes(i);
     
     // Check if outside online range 👈 NEW
-    const isBlockedForOnline = i < onlineRange.start || i > onlineRange.end;
+    const isBlockedForOnline = seatObj && seatObj.isOnline === false;
 
     let style =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
@@ -288,7 +289,7 @@ const SeatSelection: React.FC = () => {
         seatLayout={busSeats.seatLayout}
         seatNumberingType={busSeats.seatNumberingType}
         lastRowSeats={busSeats.lastRowSeats}
-        onlineRange={busSeats.onlineSeatRange} // 👈 Pass from API
+        seatsData={busSeats.seats}
       />
 
       {continueError && (

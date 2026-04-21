@@ -11,7 +11,6 @@ import {
   getConductorSeats,
   getSeatLayout,
   removeConductorSeats,
-  updateOnlineSeatRange,
   updateSchedule
 } from "../controllers/busController.js";
 
@@ -34,7 +33,6 @@ router.put("/:id/conductor-seats", assignConductorSeats);
 router.get("/:id/conductor-seats", getConductorSeats);
 router.get("/:id/layout", getSeatLayout);
 router.patch("/:id/conductor-seats/remove", removeConductorSeats);
-router.patch("/:id/online-range", updateOnlineSeatRange);
 router.put("/:id/schedule", updateSchedule);
 
 export default router;

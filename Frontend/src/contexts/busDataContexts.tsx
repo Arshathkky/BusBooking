@@ -11,6 +11,7 @@ export interface SeatType {
   conductorAssigned?: boolean;
   conductorCode?: string | null;
   conductorId?: string | null;
+  isOnline?: boolean;
 }
 
 // Seat layout type
@@ -42,7 +43,6 @@ export interface BusType {
   seatLayout: SeatLayoutType; // main layout
   seatNumberingType: "driver_side" | "door_side";
   lastRowSeats?: LastRowType;  // last row layout
-  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
   schedule?: string[]; // 👈 NEW
 }
 

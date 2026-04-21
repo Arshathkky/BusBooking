@@ -13,6 +13,8 @@ const seatSchema = new mongoose.Schema({
   isReservedForConductor: { type: Boolean, default: false },
   // Permanent occupancy
   isOccupied: { type: Boolean, default: false },
+  // Online availability
+  isOnline: { type: Boolean, default: true },
 });
 
 // -------------------- Bus Schema --------------------
@@ -60,12 +62,6 @@ const busSchema = new mongoose.Schema(
       required: true,
       min: 1,
       max: 10,
-    },
-
-    // ✅ New: Define which seats are available for online booking
-    onlineSeatRange: {
-      start: { type: Number, default: 1 },
-      end: { type: Number, default: 30 }
     },
 
     // ✅ New: Days-based scheduling (Monday, Tuesday, etc.)

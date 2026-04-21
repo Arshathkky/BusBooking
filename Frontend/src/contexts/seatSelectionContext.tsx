@@ -99,7 +99,6 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         seatLayout: busData.seatLayout ?? "2x2",
         lastRowSeats: busData.lastRowSeats ?? 6,
         seatNumberingType: busData.seatNumberingType ?? "driver_side", // 👈 NEW
-        onlineSeatRange: busData.onlineSeatRange, // 👈 NEW
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,

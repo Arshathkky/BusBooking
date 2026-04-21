@@ -87,6 +87,7 @@ export const addBus = async (req, res) => {
         conductorAssigned: isConductorSeat,
         conductorCode: isConductorSeat ? conductorSeat.conductorCode : null,
         conductorId: isConductorSeat ? conductorSeat.conductorId || null : null,
+        isOnline: true,
       };
     });
 
@@ -229,6 +230,7 @@ export const updateSeatLayout = async (req, res) => {
       seat.conductorAssigned = updatedSeat.conductorAssigned ?? seat.conductorAssigned;
       seat.conductorCode = updatedSeat.conductorCode ?? seat.conductorCode;
       seat.conductorId = updatedSeat.conductorId ?? seat.conductorId;
+      seat.isOnline = updatedSeat.isOnline ?? seat.isOnline;
     }
 
     await bus.save();
@@ -430,21 +432,7 @@ export const getSeatLayout = async (req, res) => {
   }
 };
 
-// ✅ PATCH /api/buses/:id/online-range
-export const updateOnlineSeatRange = async (req, res) => {
-  try {
-    const { start, end } = req.body;
-    const bus = await Bus.findById(req.params.id);
-    if (!bus) return res.status(404).json({ message: "Bus not found" });
-
-    bus.onlineSeatRange = { start, end };
-    await bus.save();
-
-    res.status(200).json({ success: true, message: "Online seat range updated", data: bus.onlineSeatRange });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+// Removed updateOnlineSeatRange
 
 // ✅ PUT /api/buses/:id/schedule
 export const updateSchedule = async (req, res) => {

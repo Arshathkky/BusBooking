@@ -55,20 +55,19 @@ const ConductorDashboard: React.FC = () => {
   const assignedConductor = conductors.find((c) => c.email === user?.email);
   const selectedBusId = assignedConductor?.assignedBusId ?? null;
 
-  const [onlineRange, setOnlineRange] = useState({ start: 1, end: 32 });
+  const [localSeats, setLocalSeats] = useState<any[]>([]);
   const [schedule, setSchedule] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ id: string; remark: string } | null>(null);
 
   const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  // Fetch bus details when selection changes
   useEffect(() => {
     if (selectedBusId) {
       axios.get(`${BASE_URL}/buses/${selectedBusId}`)
         .then(res => {
           if (res.data.success) {
-            setOnlineRange(res.data.data.onlineSeatRange || { start: 1, end: 32 });
+            setLocalSeats(res.data.data.seats || []);
             setSchedule(res.data.data.schedule || []);
           }
         });
@@ -83,12 +82,12 @@ const ConductorDashboard: React.FC = () => {
     setUpdating(true);
     try {
       // 1. Update backend
-      await axios.patch(`${BASE_URL}/buses/${selectedBusId}/online-range`, onlineRange);
+      await axios.patch(`${BASE_URL}/buses/${selectedBusId}/seats`, { seats: localSeats });
       await axios.put(`${BASE_URL}/buses/${selectedBusId}/schedule`, { schedule });
       
       // 2. Sync with Global Context so other pages/filters see the change
       await updateBus(selectedBusId, { 
-        onlineSeatRange: onlineRange,
+        seats: localSeats,
         schedule: schedule
       });
       
@@ -326,33 +325,31 @@ const ConductorDashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              {/* Range Section */}
+              {/* Online Seat Selection Grid */}
               <div className="space-y-4">
                 <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
-                  <Filter className="w-3 h-3" /> Online Booking Range
+                  <Filter className="w-3 h-3" /> Online Booking Availability
                 </h4>
-                <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-900 p-6 rounded-3xl">
-                  <div className="flex-1 flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 ml-1 mb-2">Start Number</span>
-                    <input 
-                      type="number" 
-                      value={onlineRange.start} 
-                      onChange={e => setOnlineRange(r => ({ ...r, start: parseInt(e.target.value) }))}
-                      className="w-full text-center font-black text-2xl bg-transparent border-none dark:text-white focus:ring-1 focus:ring-yellow-400 rounded-xl py-2"
-                    />
-                  </div>
-                  <div className="text-gray-200 font-black text-3xl">/</div>
-                  <div className="flex-1 flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 ml-1 mb-2">End Number</span>
-                    <input 
-                      type="number" 
-                      value={onlineRange.end} 
-                      onChange={e => setOnlineRange(r => ({ ...r, end: parseInt(e.target.value) }))}
-                      className="w-full text-center font-black text-2xl bg-transparent border-none dark:text-white focus:ring-1 focus:ring-yellow-400 rounded-xl py-2"
-                    />
-                  </div>
+                <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-3xl max-h-64 overflow-y-auto">
+                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                     {localSeats.map(seat => (
+                       <button
+                         key={seat.seatNumber}
+                         onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isOnline: s.isOnline === false ? true : false } : s))}
+                         className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
+                           seat.isOnline !== false
+                           ? "bg-green-100 border-green-200 text-green-800"
+                           : "bg-red-100 border-red-200 text-red-800"
+                         }`}
+                       >
+                         {seat.seatNumber}
+                       </button>
+                     ))}
+                   </div>
                 </div>
-                <p className="text-[11px] text-gray-400 italic">Seats outside this range will be hidden from online searches.</p>
+                <p className="text-[11px] text-gray-400 italic">
+                  <span className="text-green-600 font-bold">Green:</span> Available online. <span className="text-red-500 font-bold">Red:</span> Blocked online (Manual only).
+                </p>
               </div>
 
               {/* Weekly Schedule Section */}

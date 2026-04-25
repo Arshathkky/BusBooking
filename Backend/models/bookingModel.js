@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const passengerSchema = new mongoose.Schema({
   name: { type: String },
   phone: { type: String },
+  email: { type: String },
   address: { type: String },
   nic: { type: String },
 });

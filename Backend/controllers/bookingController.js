@@ -63,9 +63,9 @@ export const createBooking = async (req, res) => {
       ...req.body,
       bookingId,
       referenceId,
-      holdExpiresAt: expiryTime,
-      paymentExpiresAt: expiryTime,
-      paymentStatus: "PENDING",
+      holdExpiresAt: req.body.paymentStatus === "PAID" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) : expiryTime, // Far future for paid
+      paymentExpiresAt: req.body.paymentStatus === "PAID" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) : expiryTime,
+      paymentStatus: req.body.paymentStatus || "PENDING",
     });
 
     res.status(201).json({ success: true, booking });

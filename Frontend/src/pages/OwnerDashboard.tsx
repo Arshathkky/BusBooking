@@ -13,7 +13,8 @@ import {
   TrendingUp,
   MapPin,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import AddBusModal from "../components/AddBusModal";
@@ -24,6 +25,11 @@ import { useRouteData, RouteType } from "../contexts/RouteDataContext";
 import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+const BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : 'https://bus-booking-nt91.onrender.com/api';
+const API_URL = `${BASE_URL}/owner`;
+const BOOKING_API = `${BASE_URL}/bookings`;
 
 const OwnerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "portal">("overview"); 
@@ -57,8 +63,6 @@ const OwnerDashboard: React.FC = () => {
   const ownerConductors = conductors.filter((c) => String(c.ownerId) === String(user?.id));
   const ownerRoutes = routes.filter((r) => String(r.ownerId) === String(user?.id));
 
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/owner";
-  const BOOKING_API = "https://bus-booking-nt91.onrender.com/api/bookings";
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -186,9 +190,34 @@ const fetchRecentBookings = async () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Owner Dashboard</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage your buses, routes, and conductors efficiently</p>
+      {/* Header with Global Date Picker */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-gray-100 dark:border-gray-700 pb-8">
+        <div>
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-1 uppercase italic tracking-tighter">Owner Dashboard</h1>
+          <p className="text-gray-500 font-bold text-sm tracking-tight">Intelligence & Operational Management • Surena Travels</p>
+        </div>
+        
+        <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm animate-in slide-in-from-right-4 duration-500">
+           <div className="pl-6 py-2">
+              <p className="text-[9px] font-black uppercase text-[#fdc106] tracking-widest mb-1">Global Operational Date</p>
+              <div className="flex items-center gap-3">
+                 <Calendar className="w-5 h-5 text-gray-400" />
+                 <input 
+                    type="date" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-transparent text-gray-900 dark:text-white font-black uppercase text-sm tracking-tighter outline-none cursor-pointer"
+                 />
+              </div>
+           </div>
+           <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+           <button 
+             onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+             className="bg-[#fdc106] text-gray-900 p-4 rounded-[1.5rem] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#fdc106]/20"
+           >
+             <RefreshCw className="w-5 h-5" />
+           </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -268,10 +297,10 @@ const fetchRecentBookings = async () => {
               <Calendar className="w-4 h-4 text-gray-400" />
               <select 
                 value={selectedMonth} 
-                onChange={(e) => { setSelectedMonth(e.target.value); setSelectedDate(""); }} 
-                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full"
+                onChange={(e) => { setSelectedMonth(e.target.value); }} 
+                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full uppercase"
               >
-                <option value="">Month-wise Analysis</option>
+                <option value="">Month-wise Trend</option>
                 {Array.from({ length: 6 }).map((_, i) => {
                   const d = new Date();
                   d.setMonth(d.getMonth() - i);
@@ -281,23 +310,16 @@ const fetchRecentBookings = async () => {
               </select>
             </div>
 
-            {!selectedMonth && (
-              <div className="flex-1 min-w-[200px] flex items-center space-x-2 bg-gray-50 dark:bg-gray-900 px-6 py-3 rounded-2xl">
-                <input 
-                    type="date" 
-                    value={selectedDate} 
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full"
-                />
-              </div>
-            )}
+            <div className="flex-1 min-w-[200px] flex items-center space-x-2 bg-gray-50 dark:bg-gray-900 px-6 py-3 rounded-2xl font-bold text-sm text-gray-400 italic">
+               Viewing Data for: <span className="text-[#fdc106] ml-2 uppercase font-black tracking-tight">{selectedDate || selectedMonth || "Today"}</span>
+            </div>
 
             <div className="flex-1 min-w-[200px] flex items-center space-x-2 bg-gray-50 dark:bg-gray-900 px-6 py-3 rounded-2xl">
               <Bus className="w-4 h-4 text-gray-400" />
               <select 
                 value={selectedBus} 
                 onChange={(e) => setSelectedBus(e.target.value)} 
-                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full"
+                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full uppercase"
               >
                 <option value="all">Entire Fleet</option>
                 {ownerBuses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -306,9 +328,9 @@ const fetchRecentBookings = async () => {
 
             <button 
                 onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
-                className="bg-[#fdc106] hover:bg-black hover:text-[#fdc106] p-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-[#fdc106]/20"
+                className="bg-[#fdc106] hover:bg-black hover:text-[#fdc106] px-8 py-3 rounded-2xl transition-all active:scale-95 shadow-lg shadow-[#fdc106]/20 font-black text-xs uppercase tracking-widest"
             >
-                <TrendingUp className="w-5 h-5" />
+                Generate Report
             </button>
           </div>
 
@@ -641,10 +663,10 @@ const fetchRecentBookings = async () => {
                             <span>Return to Fleet List</span>
                         </button>
                         <div className="text-right">
-                            <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">
-                                {selectedBusForManifest.name}
-                            </h2>
-                            <p className="text-xs font-bold text-[#fdc106]">{selectedBusForManifest.busNumber} • EXPRESS MANIFEST</p>
+                             <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic leading-none">
+                                 {selectedBusForManifest.name}
+                             </h2>
+                             <p className="text-[10px] font-black text-[#fdc106] uppercase tracking-[0.2em] mt-1">{selectedBusForManifest.busNumber} • FLEET COMMAND</p>
                         </div>
                     </div>
 
@@ -750,21 +772,28 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const [localSeats, setLocalSeats] = useState<any[]>([]);
     const [hasPending, setHasPending] = useState(false);
     const [updating, setUpdating] = useState(false);
+    const [selectedManualSeats, setSelectedManualSeats] = useState<(string | number)[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '' });
     const { updateBus } = useBus();
 
     useEffect(() => {
         const fetchAll = async () => {
             try {
                 // 1. Fetch Manifest
-                const res2 = await fetch(`https://bus-booking-nt91.onrender.com/api/bookings?busId=${busId}&date=${travelDate}`);
+                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
                 const data = await res2.json();
                 if (data.success) {
-                    const filtered = data.bookings.filter((b: any) => b.bus?.id === busId && b.searchData?.date === travelDate && b.paymentStatus === "PAID");
+                    const filtered = data.bookings.filter((b: any) => 
+                        b.bus?.id === busId && 
+                        b.searchData?.date === travelDate && 
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
+                    );
                     setBookings(filtered);
                 }
 
                 // 2. Fetch Bus State (for blocks)
-                const resBus = await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}`);
+                const resBus = await fetch(`${BASE_URL}/buses/${busId}`);
                 const busData = await resBus.json();
                 if (busData.success) {
                     setLocalSeats(busData.data.seats || []);
@@ -798,7 +827,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const handleApprove = async () => {
         setUpdating(true);
         try {
-            const res = await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/approve-changes`, { method: "PATCH" });
+            const res = await fetch(`${BASE_URL}/buses/${busId}/approve-changes`, { method: "PATCH" });
             const data = await res.json();
             if (data.success) {
                 setLocalSeats(data.data.seats);
@@ -813,12 +842,166 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         }
     };
 
+    const handleManualBook = async () => {
+        if (selectedManualSeats.length === 0) return;
+        setUpdating(true);
+        try {
+            // Find current bus metadata
+            const resBus = await fetch(`${BASE_URL}/buses/${busId}`);
+            const bD = await resBus.json();
+            if (!bD.success) throw new Error("Bus not found");
+            const busInfo = bD.data;
+
+            // 1. Create the booking record
+            const res = await fetch(`${BOOKING_API}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bus: {
+                        id: busId,
+                        name: busInfo.name,
+                        type: busInfo.type,
+                        busNumber: busInfo.busNumber
+                    },
+                    searchData: { from: 'Manual Override', to: 'Manual Override', date: travelDate },
+                    selectedSeats: selectedManualSeats.map(String),
+                    totalAmount: 0,
+                    passengerDetails: passengerData,
+                    paymentStatus: 'PENDING' // Set as PENDING but confirmed by owner
+                })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert("Reservation completed successfully!");
+                setSelectedManualSeats([]);
+                setShowModal(false);
+                setPassengerData({ name: '', phone: '', email: '', nic: '' });
+                
+                // Refresh manifest
+                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+                const data2 = await res2.json();
+                if (data2.success) {
+                    const filtered = data2.bookings.filter((b: any) => 
+                        b.bus?.id === busId && b.searchData?.date === travelDate && 
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
+                    );
+                    setBookings(filtered);
+                }
+            } else {
+                alert("Booking failed: " + data.message);
+            }
+        } catch (err) {
+            alert("Connection error or booking failed");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleCancelBooking = async (bookingId: string, seatNumbers: any[]) => {
+        if (!window.confirm(`Are you sure you want to cancel booking for seats: ${seatNumbers.join(", ")}?`)) return;
+        setUpdating(true);
+        try {
+            const res = await fetch(`${BOOKING_API}/${bookingId}/cancel`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ remark: "Owner Manual Cancellation", cancelledBy: 'admin' })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // 1. Unblock seats (nothing to do in bus layout anymore as it's booking base)
+                alert("Booking cancelled successfully!");
+                // 2. Refresh manifest
+                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+                const data2 = await res2.json();
+                if (data2.success) {
+                    const filtered = data2.bookings.filter((b: any) => 
+                        b.bus?.id === busId && b.searchData?.date === travelDate && 
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
+                    );
+                    setBookings(filtered);
+                }
+            }
+        } catch (err) {
+            alert("Cancellation failed");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const toggleManualSeat = (num: string | number) => {
+        setSelectedManualSeats(prev => {
+            const exists = prev.includes(num);
+            if (!exists) {
+                // Mutual Exclusion when selecting for manual: clear others
+                const updated = localSeats.map(s => String(s.seatNumber) === String(num) ? { ...s, isOnline: false, isPermanent: false } : s);
+                handleQuickSave(updated);
+            }
+            return exists ? prev.filter(s => s !== num) : [...prev, num];
+        });
+    };
+
     const toggleSeatFlag = (num: string | number, field: string) => {
-        const updated = localSeats.map(s => String(s.seatNumber) === String(num) ? { ...s, [field]: !s[field] } : s);
+        if (field === 'isBlocked') {
+            toggleManualSeat(num);
+            return;
+        }
+
+        // Mutual Exclusion: If setting one, clear others
+        const updated = localSeats.map(s => {
+            if (String(s.seatNumber) === String(num)) {
+                const newState = { ...s, [field]: !s[field] };
+                // If we enabled 'field', clear the others
+                if (newState[field]) {
+                    if (field === 'isOnline') { newState.isPermanent = false; newState.isBlocked = false; }
+                    if (field === 'isPermanent') { newState.isOnline = false; newState.isBlocked = false; }
+                }
+                return newState;
+            }
+            return s;
+        });
         handleQuickSave(updated);
     };
 
-    if (loading) return <div className="p-20 text-center animate-pulse font-black italic tracking-tighter">GENERATING MANIFEST...</div>;
+    const generatePDF = () => {
+        const doc = new jsPDF() as any;
+        
+        // Header
+        doc.setFontSize(22);
+        doc.setTextColor(0, 0, 0);
+        doc.text("PASSENGER MANIFEST", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`DATE: ${travelDate}`, 14, 30);
+        doc.text(`BUS ID: ${busId}`, 14, 35);
+        
+        // Table
+        const tableColumn = ["Seat(s)", "Passenger Name", "Phone Number", "NIC / ID", "Status"];
+        const tableRows = bookings.map(b => [
+            b.selectedSeats?.join(", "),
+            b.passengerDetails?.name || "RESERVED",
+            b.passengerDetails?.phone || "N/A",
+            b.passengerDetails?.nic || "N/A",
+            "CONFIRMED"
+        ]);
+        
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 45,
+            theme: 'grid',
+            headStyles: { fillColor: [0, 0, 0], textColor: [253, 193, 6] },
+            styles: { fontSize: 9, font: "helvetica" }
+        });
+        
+        doc.save(`Manifest_${travelDate}_${busId}.pdf`);
+    };
+
+    if (loading) return <div className="p-20 text-center animate-pulse font-black italic tracking-tighter">
+        <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#fdc106]" />
+        GENERATING MANIFEST...
+    </div>;
 
     return (
         <div className="space-y-6">
@@ -842,7 +1025,10 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div className="p-8 border-b border-gray-50 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
                     <h3 className="text-xl font-black uppercase italic tracking-tighter">Manifest for {travelDate}</h3>
-                    <button className="bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#fdc106] hover:text-gray-900 transition-all">Print PDF</button>
+                    <button 
+                        onClick={generatePDF}
+                        className="bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#fdc106] hover:text-gray-900 transition-all"
+                    >Print PDF</button>
                 </div>
                 <table className="w-full text-left">
                     <thead>
@@ -850,11 +1036,13 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                             <th className="px-8 py-4">Seat</th>
                             <th className="px-8 py-4">Passenger Info</th>
                             <th className="px-8 py-4 text-right">Fare</th>
+                            <th className="px-8 py-4 text-center">Ticket</th>
+                            <th className="px-8 py-4 text-center">Void</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                         {bookings.length === 0 ? (
-                            <tr><td colSpan={3} className="px-8 py-20 text-center text-gray-400 font-bold">No confirmed passengers for this date.</td></tr>
+                            <tr><td colSpan={5} className="px-8 py-20 text-center text-gray-400 font-bold">No confirmed passengers for this date.</td></tr>
                         ) : (
                             bookings.map(b => (
                                 <tr key={b._id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all">
@@ -869,6 +1057,22 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                         <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
                                         <div className="text-[8px] font-black tracking-widest text-[#fdc106] uppercase">PAID</div>
                                     </td>
+                                    <td className="px-8 py-4 text-center">
+                                        <button 
+                                            onClick={() => alert(`Generating Ticket for ${b.passengerDetails?.name}...`)}
+                                            className="p-2 bg-gray-900 text-[#fdc106] rounded-lg hover:bg-[#fdc106] hover:text-gray-900 transition-all shadow-md group-hover:scale-110"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                        </button>
+                                    </td>
+                                    <td className="px-8 py-4 text-center">
+                                        <button 
+                                            onClick={() => handleCancelBooking(b._id, b.selectedSeats)}
+                                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         )}
@@ -877,6 +1081,26 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             </div>
 
             {/* Quick Management Grid (Mirror of Conductor Grid) */}
+            {/* Multi-Selection Control Bar */}
+            {selectedManualSeats.length > 0 && !showModal && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] bg-gray-900 border border-white/20 px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center font-black italic shadow-lg text-gray-900">{selectedManualSeats.length}</div>
+                        <div className="text-white">
+                            <p className="text-xs font-black uppercase tracking-widest leading-none">Seats Selected</p>
+                            <p className="text-[10px] text-gray-400 font-bold mt-1 italic">{selectedManualSeats.join(", ")}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setSelectedManualSeats([])} className="px-6 py-2 rounded-xl text-xs font-black text-white hover:bg-white/10 transition-all border border-white/10 uppercase tracking-widest">Clear</button>
+                        <button 
+                            onClick={() => setShowModal(true)}
+                            className="bg-[#fdc106] text-gray-900 px-8 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20"
+                        >Reserve Now</button>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-white/5 space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
@@ -884,37 +1108,109 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         <h4 className="text-xl font-black text-white italic uppercase tracking-tighter">Quick Seat Operations</h4>
                     </div>
                     <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter text-gray-400">
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Blocked</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Reserve</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online Availability</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Out of Service</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Owner Block</div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                     {localSeats.map(seat => (
-                       <div key={seat.seatNumber} className="bg-white/5 border border-white/10 p-3 rounded-2xl space-y-3 hover:bg-white/10 transition-all">
-                          <div className="flex justify-between items-center px-1">
-                                <span className="font-black text-sm italic text-white">{seat.seatNumber}</span>
-                                <div className={`w-2 h-2 rounded-full ${seat.isPermanent ? 'bg-red-500' : seat.isBlocked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
-                          </div>
-                          <div className="flex justify-between gap-1">
-                             <button
-                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isOnline')}
-                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isOnline !== false ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-500'}`}
-                             >WEB</button>
-                             <button
-                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isPermanent')}
-                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isPermanent ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-500'}`}
-                             >PRM</button>
-                             <button
-                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isBlocked')}
-                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isBlocked ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-500'}`}
-                             >RES</button>
-                          </div>
-                       </div>
-                     ))}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                     {localSeats.map(seat => {
+                       const isSelected = selectedManualSeats.includes(seat.seatNumber);
+                       const isActuallyBooked = bookings.some(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+
+                       return (
+                        <div key={seat.seatNumber} className={`border p-3 rounded-2xl space-y-3 transition-all ${isSelected ? 'bg-[#fdc106]/10 border-[#fdc106]/50' : 'bg-white/5 border-white/10 shadow-sm hover:bg-white/10'}`}>
+                           <div className="flex justify-between items-center px-1">
+                                 <span className="font-black text-sm italic text-white">{seat.seatNumber}</span>
+                                 <div className={`w-2 h-2 rounded-full ${seat.isPermanent ? 'bg-red-500' : isActuallyBooked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                           </div>
+                           <div className="flex justify-between gap-1">
+                              <button
+                                onClick={() => toggleSeatFlag(seat.seatNumber, 'isOnline')}
+                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isOnline !== false ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-500'}`}
+                              >WEB</button>
+                              <button
+                                onClick={() => toggleSeatFlag(seat.seatNumber, 'isPermanent')}
+                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isPermanent ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-500'}`}
+                              >PRM</button>
+                              <button
+                                onClick={() => !isActuallyBooked && toggleSeatFlag(seat.seatNumber, 'isBlocked')}
+                                disabled={isActuallyBooked}
+                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked || isSelected ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-500'} ${isActuallyBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              >{isActuallyBooked ? 'BOOKED' : isSelected ? 'SEL' : 'RES'}</button>
+                           </div>
+                        </div>
+                       );
+                     })}
                 </div>
             </div>
+
+            {/* Manual Booking Modal */}
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 bg-gray-900 text-white relative">
+                            <h4 className="text-2xl font-black italic uppercase tracking-tighter">Owner Reservation</h4>
+                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
+                                {selectedManualSeats.length} Seats: {selectedManualSeats.join(", ")} • No Payment Required
+                            </p>
+                        </div>
+                        <div className="p-8 space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Passenger Name</label>
+                                <input 
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                    placeholder="Enter full name"
+                                    value={passengerData.name}
+                                    onChange={(e) => setPassengerData({...passengerData, name: e.target.value})}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Phone</label>
+                                    <input 
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                        placeholder="07X XXX XXXX"
+                                        value={passengerData.phone}
+                                        onChange={(e) => setPassengerData({...passengerData, phone: e.target.value})}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">NIC / ID Card</label>
+                                    <input 
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                        placeholder="ID Number"
+                                        value={passengerData.nic}
+                                        onChange={(e) => setPassengerData({...passengerData, nic: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Email Address</label>
+                                <input 
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                    placeholder="email@example.com"
+                                    value={passengerData.email}
+                                    onChange={(e) => setPassengerData({...passengerData, email: e.target.value})}
+                                />
+                            </div>
+                            
+                            <div className="pt-4 flex gap-3">
+                                <button 
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                >Cancel</button>
+                                <button 
+                                    onClick={handleManualBook}
+                                    disabled={updating || !passengerData.name || !passengerData.phone}
+                                    className="flex-[2] py-4 bg-[#fdc106] rounded-2xl text-xs font-black uppercase tracking-widest text-gray-900 shadow-xl shadow-[#fdc106]/20 transition-all active:scale-95 disabled:bg-gray-300"
+                                >Confirm Booking</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

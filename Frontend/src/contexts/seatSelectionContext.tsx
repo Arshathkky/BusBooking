@@ -4,7 +4,7 @@ import axios from "axios";
 // -------------------- Types --------------------
 
 export type SeatLayoutType = "2x2" | "2x3";
-export type LastRowType = 4 | 6;
+export type LastRowType = number;
 
 export interface Seat {
   seatNumber: string | number;
@@ -16,6 +16,9 @@ export interface Seat {
   x?: number;
   y?: number;
   isWindow?: boolean;
+  isOnline?: boolean;
+  isBlocked?: boolean;
+  isPermanent?: boolean;
 }
 
 export interface Bus {
@@ -113,6 +116,9 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           x: s.x,
           y: s.y,
           isWindow: s.isWindow,
+          isOnline: s.isOnline !== false,
+          isBlocked: s.isBlocked === true,
+          isPermanent: s.isPermanent === true,
         })),
       });
     } catch (err) {

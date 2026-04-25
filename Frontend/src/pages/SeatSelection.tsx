@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
-import { useSeat } from "../contexts/seatSelectionContext";
+import { useSeat, Seat, SeatLayoutType, LastRowType } from "../contexts/seatSelectionContext";
 import { useBooking } from "../contexts/BookingContext";
 import axios from "axios";
 
@@ -20,8 +20,6 @@ interface OccupiedSeatsResponse {
   reservedSeats?: (string | number)[];
 }
 
-type SeatLayoutType = "2x2" | "2x3";
-type LastRowType = 4 | 6;
 
 interface SeatLayoutProps {
   totalSeats: number;
@@ -35,7 +33,7 @@ interface SeatLayoutProps {
   seatLayout: SeatLayoutType;
   seatNumberingType?: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
-  seatsData: any[]; // Array of SeatType objects
+  seatsData: Seat[]; // Array of Seat objects
   useCustomLayout?: boolean; // 👈 NEW
 }
 
@@ -63,22 +61,27 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   seatsData.forEach(s => seatMap.set(String(s.seatNumber), s));
 
   const renderSeat = (
-    seatId: string | number, 
-    isOccupied: boolean, 
-    isReserved: boolean, 
-    isSelected: boolean, 
-    isLadies: boolean, 
+    seatId: string | number,
+    isOccupied: boolean,
+    isReserved: boolean,
+    isSelected: boolean,
+    isLadies: boolean,
     isConductor: boolean,
     conductorId?: string
   ) => {
     const seatObj = seatMap.get(String(seatId));
-    // Check if outside online range
+
+    // NEW: Advanced Operational Flags
+    const isPermanent = seatObj && seatObj.isPermanent === true;
+    const isOwnerBlocked = seatObj && seatObj.isBlocked === true;
     const isBlockedForOnline = seatObj && seatObj.isOnline === false;
 
     let style =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
 
-    if (isOccupied) {
+    if (isPermanent) {
+      style += " bg-red-900 border-red-950 text-white cursor-not-allowed opacity-40 shadow-inner";
+    } else if (isOccupied) {
       style += " bg-gray-500 text-white cursor-not-allowed";
     } else if (isSelected) {
       style += " bg-yellow-400 border-yellow-500 cursor-pointer";
@@ -86,8 +89,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       style += " bg-orange-400 text-white cursor-not-allowed";
     } else if (isConductor) {
       style += " bg-purple-300 cursor-not-allowed";
-    } else if (isBlockedForOnline) {
-      // Manual Booking Only 👈 NEW
+    } else if (isOwnerBlocked || isBlockedForOnline) {
+      // Manual Booking Only 👈
       style += " bg-red-100 text-red-700 border-red-200 cursor-not-allowed";
     } else if (isLadies) {
       style += " bg-pink-300 cursor-pointer text-pink-900";
@@ -98,26 +101,32 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     return (
       <button
         key={String(seatId)}
-        onClick={() => onSeatClick(seatId)}
+        onClick={() => !isPermanent && !isOccupied && !isReserved && !isConductor && !isOwnerBlocked && !isBlockedForOnline && onSeatClick(seatId)}
         disabled={
+          isPermanent ||
           isOccupied ||
           (isReserved && !isSelected) ||
           isConductor ||
-          isBlockedForOnline || 
+          isOwnerBlocked ||
+          isBlockedForOnline ||
           (!isSelected && selectedSeats.length >= maxSeats)
         }
         className={style}
       >
-        {isOccupied ? (
+        {isPermanent ? (
+          <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-md">
+            <svg className="w-3 h-3 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
+          </div>
+        ) : isOccupied ? (
           <UserX className="w-4 h-4" />
         ) : isSelected ? (
           <User className="w-4 h-4" />
         ) : isReserved ? (
           <span className="text-[10px]">R</span>
         ) : isConductor ? (
-          <span className="text-[10px]">{conductorId}</span>
-        ) : isBlockedForOnline ? (
-          <span className="text-[10px] uppercase font-bold text-red-500">M</span>
+          <span className="text-[10px] uppercase font-bold">{conductorId?.slice(0, 2)}</span>
+        ) : (isOwnerBlocked || isBlockedForOnline) ? (
+          <span className="text-[10px] uppercase font-black text-red-500 opacity-50">M</span>
         ) : isLadies ? (
           <span className="text-[10px]">L</span>
         ) : null}
@@ -142,108 +151,109 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       {/* Legend at Top */}
       <div className="flex flex-wrap justify-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <Legend color="bg-gray-500" label="Booked (Paid)" />
-        <Legend color="bg-orange-400" label="Reserved (Pending)" />
+        {/* <Legend color="bg-orange-400" label="Reserved (Pending)" /> */}
         <Legend color="bg-yellow-400" label="Selected" />
         <Legend color="bg-pink-300" label="Ladies Only" />
-        <Legend color="bg-purple-300" label="Conductor" />
+        {/* <Legend color="bg-purple-300" label="Conductor" />
+        <Legend color="bg-red-900 border-red-950" label="Blocked (Permanent)" />
         <Legend color="bg-red-100 border-red-200" label="Manual Only (Blocked)" />
-        <Legend color="bg-white border-gray-200" label="Available" />
+        <Legend color="bg-white border-gray-200" label="Available" /> */}
       </div>
 
       {/* Main Layout Area */}
       {useCustomLayout ? (
         <div className="relative mx-auto border-[12px] border-gray-100 rounded-[60px] bg-white p-12 pt-20 shadow-inner" style={{ width: 'fit-content' }}>
-           <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
-                <Steering className="w-8 h-8" />
-                <div className="text-[10px] font-black uppercase tracking-[0.2em]">Passenger Entry</div>
-            </div>
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
+            <Steering className="w-8 h-8" />
+            <div className="text-[10px] font-black uppercase tracking-[0.2em]">Passenger Entry</div>
+          </div>
 
-            <div 
-                className="grid gap-2.5" 
-                style={{ 
-                    gridTemplateColumns: `repeat(6, 50px)`,
-                    gridTemplateRows: `repeat(15, 50px)` 
-                }}
-            >
-                {(() => {
-                    const gridMap = new Map();
-                    seatsData.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+          <div
+            className="grid gap-2.5"
+            style={{
+              gridTemplateColumns: `repeat(6, 50px)`,
+              gridTemplateRows: `repeat(15, 50px)`
+            }}
+          >
+            {(() => {
+              const gridMap = new Map();
+              seatsData.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
 
-                    return Array.from({ length: 15 * 6 }).map((_, i) => {
-                        const x = i % 6;
-                        const y = Math.floor(i / 6);
-                        const seat = gridMap.get(`${x},${y}`);
+              return Array.from({ length: 15 * 6 }).map((_, i) => {
+                const x = i % 6;
+                const y = Math.floor(i / 6);
+                const seat = gridMap.get(`${x},${y}`);
 
-                        if (!seat) return <div key={i} className="w-[50px] h-[50px]" />;
+                if (!seat) return <div key={i} className="w-[50px] h-[50px]" />;
 
-                        const isOccupied = occupiedSeats.has(seat.seatNumber);
-                        const isReserved = reservedSeats.has(seat.seatNumber);
-                        const isSelected = selectedSeats.includes(seat.seatNumber);
-                        const isLadies = seat.isLadiesOnly;
-                        const conductorId = conductorSeatMap.get(seat.seatNumber);
-                        const isConductor = Boolean(conductorId);
+                const isOccupied = occupiedSeats.has(seat.seatNumber);
+                const isReserved = reservedSeats.has(seat.seatNumber);
+                const isSelected = selectedSeats.includes(seat.seatNumber);
+                const isLadies = seat.isLadiesOnly;
+                const conductorId = conductorSeatMap.get(seat.seatNumber);
+                const isConductor = Boolean(conductorId);
 
-                        return renderSeat(seat.seatNumber, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
-                    });
-                })()}
-            </div>
+                return renderSeat(seat.seatNumber, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
+              });
+            })()}
+          </div>
         </div>
       ) : (
         <>
-            {/* Standard Auto Layout */}
-            <div className="flex justify-end mb-4">
-                <div className="w-20 h-10 bg-gray-200 flex items-center justify-center rounded-t-2xl shadow-inner">
-                <Steering className="w-6 h-6 text-gray-400" />
-                </div>
+          {/* Standard Auto Layout */}
+          <div className="flex justify-end mb-4">
+            <div className="w-20 h-10 bg-gray-200 flex items-center justify-center rounded-t-2xl shadow-inner">
+              <Steering className="w-6 h-6 text-gray-400" />
             </div>
+          </div>
 
-            {Array.from({ length: normalRowCount }).map((_, row) => {
-                const start = row * seatsPerRow;
-                const end = Math.min(start + seatsPerRow, normalSeatCount);
-                // Here we need to map over standard indices and calculate occupancy
-                const standardRowIndices = Array.from({ length: end - start }, (_, idx) => start + idx + 1);
-                
-                let rowSeats = standardRowIndices.map(num => {
-                    const isOccupied = occupiedSeats.has(num);
-                    const isReserved = reservedSeats.has(num);
-                    const isSelected = selectedSeats.includes(num);
-                    const isLadies = ladiesOnlySeats.has(num);
-                    const conductorId = conductorSeatMap.get(num);
-                    const isConductor = Boolean(conductorId);
-                    return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
+          {Array.from({ length: normalRowCount }).map((_, row) => {
+            const start = row * seatsPerRow;
+            const end = Math.min(start + seatsPerRow, normalSeatCount);
+            // Here we need to map over standard indices and calculate occupancy
+            const standardRowIndices = Array.from({ length: end - start }, (_, idx) => start + idx + 1);
+
+            let rowSeats = standardRowIndices.map(num => {
+              const isOccupied = occupiedSeats.has(num);
+              const isReserved = reservedSeats.has(num);
+              const isSelected = selectedSeats.includes(num);
+              const isLadies = ladiesOnlySeats.has(num);
+              const conductorId = conductorSeatMap.get(num);
+              const isConductor = Boolean(conductorId);
+              return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
+            });
+
+            if (seatNumberingType === "door_side") {
+              rowSeats = [...rowSeats].reverse();
+            }
+
+            return (
+              <div key={row} className="flex justify-center space-x-2 mb-2">
+                <div className="flex space-x-1">{rowSeats.slice(0, leftCols)}</div>
+                <div className="w-8" />
+                <div className="flex space-x-1">{rowSeats.slice(leftCols, leftCols + rightCols)}</div>
+              </div>
+            );
+          })}
+
+          {lastRowSeats > 0 && (
+            <div key="lastRow" className="flex justify-center space-x-1 mb-2 mt-1 border-t pt-2 border-dashed border-gray-300">
+              {(() => {
+                const lastRowIndices = Array.from({ length: lastRowSeats }, (_, i) => normalSeatCount + i + 1);
+                let rowSeats = lastRowIndices.map(num => {
+                  const isOccupied = occupiedSeats.has(num);
+                  const isReserved = reservedSeats.has(num);
+                  const isSelected = selectedSeats.includes(num);
+                  const isLadies = ladiesOnlySeats.has(num);
+                  const conductorId = conductorSeatMap.get(num);
+                  const isConductor = Boolean(conductorId);
+                  return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
                 });
 
-                if (seatNumberingType === "door_side") {
-                    rowSeats = [...rowSeats].reverse();
-                }
-
-                return (
-                <div key={row} className="flex justify-center space-x-2 mb-2">
-                    <div className="flex space-x-1">{rowSeats.slice(0, leftCols)}</div>
-                    <div className="w-8" />
-                    <div className="flex space-x-1">{rowSeats.slice(leftCols, leftCols + rightCols)}</div>
-                </div>
-                );
-            })}
-
-            {lastRowSeats > 0 && (
-                <div key="lastRow" className="flex justify-center space-x-1 mb-2 mt-1 border-t pt-2 border-dashed border-gray-300">
-                    {(() => {
-                        const lastRowIndices = Array.from({ length: lastRowSeats }, (_, i) => normalSeatCount + i + 1);
-                        let rowSeats = lastRowIndices.map(num => {
-                            const isOccupied = occupiedSeats.has(num);
-                            const isReserved = reservedSeats.has(num);
-                            const isSelected = selectedSeats.includes(num);
-                            const isLadies = ladiesOnlySeats.has(num);
-                            const conductorId = conductorSeatMap.get(num);
-                            const isConductor = Boolean(conductorId);
-                            return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
-                        });
-
-                        return seatNumberingType === "door_side" ? rowSeats.reverse() : rowSeats;
-                    })()}
-                </div>
-            )}
+                return seatNumberingType === "door_side" ? rowSeats.reverse() : rowSeats;
+              })()}
+            </div>
+          )}
         </>
       )}
     </div>
@@ -316,8 +326,14 @@ const SeatSelection: React.FC = () => {
 
   // ---------------- CLICK SEAT ----------------
   const handleSeatClick = async (seat: string | number) => {
+    // Safety check: find seat object to check permanent/manual blocks
+    const seatObj = busSeats?.seats.find((s: Seat) => String(s.seatNumber) === String(seat));
+
     if (occupiedSeats.has(seat)) return;
     if (reservedSeats.has(seat)) return;
+    if (seatObj?.isPermanent) return;
+    if (seatObj?.isBlocked) return;
+    if (seatObj?.isOnline === false) return;
 
     if (selectedSeats.includes(seat)) {
       deselectSeat(seat);

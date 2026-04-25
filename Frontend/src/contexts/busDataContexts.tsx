@@ -15,6 +15,8 @@ export interface SeatType {
   conductorCode?: string | null;
   conductorId?: string | null;
   isOnline?: boolean;
+  isBlocked?: boolean;   // Manual block (e.g. for conductor/owner)
+  isPermanent?: boolean; // Permanently unavailable
 }
 
 // Seat layout type

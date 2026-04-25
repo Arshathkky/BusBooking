@@ -243,6 +243,27 @@ export const updateSeatLayout = async (req, res) => {
       seat.conductorCode = updatedSeat.conductorCode ?? seat.conductorCode;
       seat.conductorId = updatedSeat.conductorId ?? seat.conductorId;
       seat.isOnline = updatedSeat.isOnline ?? seat.isOnline;
+      seat.isBlocked = updatedSeat.isBlocked ?? seat.isBlocked;
+      seat.isPermanent = updatedSeat.isPermanent ?? seat.isPermanent;
+      
+      // Update coordinates for custom layouts
+      if (updatedSeat.x !== undefined) seat.x = updatedSeat.x;
+      if (updatedSeat.y !== undefined) seat.y = updatedSeat.y;
+    }
+
+    const { role } = req.body;
+    if (role === 'conductor') {
+        // Conductors save to pending seats
+        bus.pendingSeats = bus.seats;
+        bus.hasPendingChanges = true;
+        // Don't actually update the main seats for conductors yet? 
+        // Actually, if we want an approval system, we should NOT update bus.seats yet.
+        // Let's refetch the ORIGINAL bus to discard the 'bus.seats' changes we just made in-memory
+        const originalBus = await Bus.findById(req.params.id);
+        originalBus.pendingSeats = bus.seats;
+        originalBus.hasPendingChanges = true;
+        await originalBus.save();
+        return res.status(200).json({ success: true, message: "Changes requested. Waiting for owner approval." });
     }
 
     await bus.save();
@@ -461,6 +482,44 @@ export const updateSchedule = async (req, res) => {
     res.status(200).json({ success: true, message: "Schedule updated", data: bus.schedule });
   } catch (error) {
     console.error("❌ Schedule update error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PATCH /api/buses/:id/approve-changes
+export const approvePendingChanges = async (req, res) => {
+  try {
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    if (!bus.hasPendingChanges) {
+      return res.status(400).json({ success: false, message: "No pending changes to approve" });
+    }
+
+    // Apply pending seats to main seats
+    bus.seats = bus.pendingSeats;
+    bus.pendingSeats = [];
+    bus.hasPendingChanges = false;
+    
+    await bus.save();
+    res.status(200).json({ success: true, message: "Changes approved and applied", data: bus });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PATCH /api/buses/:id/reject-changes
+export const rejectPendingChanges = async (req, res) => {
+  try {
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
+    bus.pendingSeats = [];
+    bus.hasPendingChanges = false;
+    
+    await bus.save();
+    res.status(200).json({ success: true, message: "Changes rejected" });
+  } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

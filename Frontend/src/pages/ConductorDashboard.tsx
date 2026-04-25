@@ -325,31 +325,44 @@ const ConductorDashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              {/* Online Seat Selection Grid */}
+              {/* Advanced Seat Management Grid */}
               <div className="space-y-4">
-                <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
-                  <Filter className="w-3 h-3" /> Online Booking Availability
-                </h4>
-                <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-3xl max-h-64 overflow-y-auto">
-                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                <div className="flex justify-between items-end">
+                    <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-gray-400">
+                      <Filter className="w-3 h-3" /> Seat Blocking Controls
+                    </h4>
+                    <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Perm</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Reserve</div>
+                    </div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-[2.5rem] max-h-[400px] overflow-y-auto border border-gray-100 dark:border-gray-800">
+                   <div className="grid grid-cols-2 shadow-sm sm:grid-cols-3 md:grid-cols-4 gap-3">
                      {localSeats.map(seat => (
-                       <button
-                         key={seat.seatNumber}
-                         onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isOnline: s.isOnline === false ? true : false } : s))}
-                         className={`py-2 rounded-lg text-xs font-bold transition-all border-2 ${
-                           seat.isOnline !== false
-                           ? "bg-green-100 border-green-200 text-green-800"
-                           : "bg-red-100 border-red-200 text-red-800"
-                         }`}
-                       >
-                         {seat.seatNumber}
-                       </button>
+                       <div key={seat.seatNumber} className="bg-white dark:bg-gray-800 p-3 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-3 shadow-sm hover:shadow-md transition-all">
+                          <div className="flex justify-between items-center px-1">
+                                <span className="font-black text-sm italic">{seat.seatNumber}</span>
+                                <div className={`w-2 h-2 rounded-full ${seat.isPermanent ? 'bg-red-500' : seat.isBlocked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                          </div>
+                          <div className="flex justify-between gap-1">
+                             <button
+                               onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isOnline: s.isOnline === false } : s))}
+                               className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${seat.isOnline !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}
+                             >WEB</button>
+                             <button
+                               onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isPermanent: !s.isPermanent } : s))}
+                               className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${seat.isPermanent ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400'}`}
+                             >PERM</button>
+                             <button
+                               onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isBlocked: !s.isBlocked } : s))}
+                               className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${seat.isBlocked ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}
+                             >RES</button>
+                          </div>
+                       </div>
                      ))}
                    </div>
                 </div>
-                <p className="text-[11px] text-gray-400 italic">
-                  <span className="text-green-600 font-bold">Green:</span> Available online. <span className="text-red-500 font-bold">Red:</span> Blocked online (Manual only).
-                </p>
               </div>
 
               {/* Weekly Schedule Section */}

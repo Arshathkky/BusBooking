@@ -18,6 +18,8 @@ const seatSchema = new mongoose.Schema({
   isOccupied: { type: Boolean, default: false },
   // Online availability
   isOnline: { type: Boolean, default: true },
+  isBlocked: { type: Boolean, default: false },   // Manual block
+  isPermanent: { type: Boolean, default: false }, // Permanently unavailable
 });
 
 // -------------------- Bus Schema --------------------
@@ -77,6 +79,10 @@ const busSchema = new mongoose.Schema(
     },
     
     useCustomLayout: { type: Boolean, default: false },
+    
+    // ✅ Approval System for Conductor Changes
+    pendingSeats: { type: [seatSchema], default: [] },
+    hasPendingChanges: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

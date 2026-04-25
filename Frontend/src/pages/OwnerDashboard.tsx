@@ -747,66 +747,174 @@ const Checkpoint: React.FC<{ label: string; time: string; status: "completed" | 
 const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId, travelDate }) => {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [localSeats, setLocalSeats] = useState<any[]>([]);
+    const [hasPending, setHasPending] = useState(false);
+    const [updating, setUpdating] = useState(false);
+    const { updateBus } = useBus();
 
     useEffect(() => {
-        const fetchManifest = async () => {
+        const fetchAll = async () => {
             try {
-                const res = await fetch(`https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats?busId=${busId}&date=${travelDate}`);
-                // Since our occupied-seats route only returns seat numbers, 
-                // we'll fetch actual bookings for this bus/date
+                // 1. Fetch Manifest
                 const res2 = await fetch(`https://bus-booking-nt91.onrender.com/api/bookings?busId=${busId}&date=${travelDate}`);
                 const data = await res2.json();
                 if (data.success) {
-                    // Filter for specific bus/date if the API returns all
                     const filtered = data.bookings.filter((b: any) => b.bus?.id === busId && b.searchData?.date === travelDate && b.paymentStatus === "PAID");
                     setBookings(filtered);
+                }
+
+                // 2. Fetch Bus State (for blocks)
+                const resBus = await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}`);
+                const busData = await resBus.json();
+                if (busData.success) {
+                    setLocalSeats(busData.data.seats || []);
+                    setHasPending(busData.data.hasPendingChanges);
                 }
             } catch (err) {
             } finally {
                 setLoading(false);
             }
         };
-        fetchManifest();
+        fetchAll();
     }, [busId, travelDate]);
+
+    const handleQuickSave = async (updatedSeats: any[]) => {
+        setUpdating(true);
+        try {
+            await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/seats`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ seats: updatedSeats, role: "owner" })
+            });
+            await updateBus(busId, { seats: updatedSeats });
+            setLocalSeats(updatedSeats);
+        } catch (err) {
+            alert("Failed to update seat status");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleApprove = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/approve-changes`, { method: "PATCH" });
+            const data = await res.json();
+            if (data.success) {
+                setLocalSeats(data.data.seats);
+                setHasPending(false);
+                await updateBus(busId, { seats: data.data.seats });
+                alert("Conductor's changes approved!");
+            }
+        } catch (err) {
+            alert("Approval failed");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const toggleSeatFlag = (num: string | number, field: string) => {
+        const updated = localSeats.map(s => String(s.seatNumber) === String(num) ? { ...s, [field]: !s[field] } : s);
+        handleQuickSave(updated);
+    };
 
     if (loading) return <div className="p-20 text-center animate-pulse font-black italic tracking-tighter">GENERATING MANIFEST...</div>;
 
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div className="p-8 border-b border-gray-50 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
-                <h3 className="text-xl font-black uppercase italic tracking-tighter">Manifest for {travelDate}</h3>
-                <button className="bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#fdc106] hover:text-gray-900 transition-all">Print PDF</button>
+        <div className="space-y-6">
+            {hasPending && (
+                <div className="bg-amber-50 border-2 border-amber-200 p-6 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-4 animate-bounce-subtle">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                            <AlertCircle className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="font-black text-amber-900 tracking-tight">PENDING CONDUCTOR REQUEST</h4>
+                            <p className="text-sm text-amber-700 font-medium tracking-tight">The assigned conductor has submitted new seat operational changes for review.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                         <button onClick={handleApprove} disabled={updating} className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 rounded-xl font-bold text-sm shadow-xl shadow-amber-300/30 transition-all">APPROVE & GO LIVE</button>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div className="p-8 border-b border-gray-50 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
+                    <h3 className="text-xl font-black uppercase italic tracking-tighter">Manifest for {travelDate}</h3>
+                    <button className="bg-gray-900 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-[#fdc106] hover:text-gray-900 transition-all">Print PDF</button>
+                </div>
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="bg-gray-100 dark:bg-gray-800/50 text-[10px] uppercase font-black tracking-[0.2em] text-gray-500">
+                            <th className="px-8 py-4">Seat</th>
+                            <th className="px-8 py-4">Passenger Info</th>
+                            <th className="px-8 py-4 text-right">Fare</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                        {bookings.length === 0 ? (
+                            <tr><td colSpan={3} className="px-8 py-20 text-center text-gray-400 font-bold">No confirmed passengers for this date.</td></tr>
+                        ) : (
+                            bookings.map(b => (
+                                <tr key={b._id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all">
+                                    <td className="px-8 py-4">
+                                        <div className="px-3 py-2 bg-gray-900 text-[#fdc106] rounded-xl flex items-center justify-center font-black italic shadow-lg w-fit">{b.selectedSeats?.join(", ")}</div>
+                                    </td>
+                                    <td className="px-8 py-4">
+                                        <div className="font-bold text-gray-900 dark:text-white uppercase tracking-tight">{b.passengerDetails?.name || "RESERVED"}</div>
+                                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{b.passengerDetails?.phone || "N/A"}</div>
+                                    </td>
+                                    <td className="px-8 py-4 text-right">
+                                        <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
+                                        <div className="text-[8px] font-black tracking-widest text-[#fdc106] uppercase">PAID</div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
-            <table className="w-full text-left">
-                <thead>
-                    <tr className="bg-gray-100 dark:bg-gray-800/50 text-[10px] uppercase font-black tracking-[0.2em] text-gray-500">
-                        <th className="px-8 py-4">Seat</th>
-                        <th className="px-8 py-4">Passenger Info</th>
-                        <th className="px-8 py-4 text-right">Fare</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                    {bookings.length === 0 ? (
-                        <tr><td colSpan={3} className="px-8 py-20 text-center text-gray-400 font-bold">No confirmed passengers for this date.</td></tr>
-                    ) : (
-                        bookings.map(b => (
-                            <tr key={b._id} className="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all">
-                                <td className="px-8 py-4">
-                                    <div className="w-10 h-10 bg-gray-900 text-[#fdc106] rounded-xl flex items-center justify-center font-black italic shadow-lg">{b.selectedSeats?.join(", ")}</div>
-                                </td>
-                                <td className="px-8 py-4">
-                                    <div className="font-bold text-gray-900 dark:text-white uppercase tracking-tight">{b.passengerDetails?.name || "RESERVED"}</div>
-                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{b.passengerDetails?.phone || "N/A"}</div>
-                                </td>
-                                <td className="px-8 py-4 text-right">
-                                    <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
-                                    <div className="text-[8px] font-black tracking-widest text-[#fdc106] uppercase">PAID</div>
-                                </td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
+
+            {/* Quick Management Grid (Mirror of Conductor Grid) */}
+            <div className="bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-white/5 space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-[#fdc106] tracking-[0.3em] mb-1">Fleet Command</p>
+                        <h4 className="text-xl font-black text-white italic uppercase tracking-tighter">Quick Seat Operations</h4>
+                    </div>
+                    <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter text-gray-400">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Blocked</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Reserve</div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                     {localSeats.map(seat => (
+                       <div key={seat.seatNumber} className="bg-white/5 border border-white/10 p-3 rounded-2xl space-y-3 hover:bg-white/10 transition-all">
+                          <div className="flex justify-between items-center px-1">
+                                <span className="font-black text-sm italic text-white">{seat.seatNumber}</span>
+                                <div className={`w-2 h-2 rounded-full ${seat.isPermanent ? 'bg-red-500' : seat.isBlocked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                          </div>
+                          <div className="flex justify-between gap-1">
+                             <button
+                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isOnline')}
+                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isOnline !== false ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-500'}`}
+                             >WEB</button>
+                             <button
+                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isPermanent')}
+                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isPermanent ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-500'}`}
+                             >PRM</button>
+                             <button
+                               onClick={() => toggleSeatFlag(seat.seatNumber, 'isBlocked')}
+                               className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isBlocked ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-500'}`}
+                             >RES</button>
+                          </div>
+                       </div>
+                     ))}
+                </div>
+            </div>
         </div>
     );
 };

@@ -5,7 +5,10 @@ import axios from "axios";
 // Types
 // ------------------------------
 export interface SeatType {
-  seatNumber: number;
+  seatNumber: string | number;
+  x?: number;
+  y?: number;
+  isWindow?: boolean;
   isLadiesOnly: boolean;
   isOccupied: boolean;
   conductorAssigned?: boolean;
@@ -18,7 +21,7 @@ export interface SeatType {
 export type SeatLayoutType = "2x2" | "2x3";
 
 // Last row type
-export type LastRowType = 4 | 6;
+export type LastRowType = number;
 
 // Bus type
 export interface BusType {
@@ -31,7 +34,7 @@ export interface BusType {
   arrivalTime: string;
   duration: string;
   totalSeats: number;
-  ladiesOnlySeats: number[];
+  ladiesOnlySeats: (string | number)[];
   price: number;
   status: "active" | "inactive";
   amenities: string[];
@@ -43,7 +46,8 @@ export interface BusType {
   seatLayout: SeatLayoutType; // main layout
   seatNumberingType: "driver_side" | "door_side";
   lastRowSeats?: LastRowType;  // last row layout
-  schedule?: string[]; // 👈 NEW
+  schedule?: string[]; 
+  useCustomLayout?: boolean; // 👈 NEW
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {
@@ -51,7 +55,7 @@ interface BusFromDB extends Omit<BusType, "id"> {
 }
 
 export interface SeatUpdate {
-  seatNumber: number;
+  seatNumber: string | number;
   isOccupied: boolean;
 }
 
@@ -65,9 +69,9 @@ interface BusContextType {
   updateBus: (id: string, bus: Partial<Omit<BusType, "id">>) => Promise<void>;
   deleteBus: (id: string) => Promise<void>;
   toggleBusStatus: (id: string) => Promise<void>;
-  selectedSeats: number[];
-  selectSeat: (busId: string, seatNumber: number) => void;
-  deselectSeat: (seatNumber: number) => void;
+  selectedSeats: (string | number)[];
+  selectSeat: (busId: string, seatNumber: string | number) => void;
+  deselectSeat: (seatNumber: string | number) => void;
   clearSelectedSeats: () => void;
   updateSeats: (busId: string, seats: SeatUpdate[]) => Promise<void>;
   loading: boolean;
@@ -90,7 +94,7 @@ export const useBus = (): BusContextType => {
 // ------------------------------
 export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [buses, setBuses] = useState<BusType[]>([]);
-  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<(string | number)[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -189,11 +193,11 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // ------------------------------
   // Seat selection
   // ------------------------------
-  const selectSeat = (busId: string, seatNumber: number) => {
+  const selectSeat = (busId: string, seatNumber: string | number) => {
     const bus = buses.find((b) => b.id === busId);
     if (!bus) return;
 
-    const seat = bus.seats.find((s) => s.seatNumber === seatNumber);
+    const seat = bus.seats.find((s) => String(s.seatNumber) === String(seatNumber));
     if (!seat) return;
 
     if (seat.isLadiesOnly) {
@@ -213,8 +217,8 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
-  const deselectSeat = (seatNumber: number) => {
-    setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
+  const deselectSeat = (seatNumber: string | number) => {
+    setSelectedSeats((prev) => prev.filter((s) => String(s) !== String(seatNumber)));
   };
 
   const clearSelectedSeats = () => setSelectedSeats([]);

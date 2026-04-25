@@ -17,6 +17,11 @@ const ownerSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6 }, // ✅ added password
 
     status: { type: String, enum: ["pending", "active", "suspended"], default: "pending" },
+    
+    // Permission Flags
+    canAddBuses: { type: Boolean, default: true },
+    canAddConductors: { type: Boolean, default: true },
+    canManageBookings: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

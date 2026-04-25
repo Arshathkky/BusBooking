@@ -7,12 +7,15 @@ export type SeatLayoutType = "2x2" | "2x3";
 export type LastRowType = 4 | 6;
 
 export interface Seat {
-  seatNumber: number;
+  seatNumber: string | number;
   isLadiesOnly: boolean;
   isOccupied: boolean;
   conductorAssigned?: boolean;
   isReservedForConductor?: boolean;
   conductorId?: string | null;
+  x?: number;
+  y?: number;
+  isWindow?: boolean;
 }
 
 export interface Bus {
@@ -25,8 +28,8 @@ export interface Bus {
   busNumber: string;
   seatLayout: SeatLayoutType;
   lastRowSeats: LastRowType;
-  seatNumberingType: "driver_side" | "door_side"; // 👈 NEW
-  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
+  seatNumberingType: "driver_side" | "door_side";
+  useCustomLayout?: boolean;
 }
 
 // Backend response wrapper
@@ -45,22 +48,22 @@ interface BusFromBackend {
   busNumber: string;
   seatLayout?: SeatLayoutType;
   lastRowSeats?: LastRowType;
-  seatNumberingType?: "driver_side" | "door_side"; // 👈 NEW
-  onlineSeatRange?: { start: number; end: number }; // 👈 NEW
+  seatNumberingType?: "driver_side" | "door_side";
+  useCustomLayout?: boolean;
 }
 
 // -------------------- Context Type --------------------
 
 interface SeatContextType {
   busSeats: Bus | null;
-  selectedSeats: number[];
-  selectSeat: (seatNumber: number) => void;
-  deselectSeat: (seatNumber: number) => void;
+  selectedSeats: (string | number)[];
+  selectSeat: (seatNumber: string | number) => void;
+  deselectSeat: (seatNumber: string | number) => void;
   clearSelection: () => void;
   fetchBusSeats: (busId: string) => Promise<void>;
   updateSeats: (
     busId: string,
-    updatedSeats: { seatNumber: number; isOccupied: boolean }[]
+    updatedSeats: { seatNumber: string | number; isOccupied: boolean }[]
   ) => Promise<void>;
 }
 
@@ -78,7 +81,7 @@ export const useSeat = (): SeatContextType => {
 
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
-  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<(string | number)[]>([]);
   const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
 
   // -------------------- Fetch bus seats --------------------
@@ -98,7 +101,8 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         busNumber: busData.busNumber,
         seatLayout: busData.seatLayout ?? "2x2",
         lastRowSeats: busData.lastRowSeats ?? 6,
-        seatNumberingType: busData.seatNumberingType ?? "driver_side", // 👈 NEW
+        seatNumberingType: busData.seatNumberingType ?? "driver_side",
+        useCustomLayout: busData.useCustomLayout ?? false,
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,
@@ -106,6 +110,9 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           conductorAssigned: s.conductorAssigned ?? false,
           isReservedForConductor: s.isReservedForConductor ?? false,
           conductorId: s.conductorId ?? null,
+          x: s.x,
+          y: s.y,
+          isWindow: s.isWindow,
         })),
       });
     } catch (err) {
@@ -117,7 +124,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateSeats = useCallback(
     async (
       busId: string,
-      updatedSeats: { seatNumber: number; isOccupied: boolean }[]
+      updatedSeats: { seatNumber: string | number; isOccupied: boolean }[]
     ) => {
       if (!busSeats) return;
 
@@ -137,11 +144,11 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   // -------------------- Seat Selection --------------------
-  const selectSeat = (seatNumber: number) => {
+  const selectSeat = (seatNumber: string | number) => {
     setSelectedSeats((prev) => (prev.includes(seatNumber) ? prev : [...prev, seatNumber]));
   };
 
-  const deselectSeat = (seatNumber: number) => {
+  const deselectSeat = (seatNumber: string | number) => {
     setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
   };
 

@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 
 // -------------------- Seat Schema --------------------
 const seatSchema = new mongoose.Schema({
-  seatNumber: { type: Number, required: true },
+  seatNumber: { type: String, required: true }, // Changed to string for flexibility
+  x: { type: Number, default: 0 },
+  y: { type: Number, default: 0 },
+  isWindow: { type: Boolean, default: false },
 
   isLadiesOnly: { type: Boolean, default: false },
 
@@ -31,7 +34,9 @@ const busSchema = new mongoose.Schema(
 
     routeId: { type: mongoose.Schema.Types.ObjectId, ref: "Route", required: true },
 
-    ladiesOnlySeats: { type: [Number], default: [] },
+    ladiesOnlySeats: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    isSpecial: { type: Boolean, default: false },
+    specialTime: { type: String, default: null },
 
     seats: { type: [seatSchema], default: [] },
 
@@ -69,7 +74,9 @@ const busSchema = new mongoose.Schema(
       type: [String],
       enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
       default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    }
+    },
+    
+    useCustomLayout: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

@@ -38,60 +38,82 @@ export const getOwnerById = async (req, res) => {
 export const getOwnerDetails = async (req, res) => {
   try {
     const ownerId = req.params.id;
+    const { month, date, busId } = req.query;
+
     const owner = await Owner.findById(ownerId);
     if (!owner) return res.status(404).json({ message: "Owner not found" });
 
+    // Base filters
     const buses = await Bus.find({ ownerId });
-    const busIds = buses.map(b => b._id);
+    const busIds = buses.map(b => b._id.toString());
+    
+    // Filter by specific bus if requested
+    const targetBusIds = busId && busId !== "all" ? [busId] : busIds;
 
+    // --- Statistics ---
     const totalBuses = buses.length;
-    const totalBookings = await Booking.countDocuments({ busId: { $in: busIds } });
+    const activeBusesCount = buses.filter(b => b.status === "active").length;
+    const totalRoutes = await Route.countDocuments({ ownerId });
+    const activeRoutes = await Route.countDocuments({ ownerId, status: "active" });
+    const totalConductors = await Conductor.countDocuments({ ownerId });
 
-    const totalRevenueAgg = await Booking.aggregate([
-      { $match: { busId: { $in: busIds } } },
-      { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+    // --- Dynamic Filters for Revenue/Bookings ---
+    let matchFilter = { busId: { $in: targetBusIds } };
+
+    // Handle Specific Date or Month
+    if (date) {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      // We check both searchData.date (travel date) AND createdAt? 
+      // Usually earnings are based on the date the bus runs.
+      matchFilter["searchData.date"] = date; 
+    } else if (month) {
+      // Month format: YYYY-MM
+      const [year, m] = month.split("-");
+      const regex = new RegExp(`^${year}-${m}`); 
+      matchFilter["searchData.date"] = { $regex: regex };
+    }
+
+    // Bookings for selected range
+    const filteredBookings = await Booking.countDocuments(matchFilter);
+
+    // Earnings for selected range
+    const earningsAgg = await Booking.aggregate([
+      { $match: { ...matchFilter, paymentStatus: "Paid" } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
     ]);
-    const totalRevenue = totalRevenueAgg[0]?.totalRevenue || 0;
+    const filteredEarnings = earningsAgg[0]?.total || 0;
 
-    const routes = await Route.find({ ownerId });
-    const totalRoutes = routes.length;
-    const activeRoutes = routes.filter(r => r.status === "active").length;
-
-    const conductors = await Conductor.find({ ownerId });
-    const totalConductors = conductors.length;
-
-    // Example: today bookings
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const todayBookings = await Booking.countDocuments({
-      busId: { $in: busIds },
-      createdAt: { $gte: today, $lt: tomorrow },
-    });
-
-    // Monthly earnings (example: this month)
-    const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    const monthlyEarningsAgg = await Booking.aggregate([
-      { $match: { busId: { $in: busIds }, createdAt: { $gte: startMonth, $lt: endMonth } } },
-      { $group: { _id: null, monthlyEarnings: { $sum: "$totalAmount" } } }
+    // Monthly stats (always show current month if nothing selected)
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const monthAgg = await Booking.aggregate([
+      { 
+        $match: { 
+          busId: { $in: busIds }, 
+          "searchData.date": { $regex: new RegExp(`^${currentMonth}`) },
+          paymentStatus: "Paid"
+        } 
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
     ]);
-    const monthlyEarnings = monthlyEarningsAgg[0]?.monthlyEarnings || 0;
 
     res.json({
       success: true,
       data: {
         totalBuses,
-        activeBuses: buses.filter(b => b.status === "active").length,
+        activeBuses: activeBusesCount,
         totalConductors,
         totalRoutes,
         activeRoutes,
-        totalBookings,
-        todayBookings,
-        totalRevenue,
-        monthlyEarnings,
-        totalEarnings: totalRevenue
+        totalBookings: await Booking.countDocuments({ busId: { $in: busIds } }),
+        filteredBookings,
+        filteredEarnings,
+        todayBookings: filteredBookings, // For UI compatibility
+        todayEarnings: filteredEarnings, // For UI compatibility
+        monthlyEarnings: monthAgg[0]?.total || 0,
+        totalRevenue: filteredEarnings // In this context
       }
     });
   } catch (err) {
@@ -136,6 +158,9 @@ export const addOwner = async (req, res) => {
       taxId,
       registrationDocumentUrl,
       password,
+      canAddBuses,
+      canAddConductors,
+      canManageBookings,
     } = req.body;
 
     const existing = await Owner.findOne({ email });
@@ -151,6 +176,9 @@ export const addOwner = async (req, res) => {
       taxId,
       registrationDocumentUrl,
       password,
+      canAddBuses,
+      canAddConductors,
+      canManageBookings,
     });
 
     await owner.save();
@@ -179,6 +207,9 @@ export const updateOwner = async (req, res) => {
       "registrationDocumentUrl",
       "status",
       "password",
+      "canAddBuses",
+      "canAddConductors",
+      "canManageBookings",
     ];
 
     const updateData = {};

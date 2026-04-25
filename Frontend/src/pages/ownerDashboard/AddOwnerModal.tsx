@@ -21,6 +21,9 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
     registrationDocumentUrl: "",
     password: "",
     status: "pending" as Owner["status"],
+    canAddBuses: true,
+    canAddConductors: true,
+    canManageBookings: true,
   });
 
   const [errorMessage, setErrorMessage] = useState("");
@@ -39,6 +42,9 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
         registrationDocumentUrl: ownerData.registrationDocumentUrl ?? "",
         password: "",
         status: ownerData.status ?? "pending",
+        canAddBuses: ownerData.canAddBuses ?? true,
+        canAddConductors: ownerData.canAddConductors ?? true,
+        canManageBookings: ownerData.canManageBookings ?? true,
       });
     } else {
       // Clear form when adding
@@ -53,6 +59,9 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
         registrationDocumentUrl: "",
         password: "",
         status: "pending",
+        canAddBuses: true,
+        canAddConductors: true,
+        canManageBookings: true,
       });
     }
   }, [ownerData]);
@@ -190,6 +199,42 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
               </select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">Permissions</h3>
+            <div className="grid grid-cols-1 gap-2">
+              <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  name="canAddBuses"
+                  checked={formData.canAddBuses}
+                  onChange={(e) => setFormData(prev => ({ ...prev, canAddBuses: e.target.checked }))}
+                  className="rounded text-[#fdc106] focus:ring-[#fdc106]"
+                />
+                <span>Allow adding Buses</span>
+              </label>
+              <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  name="canAddConductors"
+                  checked={formData.canAddConductors}
+                  onChange={(e) => setFormData(prev => ({ ...prev, canAddConductors: e.target.checked }))}
+                  className="rounded text-[#fdc106] focus:ring-[#fdc106]"
+                />
+                <span>Allow adding Conductors</span>
+              </label>
+              <label className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  name="canManageBookings"
+                  checked={formData.canManageBookings}
+                  onChange={(e) => setFormData(prev => ({ ...prev, canManageBookings: e.target.checked }))}
+                  className="rounded text-[#fdc106] focus:ring-[#fdc106]"
+                />
+                <span>Allow managing Bookings</span>
+              </label>
+            </div>
+          </div>
 
           <input
             name="password"

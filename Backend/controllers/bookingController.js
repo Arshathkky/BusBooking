@@ -321,3 +321,25 @@ export const payHereNotify = async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 };
+
+/* ===========================
+   GET RECENT BOOKINGS FOR OWNER
+=========================== */
+export const getOwnerRecentBookings = async (req, res) => {
+  try {
+    const { busIds } = req.body; 
+    if (!busIds || !Array.isArray(busIds)) return res.status(400).json({ success: false, message: "Invalid busIds" });
+    
+    // In search result, we store bus as {id: string, name: string...}
+    // We match the bus.id field in Booking schema
+    const bookings = await Booking.find({ 
+      "bus.id": { $in: busIds }
+    })
+    .sort({ createdAt: -1 })
+    .limit(10);
+    
+    res.status(200).json({ success: true, bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

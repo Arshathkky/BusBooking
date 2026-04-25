@@ -31,6 +31,8 @@ export const addBus = async (req, res) => {
       busNumber,
       seatLayout = "2x2",
       lastRowSeats= 4,
+      useCustomLayout = false,
+      seats = [], // 👈 Expecting full seat objects from designer
     } = req.body;
 
     // ✅ Validate required fields
@@ -72,24 +74,34 @@ export const addBus = async (req, res) => {
         }));
     }
 
-    // ✅ Initialize seat layout with ladies + conductor seats
-    const seats = Array.from({ length: totalSeats }, (_, i) => {
-      const seatNumber = i + 1;
-      const isLadiesOnly = ladiesOnlySeats.includes(seatNumber);
-
-      const conductorSeat = conductorSeats.find((s) => s.seatNumber === seatNumber);
-      const isConductorSeat = !!conductorSeat;
-
-      return {
-        seatNumber,
-        isLadiesOnly,
+    let finalSeats = [];
+    if (useCustomLayout && seats.length > 0) {
+      finalSeats = seats.map(s => ({
+        ...s,
         isOccupied: false,
-        conductorAssigned: isConductorSeat,
-        conductorCode: isConductorSeat ? conductorSeat.conductorCode : null,
-        conductorId: isConductorSeat ? conductorSeat.conductorId || null : null,
-        isOnline: true,
-      };
-    });
+        conductorAssigned: false,
+        isOnline: s.isOnline ?? true
+      }));
+    } else {
+      // ✅ Initialize seat layout with ladies + conductor seats
+      finalSeats = Array.from({ length: totalSeats }, (_, i) => {
+        const seatNumber = i + 1;
+        const isLadiesOnly = ladiesOnlySeats.includes(seatNumber);
+
+        const conductorSeat = conductorSeats.find((s) => s.seatNumber === seatNumber);
+        const isConductorSeat = !!conductorSeat;
+
+        return {
+          seatNumber,
+          isLadiesOnly,
+          isOccupied: false,
+          conductorAssigned: isConductorSeat,
+          conductorCode: isConductorSeat ? conductorSeat.conductorCode : null,
+          conductorId: isConductorSeat ? conductorSeat.conductorId || null : null,
+          isOnline: true,
+        };
+      });
+    }
 
     // ✅ Create new bus
     const bus = await Bus.create({
@@ -110,11 +122,11 @@ export const addBus = async (req, res) => {
       specialTime,
       ladiesOnlySeats,
       ownerId,
-      seats,
-      status: "active",
       busNumber: busNumber || `BUS-${Date.now()}`,
       seatLayout,
       lastRowSeats,
+      useCustomLayout,
+      seats: finalSeats,
     });
 
     res.status(201).json({

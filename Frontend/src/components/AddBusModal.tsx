@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent } from "react";
 import { X, Bus, DollarSign, LayoutGrid as Layout } from "lucide-react";
-import { useBus, BusType } from "../contexts/busDataContexts";
+import { useBus, BusType, SeatType } from "../contexts/busDataContexts";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouteData } from "../contexts/RouteDataContext";
 import BusLayoutDesigner from "./BusLayoutDesigner";
@@ -9,7 +9,7 @@ import BusLayoutDesigner from "./BusLayoutDesigner";
 // Literal Types
 // ------------------------------
 type SeatLayoutType = "2x2" | "2x3";
-type LastRowType = 4 | 6;
+type LastRowType = number;
 
 // ------------------------------
 // Props & Form Types
@@ -28,7 +28,7 @@ interface FormData {
   route: string;
   pricePerSeat: string;
   amenities: string[];
-  ladiesOnlySeats: number[];
+  ladiesOnlySeats: (string | number)[];
   isSpecialBus: boolean;
   specialTime: string;
   startTime: string;
@@ -37,6 +37,7 @@ interface FormData {
   seatLayout: SeatLayoutType;
   seatNumberingType: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
+  useCustomLayout: boolean; // 👈 NEW
 }
 
 // ------------------------------
@@ -65,6 +66,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     seatLayout: "2x2",
     seatNumberingType: "driver_side",
     lastRowSeats: 6,
+    useCustomLayout: false, // 👈 NEW
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
@@ -93,9 +95,15 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         seatLayout: editingBus.seatLayout || "2x2",
         seatNumberingType: editingBus.seatNumberingType || "driver_side",
         lastRowSeats: editingBus.lastRowSeats || 6,
+        useCustomLayout: editingBus.useCustomLayout || false, // 👈 NEW
       });
+      if (editingBus.seats) {
+          setCustomSeats(editingBus.seats);
+      }
     }
   }, [editingBus, routes]);
+
+  const [customSeats, setCustomSeats] = useState<SeatType[]>([]);
 
   // ------------------------------
   // Options
@@ -104,31 +112,13 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   const availableAmenities = ["wifi", "ac", "refreshments", "entertainment", "charging", "blanket"];
 
   // ------------------------------
-  // Auto-calculate seat layout from total seats
-  // Logic: fill last row first, then divide remaining into 2x2 or 2x3
-  // ------------------------------
-  const computeSeatLayout = (total: number): { layout: SeatLayoutType; lastRow: LastRowType } => {
-    // Try 2x3 layout (5 seats per row) with last row of 5 or 6
-    // Try 2x2 layout (4 seats per row) with last row of 4
-
-    // Option A: 2x3 with lastRow=6 → remaining should divide by 5
-    if ((total - 6) > 0 && (total - 6) % 5 === 0) {
-      return { layout: "2x3", lastRow: 6 };
-    }
-    // Option B: 2x2 with lastRow=4 → remaining should divide by 4
-    if ((total - 4) > 0 && (total - 4) % 4 === 0) {
-      return { layout: "2x2", lastRow: 4 };
-    }
-    // Option C: 2x3 with lastRow=6 (allow partial last normal row)
-    if ((total - 6) > 0) {
-      return { layout: "2x3", lastRow: 6 };
-    }
-    // Option D: 2x2 with lastRow=4 (allow partial last normal row)
-    if ((total - 4) > 0) {
-      return { layout: "2x2", lastRow: 4 };
-    }
-    // Fallback
-    return { layout: "2x2", lastRow: 4 };
+  const computeSeatLayout = (total: number) => {
+    const layout = total > 45 ? "2x3" : "2x2";
+    const seatsPerRow = layout === "2x2" ? 4 : 5;
+    const lastRow = total % seatsPerRow === 0 ? seatsPerRow : (total % seatsPerRow);
+    const normalSeats = total - lastRow;
+    const rows = Math.ceil(normalSeats / seatsPerRow);
+    return { layout: layout as SeatLayoutType, lastRow, rows };
   };
 
   // ------------------------------
@@ -147,6 +137,11 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
           updated.lastRowSeats = lastRow;
         }
       }
+      
+      // If switching to auto-layout, clear custom seats
+      if (field === "useCustomLayout" && value === false) {
+          setCustomSeats([]);
+      }
 
       return updated;
     });
@@ -161,8 +156,13 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     }));
   };
 
-  const handleLayoutSave = (ladiesSeats: number[]) => {
-    setFormData((prev) => ({ ...prev, ladiesOnlySeats: ladiesSeats }));
+  const handleLayoutSave = (seats: SeatType[]) => {
+    setCustomSeats(seats);
+    setFormData(prev => ({ 
+        ...prev, 
+        totalSeats: seats.length,
+        ladiesOnlySeats: seats.filter(s => s.isLadiesOnly).map(s => s.seatNumber)
+    }));
   };
 
   // Seat Layout change handler
@@ -177,14 +177,19 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     const selectedRoute = routes?.find((r) => r.name === formData.route);
     if (!selectedRoute) return alert("Please select a valid route.");
 
-    const seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
-      seatNumber: i + 1,
-      isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
-      isOccupied: false,
-      conductorAssigned: false,
-      conductorCode: null,
-      conductorId: null,
-    }));
+    let seats = customSeats;
+
+    if (!formData.useCustomLayout || seats.length === 0) {
+        // Fallback to auto-generated seats if not using custom layout
+        seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
+            seatNumber: i + 1,
+            isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
+            isOccupied: false,
+            conductorAssigned: false,
+            conductorCode: null,
+            conductorId: null,
+        }));
+    }
 
     const busPayload: Omit<BusType, "id"> = {
       name: formData.busName,
@@ -207,6 +212,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       seatLayout: formData.seatLayout,
       seatNumberingType: formData.seatNumberingType,
       lastRowSeats: formData.lastRowSeats,
+      useCustomLayout: formData.useCustomLayout, // 👈 NEW
     };
 
     try {
@@ -334,19 +340,66 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
               </div>
 
               {/* Layout Designer */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-semibold">
-                    Layout Setup ({formData.ladiesOnlySeats.length} ladies-only seats)
+                <div className="flex items-center space-x-4 mb-4">
+                  <label className="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 transition-colors hover:border-[#fdc106]">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.useCustomLayout} 
+                      onChange={(e) => handleInputChange("useCustomLayout", e.target.checked)} 
+                      className="rounded border-gray-300 text-[#fdc106] w-5 h-5" 
+                    />
+                    <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Use Custom Drag-and-Drop Layout</span>
                   </label>
-                  <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2">
-                    <Layout className="w-4 h-4" /><span>Design Layout</span>
-                  </button>
+                  
+                  {formData.useCustomLayout && (
+                    <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center space-x-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                      <Layout className="w-5 h-5" /><span>Design Bus Floor Plan</span>
+                    </button>
+                  )}
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg text-sm">
-                  {formData.ladiesOnlySeats.length > 0 ? `Ladies seats: ${formData.ladiesOnlySeats.join(", ")}` : "No ladies-only seats selected"}
+
+                {!formData.useCustomLayout && (
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold">
+                      Layout Setup ({formData.ladiesOnlySeats.length} ladies-only seats)
+                    </label>
+                    <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2">
+                       <Layout className="w-4 h-4" /><span>Quick Setup</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="p-5 bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-inner">
+                  {formData.useCustomLayout ? (
+                    <div className="flex items-center justify-between">
+                         <div>
+                            <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Source of Truth</p>
+                            <p className="font-bold text-gray-700 dark:text-gray-200">
+                                {customSeats.length > 0 ? `Custom floor plan with ${customSeats.length} seats` : "Manual Floor Plan Required"}
+                            </p>
+                         </div>
+                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-gray-400">
+                            <span>Auto Configuration</span>
+                            <span className="text-[#fdc106]">Standard Algorithm</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <div className="px-3 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600 font-black text-lg italic">
+                                {formData.seatLayout}
+                            </div>
+                            <div className="flex-1 text-sm font-bold text-gray-600 dark:text-gray-300">
+                                {Math.ceil((formData.totalSeats - formData.lastRowSeats) / (formData.seatLayout === "2x2" ? 4 : 5))} Rows × {formData.seatLayout === "2x2" ? 4 : 5} Seats + Last Row {formData.lastRowSeats} Seats
+                            </div>
+                        </div>
+                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] font-medium text-gray-400">
+                             {formData.ladiesOnlySeats.length > 0 ? `Ladies-Only blocked: ${formData.ladiesOnlySeats.join(", ")}` : "No special gender-based blocking"}
+                        </div>
+                    </div>
+                  )}
                 </div>
-              </div>
 
               {/* Special Bus */}
               <div>
@@ -388,10 +441,38 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       {showLayoutDesigner && (
         <BusLayoutDesigner
           totalSeats={formData.totalSeats}
-          currentLadiesSeats={formData.ladiesOnlySeats}
-          seatLayout={formData.seatLayout}
-          seatNumberingType={formData.seatNumberingType}
-          lastRowSeats={formData.lastRowSeats}
+          currentSeats={customSeats.length > 0 ? customSeats : (() => {
+              // Generate initial seats from auto-layout if empty
+              const seatsPerRow = formData.seatLayout === "2x2" ? 4 : 5;
+              const normalSeats = formData.totalSeats - formData.lastRowSeats;
+              const normalRows = Math.ceil(normalSeats / seatsPerRow);
+              
+              const generated: SeatType[] = [];
+              for(let i=0; i<formData.totalSeats; i++) {
+                  const num = i + 1;
+                  const isLastRow = i >= normalSeats;
+                  let x, y;
+                  
+                  if (!isLastRow) {
+                      const row = Math.floor(i / seatsPerRow);
+                      const colInRow = i % seatsPerRow;
+                      x = colInRow < 2 ? colInRow : colInRow + 2; // path in middle
+                      y = row + 1;
+                  } else {
+                      x = i - normalSeats;
+                      y = normalRows + 1;
+                  }
+                  
+                  generated.push({
+                      seatNumber: num,
+                      x, y,
+                      isLadiesOnly: formData.ladiesOnlySeats.some(l => String(l) === String(num)),
+                      isOccupied: false,
+                      isWindow: x === 0 || x === 5 // based on 6 cols (0-5)
+                  });
+              }
+              return generated;
+          })()}
           onSave={handleLayoutSave}
           onClose={() => setShowLayoutDesigner(false)}
         />

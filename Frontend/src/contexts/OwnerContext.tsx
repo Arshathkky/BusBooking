@@ -14,6 +14,11 @@ export interface Owner {
   status: "pending" | "active" | "suspended";
   createdAt?: string;
   password?: string;
+
+  // Permission Flags
+  canAddBuses?: boolean;
+  canAddConductors?: boolean;
+  canManageBookings?: boolean;
 }
 
 interface OwnerContextType {

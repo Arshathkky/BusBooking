@@ -3,6 +3,7 @@ import Booking from "../models/bookingModel.js";
 import Bus from "../models/busModel.js";
 import Conductor from "../models/conductorModel.js";
 import { Counter } from "../models/counterModal.js";
+import crypto from "crypto";
 
 const MUTEX = {};
 
@@ -262,5 +263,61 @@ export const assignConductorSeats = async (req, res) => {
     res.status(200).json({ message: "Conductor seats assigned", bus });
   } catch (error) {
     res.status(500).json({ message: "Failed", error });
+  }
+};
+
+/* ===========================
+   PAYHERE INTEGRATION
+=========================== */
+export const generatePayHereHash = (req, res) => {
+  try {
+    const { order_id, amount, currency } = req.body;
+    const merchant_id = process.env.PAYHERE_MERCHANT_ID;
+    const merchant_secret = process.env.PAYHERE_SECRET;
+
+    if (!merchant_id || !merchant_secret) {
+      return res.status(500).json({ success: false, message: "PayHere credentials missing" });
+    }
+
+    const hashed_secret = crypto.createHash('md5').update(merchant_secret).digest('hex').toUpperCase();
+    const amountFormatted = parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/,/g, '');
+    const hash = crypto.createHash('md5').update(merchant_id + order_id + amountFormatted + currency + hashed_secret).digest('hex').toUpperCase();
+
+    res.status(200).json({ success: true, hash, merchant_id });
+  } catch (error) {
+    console.error("Generate Hash Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const payHereNotify = async (req, res) => {
+  try {
+    const { merchant_id, order_id, payhere_amount, payhere_currency, status_code, md5sig } = req.body;
+    const merchant_secret = process.env.PAYHERE_SECRET;
+
+    const hashed_secret = crypto.createHash('md5').update(merchant_secret).digest('hex').toUpperCase();
+    const local_md5sig = crypto.createHash('md5').update(merchant_id + order_id + payhere_amount + payhere_currency + status_code + hashed_secret).digest('hex').toUpperCase();
+
+    if (local_md5sig === md5sig) {
+      // Find booking using bookingId (which is what we pass as order_id)
+      const booking = await Booking.findOne({ bookingId: order_id });
+      if (!booking) {
+        return res.status(404).send("Booking not found");
+      }
+
+      if (status_code === "2") { // 2 = Success
+        booking.paymentStatus = "PAID";
+      } else if (status_code === "-1" || status_code === "-2" || status_code === "-3") {
+        booking.paymentStatus = "CANCELLED";
+      }
+      
+      await booking.save();
+      res.status(200).send("OK");
+    } else {
+      res.status(400).send("Invalid signature");
+    }
+  } catch (error) {
+    console.error("PayHere Notify Error:", error);
+    res.status(500).send("Internal Server Error");
   }
 };

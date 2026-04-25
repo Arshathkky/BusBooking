@@ -6,12 +6,16 @@ import {
   updatePaymentStatus,
   getOccupiedSeatsForDate,
   updateBooking,
-  cancelBooking
+  cancelBooking,
+  generatePayHereHash,
+  payHereNotify
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
 
 router.post("/", createBooking); // Create new booking
+router.post("/payhere/hash", generatePayHereHash); // PayHere Hash Generation
+router.post("/payhere/notify", payHereNotify); // PayHere Notify Callback
 router.get("/occupied-seats", getOccupiedSeatsForDate); // Create new booking
 router.get("/", getAllBookings); // Get all bookings
 router.get("/:id", getBookingById); // Get one booking

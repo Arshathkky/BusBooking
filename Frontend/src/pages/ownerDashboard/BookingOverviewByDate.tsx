@@ -156,6 +156,11 @@ const BookingOverviewByDate: React.FC = () => {
         <div className="mt-6">
           <h3 className="text-xl font-bold mb-3">Seat Layout</h3>
 
+          <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 px-10 max-w-sm mx-auto">
+             <span>Door Side</span>
+             <span>River Side</span>
+          </div>
+
           <div className="grid gap-2">
             {Array.from(
               { length: Math.ceil(selectedBus.seats.length / 5) },

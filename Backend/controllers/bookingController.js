@@ -199,10 +199,24 @@ export const getOccupiedSeatsForDate = async (req, res) => {
       holdExpiresAt: { $gt: new Date() } 
     });
 
+    const blockedBookings = await Booking.find({
+      "bus.id": new mongoose.Types.ObjectId(busId),
+      "searchData.date": date,
+      paymentStatus: "BLOCKED"
+    });
+
+    const offlineBookings = await Booking.find({
+      "bus.id": new mongoose.Types.ObjectId(busId),
+      "searchData.date": date,
+      paymentStatus: "OFFLINE"
+    });
+
     const occupiedSeats = paidBookings.flatMap((b) => b.selectedSeats);
     const reservedSeats = pendingBookings.flatMap((b) => b.selectedSeats);
+    const blockedSeats = blockedBookings.flatMap((b) => b.selectedSeats);
+    const offlineSeats = offlineBookings.flatMap((b) => b.selectedSeats);
 
-    res.status(200).json({ success: true, occupiedSeats, reservedSeats });
+    res.status(200).json({ success: true, occupiedSeats, reservedSeats, blockedSeats, offlineSeats });
   } catch (error) {
     console.error("Occupied seats error:", error);
     res.status(500).json({ success: false, message: error.message });

@@ -14,7 +14,8 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  X
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import AddBusModal from "../components/AddBusModal";
@@ -27,7 +28,7 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-const BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : 'https://bus-booking-nt91.onrender.com/api';
+const BASE_URL = 'https://bus-booking-nt91.onrender.com/api';
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
@@ -773,7 +774,9 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const [hasPending, setHasPending] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [selectedManualSeats, setSelectedManualSeats] = useState<(string | number)[]>([]);
-    const [showModal, setShowModal] = useState(false);
+    const [actionModal, setActionModal] = useState<{ show: boolean, type: "RESERVE" | "BLOCK" | "OFFLINE" }>({ show: false, type: "RESERVE" });
+    const [actionDates, setActionDates] = useState<string[]>([travelDate]);
+    const [newDate, setNewDate] = useState<string>("");
     const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '' });
     const { updateBus } = useBus();
 
@@ -787,7 +790,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     const filtered = data.bookings.filter((b: any) => 
                         b.bus?.id === busId && 
                         b.searchData?.date === travelDate && 
-                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
                     );
                     setBookings(filtered);
                 }
@@ -842,7 +845,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         }
     };
 
-    const handleManualBook = async () => {
+    const handleActionSubmit = async () => {
         if (selectedManualSeats.length === 0) return;
         setUpdating(true);
         try {
@@ -852,47 +855,52 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             if (!bD.success) throw new Error("Bus not found");
             const busInfo = bD.data;
 
-            // 1. Create the booking record
-            const res = await fetch(`${BOOKING_API}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    bus: {
-                        id: busId,
-                        name: busInfo.name,
-                        type: busInfo.type,
-                        busNumber: busInfo.busNumber
-                    },
-                    searchData: { from: 'Manual Override', to: 'Manual Override', date: travelDate },
-                    selectedSeats: selectedManualSeats.map(String),
-                    totalAmount: 0,
-                    passengerDetails: passengerData,
-                    paymentStatus: 'PENDING' // Set as PENDING but confirmed by owner
-                })
+            const datesToProcess = actionDates.length > 0 ? actionDates : [travelDate];
+
+            const promises = datesToProcess.map(date => {
+                let pStatus = 'PENDING';
+                if (actionModal.type === "BLOCK") pStatus = "BLOCKED";
+                if (actionModal.type === "OFFLINE") pStatus = "OFFLINE";
+
+                return fetch(`${BOOKING_API}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        bus: {
+                            id: busId,
+                            name: busInfo.name,
+                            type: busInfo.type,
+                            busNumber: busInfo.busNumber
+                        },
+                        searchData: { from: 'Owner Override', to: 'Owner Override', date: date },
+                        selectedSeats: selectedManualSeats.map(String),
+                        totalAmount: 0,
+                        passengerDetails: actionModal.type === "RESERVE" ? passengerData : { name: actionModal.type, phone: 'N/A', nic: 'N/A' },
+                        paymentStatus: pStatus
+                    })
+                });
             });
-            const data = await res.json();
+
+            await Promise.all(promises);
             
-            if (data.success) {
-                alert("Reservation completed successfully!");
-                setSelectedManualSeats([]);
-                setShowModal(false);
-                setPassengerData({ name: '', phone: '', email: '', nic: '' });
-                
-                // Refresh manifest
-                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
-                const data2 = await res2.json();
-                if (data2.success) {
-                    const filtered = data2.bookings.filter((b: any) => 
-                        b.bus?.id === busId && b.searchData?.date === travelDate && 
-                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
-                    );
-                    setBookings(filtered);
-                }
-            } else {
-                alert("Booking failed: " + data.message);
+            alert(`${actionModal.type} operation completed successfully for ${datesToProcess.length} date(s)!`);
+            setSelectedManualSeats([]);
+            setActionModal({ show: false, type: "RESERVE" });
+            setActionDates([travelDate]);
+            setPassengerData({ name: '', phone: '', email: '', nic: '' });
+            
+            // Refresh manifest
+            const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const data2 = await res2.json();
+            if (data2.success) {
+                const filtered = data2.bookings.filter((b: any) => 
+                    b.bus?.id === busId && b.searchData?.date === travelDate && 
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                );
+                setBookings(filtered);
             }
         } catch (err) {
-            alert("Connection error or booking failed");
+            alert("Connection error or operation failed");
         } finally {
             setUpdating(false);
         }
@@ -932,35 +940,16 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const toggleManualSeat = (num: string | number) => {
         setSelectedManualSeats(prev => {
             const exists = prev.includes(num);
-            if (!exists) {
-                // Mutual Exclusion when selecting for manual: clear others
-                const updated = localSeats.map(s => String(s.seatNumber) === String(num) ? { ...s, isOnline: false, isPermanent: false } : s);
-                handleQuickSave(updated);
-            }
             return exists ? prev.filter(s => s !== num) : [...prev, num];
         });
     };
 
-    const toggleSeatFlag = (num: string | number, field: string) => {
-        if (field === 'isBlocked') {
-            toggleManualSeat(num);
-            return;
+    const openActionModal = (type: "RESERVE" | "BLOCK" | "OFFLINE", num?: string | number) => {
+        if (num && !selectedManualSeats.includes(num)) {
+            setSelectedManualSeats(prev => [...prev, num]);
         }
-
-        // Mutual Exclusion: If setting one, clear others
-        const updated = localSeats.map(s => {
-            if (String(s.seatNumber) === String(num)) {
-                const newState = { ...s, [field]: !s[field] };
-                // If we enabled 'field', clear the others
-                if (newState[field]) {
-                    if (field === 'isOnline') { newState.isPermanent = false; newState.isBlocked = false; }
-                    if (field === 'isPermanent') { newState.isOnline = false; newState.isBlocked = false; }
-                }
-                return newState;
-            }
-            return s;
-        });
-        handleQuickSave(updated);
+        setActionModal({ show: true, type });
+        setActionDates([travelDate]);
     };
 
     const generatePDF = () => {
@@ -1052,6 +1041,8 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                     <td className="px-8 py-4">
                                         <div className="font-bold text-gray-900 dark:text-white uppercase tracking-tight">{b.passengerDetails?.name || "RESERVED"}</div>
                                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{b.passengerDetails?.phone || "N/A"}</div>
+                                        {b.paymentStatus === "BLOCKED" && <div className="text-[10px] font-black tracking-widest text-red-500 mt-1 uppercase">OWNER BLOCKED</div>}
+                                        {b.paymentStatus === "OFFLINE" && <div className="text-[10px] font-black tracking-widest text-gray-500 mt-1 uppercase">OFFLINE ASSIGNED</div>}
                                     </td>
                                     <td className="px-8 py-4 text-right">
                                         <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
@@ -1082,7 +1073,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
             {/* Quick Management Grid (Mirror of Conductor Grid) */}
             {/* Multi-Selection Control Bar */}
-            {selectedManualSeats.length > 0 && !showModal && (
+            {selectedManualSeats.length > 0 && !actionModal.show && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] bg-gray-900 border border-white/20 px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center font-black italic shadow-lg text-gray-900">{selectedManualSeats.length}</div>
@@ -1093,10 +1084,21 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setSelectedManualSeats([])} className="px-6 py-2 rounded-xl text-xs font-black text-white hover:bg-white/10 transition-all border border-white/10 uppercase tracking-widest">Clear</button>
+                        
                         <button 
-                            onClick={() => setShowModal(true)}
-                            className="bg-[#fdc106] text-gray-900 px-8 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20"
-                        >Reserve Now</button>
+                            onClick={() => openActionModal("RESERVE")}
+                            className="bg-[#fdc106] text-gray-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20"
+                        >Reserve</button>
+
+                        <button 
+                            onClick={() => openActionModal("BLOCK")}
+                            className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Block</button>
+
+                        <button 
+                            onClick={() => openActionModal("OFFLINE")}
+                            className="bg-gray-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Offline</button>
                     </div>
                 </div>
             )}
@@ -1127,18 +1129,20 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                            </div>
                            <div className="flex justify-between gap-1">
                               <button
-                                onClick={() => toggleSeatFlag(seat.seatNumber, 'isOnline')}
-                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isOnline !== false ? 'bg-green-500 text-white' : 'bg-white/10 text-gray-500'}`}
-                              >WEB</button>
-                              <button
-                                onClick={() => toggleSeatFlag(seat.seatNumber, 'isPermanent')}
-                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${seat.isPermanent ? 'bg-red-500 text-white' : 'bg-white/10 text-gray-500'}`}
-                              >PRM</button>
-                              <button
-                                onClick={() => !isActuallyBooked && toggleSeatFlag(seat.seatNumber, 'isBlocked')}
-                                disabled={isActuallyBooked}
-                                className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked || isSelected ? 'bg-indigo-500 text-white' : 'bg-white/10 text-gray-500'} ${isActuallyBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >{isActuallyBooked ? 'BOOKED' : isSelected ? 'SEL' : 'RES'}</button>
+                                 onClick={() => openActionModal("OFFLINE", seat.seatNumber)}
+                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked ? 'bg-white/10 text-gray-500 opacity-50 cursor-not-allowed' : 'bg-gray-600 hover:bg-gray-500 text-white'}`}
+                                 disabled={isActuallyBooked}
+                               >WEB</button>
+                               <button
+                                 onClick={() => openActionModal("BLOCK", seat.seatNumber)}
+                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked ? 'bg-white/10 text-gray-500 opacity-50 cursor-not-allowed' : 'bg-red-500 hover:bg-red-400 text-white'}`}
+                                 disabled={isActuallyBooked}
+                               >PRM</button>
+                               <button
+                                 onClick={() => openActionModal("RESERVE", seat.seatNumber)}
+                                 disabled={isActuallyBooked}
+                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked || isSelected ? 'bg-indigo-500 text-white' : 'bg-[#fdc106] text-gray-900 hover:bg-[#e6ad05]'} ${isActuallyBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                               >{isActuallyBooked ? 'BOOKED' : isSelected ? 'SEL' : 'RES'}</button>
                            </div>
                         </div>
                        );
@@ -1146,66 +1150,98 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 </div>
             </div>
 
-            {/* Manual Booking Modal */}
-            {showModal && (
+            {/* Action Modal */}
+            {actionModal.show && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-8 bg-gray-900 text-white relative">
-                            <h4 className="text-2xl font-black italic uppercase tracking-tighter">Owner Reservation</h4>
-                            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
-                                {selectedManualSeats.length} Seats: {selectedManualSeats.join(", ")} • No Payment Required
+                        <div className={`p-8 text-white relative ${actionModal.type === 'BLOCK' ? 'bg-red-500' : actionModal.type === 'OFFLINE' ? 'bg-gray-600' : 'bg-gray-900'}`}>
+                            <h4 className="text-2xl font-black italic uppercase tracking-tighter">
+                                {actionModal.type === 'BLOCK' ? 'Block Seats' : actionModal.type === 'OFFLINE' ? 'Set Offline' : 'Owner Reservation'}
+                            </h4>
+                            <p className="text-gray-200 text-xs font-bold uppercase tracking-widest mt-1">
+                                {selectedManualSeats.length} Seats: {selectedManualSeats.join(", ")}
                             </p>
                         </div>
-                        <div className="p-8 space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Passenger Name</label>
-                                <input 
-                                    className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
-                                    placeholder="Enter full name"
-                                    value={passengerData.name}
-                                    onChange={(e) => setPassengerData({...passengerData, name: e.target.value})}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Phone</label>
-                                    <input 
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
-                                        placeholder="07X XXX XXXX"
-                                        value={passengerData.phone}
-                                        onChange={(e) => setPassengerData({...passengerData, phone: e.target.value})}
-                                    />
+                        <div className="p-8 space-y-6">
+                            
+                            {/* Date Selection */}
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Selected Dates</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {actionDates.map(d => (
+                                        <div key={d} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200">
+                                            {d}
+                                            {actionDates.length > 1 && (
+                                                <button onClick={() => setActionDates(actionDates.filter(x => x !== d))} className="text-red-500 hover:text-red-700">
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">NIC / ID Card</label>
+                                <div className="flex gap-2">
                                     <input 
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
-                                        placeholder="ID Number"
-                                        value={passengerData.nic}
-                                        onChange={(e) => setPassengerData({...passengerData, nic: e.target.value})}
+                                        type="date" 
+                                        value={newDate} 
+                                        onChange={(e) => setNewDate(e.target.value)}
+                                        className="flex-1 bg-gray-50 dark:bg-gray-900 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-[#fdc106]"
                                     />
+                                    <button 
+                                        onClick={() => { if(newDate && !actionDates.includes(newDate)) { setActionDates([...actionDates, newDate]); setNewDate(""); } }}
+                                        className="bg-gray-900 dark:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
+                                    >Add Date</button>
                                 </div>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Email Address</label>
-                                <input 
-                                    className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
-                                    placeholder="email@example.com"
-                                    value={passengerData.email}
-                                    onChange={(e) => setPassengerData({...passengerData, email: e.target.value})}
-                                />
-                            </div>
+
+                            {/* Passenger Details ONLY for RESERVE */}
+                            {actionModal.type === "RESERVE" && (
+                                <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Passenger Name</label>
+                                        <input 
+                                            className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                            placeholder="Enter full name"
+                                            value={passengerData.name}
+                                            onChange={(e) => setPassengerData({...passengerData, name: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Phone</label>
+                                            <input 
+                                                className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                                placeholder="07X XXX XXXX"
+                                                value={passengerData.phone}
+                                                onChange={(e) => setPassengerData({...passengerData, phone: e.target.value})}
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">NIC / ID Card</label>
+                                            <input 
+                                                className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                                placeholder="ID Number"
+                                                value={passengerData.nic}
+                                                onChange={(e) => setPassengerData({...passengerData, nic: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             
                             <div className="pt-4 flex gap-3">
                                 <button 
-                                    onClick={() => setShowModal(false)}
+                                    onClick={() => setActionModal({ show: false, type: "RESERVE" })}
                                     className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
                                 >Cancel</button>
                                 <button 
-                                    onClick={handleManualBook}
-                                    disabled={updating || !passengerData.name || !passengerData.phone}
-                                    className="flex-[2] py-4 bg-[#fdc106] rounded-2xl text-xs font-black uppercase tracking-widest text-gray-900 shadow-xl shadow-[#fdc106]/20 transition-all active:scale-95 disabled:bg-gray-300"
-                                >Confirm Booking</button>
+                                    onClick={handleActionSubmit}
+                                    disabled={updating || (actionModal.type === "RESERVE" && (!passengerData.name || !passengerData.phone))}
+                                    className={`flex-[2] py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:bg-gray-300 disabled:shadow-none ${
+                                        actionModal.type === 'BLOCK' ? 'bg-red-500 text-white shadow-red-500/20' : 
+                                        actionModal.type === 'OFFLINE' ? 'bg-gray-600 text-white shadow-gray-600/20' : 
+                                        'bg-[#fdc106] text-gray-900 shadow-[#fdc106]/20'
+                                    }`}
+                                >Confirm {actionModal.type}</button>
                             </div>
                         </div>
                     </div>

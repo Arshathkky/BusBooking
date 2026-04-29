@@ -18,6 +18,8 @@ interface OccupiedSeatsResponse {
   success: boolean;
   occupiedSeats: (string | number)[];
   reservedSeats?: (string | number)[];
+  blockedSeats?: (string | number)[];
+  offlineSeats?: (string | number)[];
 }
 
 
@@ -25,6 +27,8 @@ interface SeatLayoutProps {
   totalSeats: number;
   occupiedSeats: Set<string | number>;
   reservedSeats: Set<string | number>;
+  blockedSeats: Set<string | number>;
+  offlineSeats: Set<string | number>;
   ladiesOnlySeats: Set<string | number>;
   conductorSeatMap: Map<string | number, string>;
   selectedSeats: (string | number)[];
@@ -45,6 +49,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   totalSeats,
   occupiedSeats,
   reservedSeats,
+  blockedSeats,
+  offlineSeats,
   ladiesOnlySeats,
   conductorSeatMap,
   selectedSeats,
@@ -72,9 +78,10 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const seatObj = seatMap.get(String(seatId));
 
     // NEW: Advanced Operational Flags
-    const isPermanent = seatObj && seatObj.isPermanent === true;
-    const isOwnerBlocked = seatObj && seatObj.isBlocked === true;
-    const isBlockedForOnline = seatObj && seatObj.isOnline === false;
+    const sid = String(seatId);
+    const isPermanent = (seatObj && seatObj.isPermanent === true) || blockedSeats.has(sid) || blockedSeats.has(seatId);
+    const isOwnerBlocked = (seatObj && seatObj.isBlocked === true);
+    const isBlockedForOnline = (seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
 
     let style =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
@@ -164,8 +171,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       {useCustomLayout ? (
         <div className="relative mx-auto border-[12px] border-gray-100 rounded-[60px] bg-white p-12 pt-20 shadow-inner" style={{ width: 'fit-content' }}>
           <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] mt-2">Passenger Entry</div>
             <Steering className="w-8 h-8" />
-            <div className="text-[10px] font-black uppercase tracking-[0.2em]">Passenger Entry</div>
           </div>
 
           <div
@@ -186,8 +193,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
                 if (!seat) return <div key={i} className="w-[50px] h-[50px]" />;
 
-                const isOccupied = occupiedSeats.has(seat.seatNumber);
-                const isReserved = reservedSeats.has(seat.seatNumber);
+                const sid = String(seat.seatNumber);
+                const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(seat.seatNumber);
+                const isReserved = reservedSeats.has(sid) || reservedSeats.has(seat.seatNumber);
                 const isSelected = selectedSeats.includes(seat.seatNumber);
                 const isLadies = seat.isLadiesOnly;
                 const conductorId = conductorSeatMap.get(seat.seatNumber);
@@ -201,6 +209,10 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       ) : (
         <>
           {/* Standard Auto Layout */}
+          <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 px-10">
+             <span>Door Side</span>
+             <span>River Side</span>
+          </div>
           <div className="flex justify-end mb-4">
             <div className="w-20 h-10 bg-gray-200 flex items-center justify-center rounded-t-2xl shadow-inner">
               <Steering className="w-6 h-6 text-gray-400" />
@@ -214,8 +226,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
             const standardRowIndices = Array.from({ length: end - start }, (_, idx) => start + idx + 1);
 
             let rowSeats = standardRowIndices.map(num => {
-              const isOccupied = occupiedSeats.has(num);
-              const isReserved = reservedSeats.has(num);
+              const sid = String(num);
+              const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(num);
+              const isReserved = reservedSeats.has(sid) || reservedSeats.has(num);
               const isSelected = selectedSeats.includes(num);
               const isLadies = ladiesOnlySeats.has(num);
               const conductorId = conductorSeatMap.get(num);
@@ -241,8 +254,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
               {(() => {
                 const lastRowIndices = Array.from({ length: lastRowSeats }, (_, i) => normalSeatCount + i + 1);
                 let rowSeats = lastRowIndices.map(num => {
-                  const isOccupied = occupiedSeats.has(num);
-                  const isReserved = reservedSeats.has(num);
+                  const sid = String(num);
+                  const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(num);
+                  const isReserved = reservedSeats.has(sid) || reservedSeats.has(num);
                   const isSelected = selectedSeats.includes(num);
                   const isLadies = ladiesOnlySeats.has(num);
                   const conductorId = conductorSeatMap.get(num);
@@ -289,6 +303,8 @@ const SeatSelection: React.FC = () => {
 
   const [occupiedSeats, setOccupiedSeats] = useState<Set<string | number>>(new Set());
   const [reservedSeats, setReservedSeats] = useState<Set<string | number>>(new Set());
+  const [blockedSeats, setBlockedSeats] = useState<Set<string | number>>(new Set());
+  const [offlineSeats, setOfflineSeats] = useState<Set<string | number>>(new Set());
   const [isContinuing, setIsContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
 
@@ -301,8 +317,10 @@ const SeatSelection: React.FC = () => {
       { params: { busId, date: searchData.date } }
     );
 
-    setOccupiedSeats(new Set(res.data.occupiedSeats || []));
-    setReservedSeats(new Set(res.data.reservedSeats || []));
+    setOccupiedSeats(new Set(res.data.occupiedSeats?.map(String) || []));
+    setReservedSeats(new Set(res.data.reservedSeats?.map(String) || []));
+    setBlockedSeats(new Set(res.data.blockedSeats?.map(String) || []));
+    setOfflineSeats(new Set(res.data.offlineSeats?.map(String) || []));
   }, [busId, searchData?.date]);
 
   // ---------------- INIT ----------------
@@ -328,9 +346,13 @@ const SeatSelection: React.FC = () => {
   const handleSeatClick = async (seat: string | number) => {
     // Safety check: find seat object to check permanent/manual blocks
     const seatObj = busSeats?.seats.find((s: Seat) => String(s.seatNumber) === String(seat));
+    const sid = String(seat);
 
-    if (occupiedSeats.has(seat)) return;
-    if (reservedSeats.has(seat)) return;
+    if (occupiedSeats.has(seat) || occupiedSeats.has(sid)) return;
+    if (reservedSeats.has(seat) || reservedSeats.has(sid)) return;
+    if (blockedSeats.has(seat) || blockedSeats.has(sid)) return;
+    if (offlineSeats.has(seat) || offlineSeats.has(sid)) return;
+
     if (seatObj?.isPermanent) return;
     if (seatObj?.isBlocked) return;
     if (seatObj?.isOnline === false) return;
@@ -363,6 +385,8 @@ const SeatSelection: React.FC = () => {
         totalSeats={busSeats.totalSeats}
         occupiedSeats={occupiedSeats}
         reservedSeats={reservedSeats}
+        blockedSeats={blockedSeats}
+        offlineSeats={offlineSeats}
         ladiesOnlySeats={ladiesSeats}
         conductorSeatMap={conductorMap}
         selectedSeats={selectedSeats}

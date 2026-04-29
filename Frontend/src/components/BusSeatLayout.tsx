@@ -144,7 +144,11 @@ const BusSeatLayout: React.FC<BusSeatLayoutProps> = ({
         </div>
 
         {/* Seat Grid */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6 transition-colors">
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6 transition-colors relative">
+          <div className="flex justify-between text-xs font-bold text-gray-500 mb-4 px-10">
+            <span>Door Side</span>
+            <span>River Side</span>
+          </div>
           {Array.from({ length: rows }, (_, rowIndex) => (
             <div key={rowIndex} className="flex items-center justify-center space-x-2 mb-2">
               <div className="flex space-x-1">

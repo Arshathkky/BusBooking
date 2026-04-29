@@ -80,7 +80,7 @@ const Payment: React.FC = () => {
     setProcessing(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || "https://bus-booking-nt91.onrender.com/api";
       
       // 1. Fetch payment hash from backend
       const response = await fetch(`${baseUrl}/bookings/payhere/hash`, {

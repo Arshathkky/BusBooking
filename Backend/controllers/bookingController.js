@@ -204,35 +204,36 @@ export const getOccupiedSeatsForDate = async (req, res) => {
       });
     }
 
-    const paidBookings = await Booking.find({
+    const allActiveBookings = await Booking.find({
       "bus.id": new mongoose.Types.ObjectId(busId),
       "searchData.date": date,
-      paymentStatus: "PAID"
+      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE"] }
     });
 
-    const pendingBookings = await Booking.find({
-      "bus.id": new mongoose.Types.ObjectId(busId),
-      "searchData.date": date,
-      paymentStatus: "PENDING", 
-      holdExpiresAt: { $gt: new Date() } 
-    });
+    const occupiedSeats = [];
+    const reservedSeats = [];
+    const blockedSeats = [];
+    const offlineSeats = [];
 
-    const blockedBookings = await Booking.find({
-      "bus.id": new mongoose.Types.ObjectId(busId),
-      "searchData.date": date,
-      paymentStatus: "BLOCKED"
-    });
+    allActiveBookings.forEach(b => {
+      // For PENDING, only include if not expired
+      if (b.paymentStatus === "PENDING" && b.holdExpiresAt < new Date()) return;
 
-    const offlineBookings = await Booking.find({
-      "bus.id": new mongoose.Types.ObjectId(busId),
-      "searchData.date": date,
-      paymentStatus: "OFFLINE"
-    });
+      b.selectedSeats.forEach(seatNum => {
+        const info = {
+          seatNumber: seatNum,
+          passengerName: b.passengerDetails?.name || (b.paymentStatus === "BLOCKED" ? "BLOCKED" : "RESERVED"),
+          bookingId: b.bookingId,
+          status: b.paymentStatus,
+          pickupLocation: b.pickupLocation
+        };
 
-    const occupiedSeats = paidBookings.flatMap((b) => b.selectedSeats);
-    const reservedSeats = pendingBookings.flatMap((b) => b.selectedSeats);
-    const blockedSeats = blockedBookings.flatMap((b) => b.selectedSeats);
-    const offlineSeats = offlineBookings.flatMap((b) => b.selectedSeats);
+        if (b.paymentStatus === "PAID") occupiedSeats.push(info);
+        else if (b.paymentStatus === "PENDING") reservedSeats.push(info);
+        else if (b.paymentStatus === "BLOCKED") blockedSeats.push(info);
+        else if (b.paymentStatus === "OFFLINE") offlineSeats.push(info);
+      });
+    });
 
     res.status(200).json({ success: true, occupiedSeats, reservedSeats, blockedSeats, offlineSeats });
   } catch (error) {

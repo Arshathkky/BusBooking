@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  X
+  X,
+  CircleDot as Steering
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import AddBusModal from "../components/AddBusModal";
@@ -900,6 +901,93 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         }
     };
 
+    const handleResetToday = async () => {
+        if (!travelDate) return;
+        if (!window.confirm(`Are you sure you want to RESET ALL seats for ${travelDate}? All non-paid bookings, blocks, and reservations for this specific day will be deleted.`)) return;
+
+        setUpdating(true);
+        try {
+            // Find all non-paid bookings for this bus and date
+            const toDelete = bookings.filter((b: any) => 
+                b.bus?.id === busId && 
+                b.searchData?.date === travelDate && 
+                b.paymentStatus !== "PAID"
+            );
+
+            // Delete them one by one
+            for (const b of toDelete) {
+                await fetch(`${BASE_URL}/bookings/${b._id}/cancel`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        remark: "Owner Reset Day",
+                        cancelledBy: "admin"
+                    })
+                });
+            }
+
+            alert(`✅ Successfully reset all seats for ${travelDate}`);
+            // Refresh
+            const res = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const data = await res.json();
+            if (data.success) {
+                const filtered = data.bookings.filter((b: any) => 
+                    b.bus?.id === busId && b.searchData?.date === travelDate && 
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                );
+                setBookings(filtered);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("❌ Failed to reset seats for today.");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleUnblockToday = async () => {
+        if (!travelDate || selectedManualSeats.length === 0) return;
+        if (!window.confirm(`Unblock ${selectedManualSeats.length} selected seats for ${travelDate} only?`)) return;
+
+        setUpdating(true);
+        try {
+            const toDelete = bookings.filter((b: any) => 
+                b.bus?.id === busId && 
+                b.searchData?.date === travelDate && 
+                b.selectedSeats.some((s: any) => selectedManualSeats.map(String).includes(String(s))) &&
+                b.paymentStatus !== "PAID"
+            );
+
+            for (const b of toDelete) {
+                 await fetch(`${BASE_URL}/bookings/${b._id}/cancel`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        remark: "Manual Unblock",
+                        cancelledBy: "admin"
+                    })
+                });
+            }
+
+            alert(`✅ Successfully unblocked selected seats for ${travelDate}`);
+            const res = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const data = await res.json();
+            if (data.success) {
+                const filtered = data.bookings.filter((b: any) => 
+                    b.bus?.id === busId && b.searchData?.date === travelDate && 
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                );
+                setBookings(filtered);
+            }
+            setSelectedManualSeats([]);
+        } catch (err) {
+            console.error(err);
+            alert("❌ Failed to unblock seats.");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     const handleActionSubmit = async () => {
         if (selectedManualSeats.length === 0) return;
         setUpdating(true);
@@ -1160,14 +1248,19 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         >Block</button>
 
                         <button 
-                            onClick={() => openActionModal("OFFLINE")}
-                            className="bg-gray-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Offline</button>
+                            onClick={handleUnblockToday}
+                            className="bg-green-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Unblock Today</button>
+
+                        <button 
+                            onClick={handleResetToday}
+                            className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Reset All Today</button>
 
                         <button 
                             onClick={handleResetSeats}
-                            className="bg-green-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Reset</button>
+                            className="bg-gray-700 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Global Unblock</button>
                     </div>
                 </div>
             )}
@@ -1185,44 +1278,60 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                     {localSeats.map(seat => {
-                       const isSelected = selectedManualSeats.includes(seat.seatNumber);
-                       const bookingForSeat = bookings.find(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
-                       const isActuallyBooked = !!bookingForSeat;
-                       const bookingStatus = bookingForSeat?.paymentStatus;
-
-                       return (
-                        <div 
-                            key={seat.seatNumber} 
-                            onClick={() => toggleManualSeat(seat.seatNumber)}
-                            className={`border p-4 rounded-2xl space-y-2 transition-all cursor-pointer relative overflow-hidden group ${isSelected ? 'bg-[#fdc106] border-[#fdc106] shadow-lg scale-105 z-10' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-                        >
-                           {isSelected && (
-                               <div className="absolute top-0 right-0 p-1 bg-black/20 rounded-bl-xl">
-                                   <CheckCircle2 className="w-3 h-3 text-white" />
-                               </div>
-                           )}
-                           <div className="flex justify-between items-center">
-                                 <span className={`font-black text-lg italic ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
-                                 <div className={`w-3 h-3 rounded-full border-2 border-black/10 ${
-                                     seat.isPermanent || bookingStatus === "BLOCKED" ? 'bg-red-500' : 
-                                     bookingStatus === "PENDING" ? 'bg-orange-500' :
-                                     bookingStatus === "PAID" ? 'bg-indigo-500' :
-                                     bookingStatus === "OFFLINE" ? 'bg-gray-600' :
-                                     seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'
-                                 }`}></div>
-                           </div>
-                           <div className={`text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-gray-900/60' : 'text-gray-500'}`}>
-                               {seat.isPermanent || bookingStatus === "BLOCKED" ? 'Blocked' : 
-                                bookingStatus === "PENDING" ? 'Reserved' :
-                                bookingStatus === "PAID" ? 'Paid' :
-                                bookingStatus === "OFFLINE" ? 'Offline' :
-                                seat.isOnline !== false ? 'Online' : 'Offline'}
-                           </div>
+                <div className="flex justify-center py-10 bg-gray-950/50 rounded-[3rem] border border-white/5 shadow-inner">
+                    <div className="relative border-[10px] border-white/5 rounded-[50px] bg-black/40 p-10 pt-16" style={{ width: 'fit-content' }}>
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex justify-between w-full px-12 text-white/10">
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] mt-2">Passenger Entry</div>
+                            <Steering className="w-6 h-6" />
                         </div>
-                       );
-                     })}
+
+                        <div
+                            className="grid gap-2"
+                            style={{
+                                gridTemplateColumns: `repeat(6, 45px)`,
+                                gridTemplateRows: `repeat(15, 45px)`
+                            }}
+                        >
+                            {(() => {
+                                const gridMap = new Map();
+                                localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+
+                                return Array.from({ length: 15 * 6 }).map((_, i) => {
+                                    const x = i % 6;
+                                    const y = Math.floor(i / 6);
+                                    const seat = gridMap.get(`${x},${y}`);
+
+                                    if (!seat) return <div key={i} className="w-[45px] h-[45px]" />;
+
+                                    const isSelected = selectedManualSeats.includes(seat.seatNumber);
+                                    const bookingForSeat = bookings.find(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                                    const bookingStatus = bookingForSeat?.paymentStatus;
+
+                                    return (
+                                        <div 
+                                            key={seat.seatNumber}
+                                            onClick={() => toggleManualSeat(seat.seatNumber)}
+                                            className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all cursor-pointer relative group ${
+                                                isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10' :
+                                                seat.isPermanent || bookingStatus === "BLOCKED" ? 'bg-red-500 border-red-600 text-white' :
+                                                bookingStatus === "PENDING" ? 'bg-orange-500 border-orange-600 text-white' :
+                                                bookingStatus === "PAID" ? 'bg-indigo-600 border-indigo-700 text-white' :
+                                                seat.isOnline !== false ? 'bg-green-500/20 border-green-500/30 text-green-500' : 
+                                                'bg-white/5 border-white/10 text-gray-500'
+                                            }`}
+                                        >
+                                            <span className={`text-[11px] font-black italic ${isSelected ? 'text-gray-900' : ''}`}>{seat.seatNumber}</span>
+                                            {bookingForSeat && (
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-white text-gray-900 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl">
+                                                    {bookingForSeat.passengerDetails?.name || bookingStatus}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    </div>
                 </div>
             </div>
 

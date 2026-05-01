@@ -35,7 +35,7 @@ const Payment: React.FC = () => {
       
       try {
         // Fallback status update for local testing where notify_url might not be reachable
-        await updatePaymentStatus(bookingMongoId, "Paid");
+        await updatePaymentStatus(bookingMongoId, "PAID");
       } catch (error) {
         console.error("Local status update failed:", error);
       }
@@ -52,7 +52,7 @@ const Payment: React.FC = () => {
             totalAmount,
             busNumber,
             passengerDetails,
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             bookingDate: new Date().toISOString(),
           },
         },
@@ -144,7 +144,7 @@ const Payment: React.FC = () => {
 
     setProcessing(true);
     try {
-      await updatePaymentStatus(bookingMongoId, "Paid");
+      await updatePaymentStatus(bookingMongoId, "PAID");
       navigate("/booking-confirmation", {
         state: {
           booking: {
@@ -157,7 +157,7 @@ const Payment: React.FC = () => {
             totalAmount,
             busNumber,
             passengerDetails,
-            paymentStatus: "Paid",
+            paymentStatus: "PAID",
             bookingDate: new Date().toISOString(),
           },
         },

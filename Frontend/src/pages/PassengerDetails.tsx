@@ -32,6 +32,7 @@ interface LocationState {
   bookingMongoId?: string;   // ✅ pre-created booking ID from SeatSelection
   bookingId?: number;
   referenceId?: string;
+  pickupLocation?: string;
 }
 
 const PassengerDetails: React.FC = () => {
@@ -41,7 +42,7 @@ const PassengerDetails: React.FC = () => {
   const { updateSeats } = useSeat();
 
   const state = location.state as LocationState | undefined;
-  const { bus, selectedSeats, searchData, totalAmount, bookingMongoId, bookingId: existingBookingId, referenceId: existingReferenceId } = state || {};
+  const { bus, selectedSeats, searchData, totalAmount, bookingMongoId, bookingId: existingBookingId, referenceId: existingReferenceId, pickupLocation: statePickup } = state || {};
 
   const [passengerDetails, setPassengerDetails] = useState<PassengerDetailsType>({
     name: "",
@@ -49,7 +50,7 @@ const PassengerDetails: React.FC = () => {
     address: "",
     nic: "", // New field for NIC
   });
-  const [pickupLocation, setPickupLocation] = useState("");
+  const [pickupLocation, setPickupLocation] = useState(statePickup || "");
 
   const [error, setError] = useState<string | null>(null);
 

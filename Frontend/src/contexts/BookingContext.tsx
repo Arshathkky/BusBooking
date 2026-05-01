@@ -29,7 +29,7 @@ export interface SearchData {
   date: string; // YYYY-MM-DD
 }
 
-export type PaymentStatus = "Pending" | "Paid" | "Cancelled";
+export type PaymentStatus = "PENDING" | "PAID" | "CANCELLED" | "BLOCKED" | "OFFLINE";
 
 export interface Booking {
   _id?: string;

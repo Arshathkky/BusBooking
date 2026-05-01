@@ -14,21 +14,29 @@ interface SearchData {
   passengers: number;
 }
 
+interface OccupiedSeatInfo {
+  seatNumber: string | number;
+  passengerName: string;
+  bookingId?: string | number;
+  status: string;
+  pickupLocation?: string;
+}
+
 interface OccupiedSeatsResponse {
   success: boolean;
-  occupiedSeats: (string | number)[];
-  reservedSeats?: (string | number)[];
-  blockedSeats?: (string | number)[];
-  offlineSeats?: (string | number)[];
+  occupiedSeats: OccupiedSeatInfo[];
+  reservedSeats?: OccupiedSeatInfo[];
+  blockedSeats?: OccupiedSeatInfo[];
+  offlineSeats?: OccupiedSeatInfo[];
 }
 
 
 interface SeatLayoutProps {
   totalSeats: number;
-  occupiedSeats: Set<string | number>;
-  reservedSeats: Set<string | number>;
-  blockedSeats: Set<string | number>;
-  offlineSeats: Set<string | number>;
+  occupiedSeats: Map<string | number, OccupiedSeatInfo>;
+  reservedSeats: Map<string | number, OccupiedSeatInfo>;
+  blockedSeats: Map<string | number, OccupiedSeatInfo>;
+  offlineSeats: Map<string | number, OccupiedSeatInfo>;
   ladiesOnlySeats: Set<string | number>;
   conductorSeatMap: Map<string | number, string>;
   selectedSeats: (string | number)[];
@@ -83,8 +91,10 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isOwnerBlocked = (seatObj && seatObj.isBlocked === true);
     const isBlockedForOnline = (seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
 
+    const occupantInfo = occupiedSeats.get(sid) || reservedSeats.get(sid) || blockedSeats.get(sid) || offlineSeats.get(sid);
+
     let style =
-      "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition";
+      "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition group relative";
 
     if (isPermanent) {
       style += " bg-red-900 border-red-950 text-white cursor-not-allowed opacity-40 shadow-inner";
@@ -119,7 +129,14 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
           (!isSelected && selectedSeats.length >= maxSeats)
         }
         className={style}
+        title={occupantInfo ? `Occupied by: ${occupantInfo.passengerName}` : ""}
       >
+        {occupantInfo && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+            {occupantInfo.passengerName}
+          </div>
+        )}
+
         {isPermanent ? (
           <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-md">
             <svg className="w-3 h-3 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -158,13 +175,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       {/* Legend at Top */}
       <div className="flex flex-wrap justify-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <Legend color="bg-gray-500" label="Booked (Paid)" />
-        {/* <Legend color="bg-orange-400" label="Reserved (Pending)" /> */}
+        <Legend color="bg-orange-400" label="Reserved" />
         <Legend color="bg-yellow-400" label="Selected" />
         <Legend color="bg-pink-300" label="Ladies Only" />
-        {/* <Legend color="bg-purple-300" label="Conductor" />
-        <Legend color="bg-red-900 border-red-950" label="Blocked (Permanent)" />
-        <Legend color="bg-red-100 border-red-200" label="Manual Only (Blocked)" />
-        <Legend color="bg-white border-gray-200" label="Available" /> */}
       </div>
 
       {/* Main Layout Area */}
@@ -194,8 +207,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                 if (!seat) return <div key={i} className="w-[50px] h-[50px]" />;
 
                 const sid = String(seat.seatNumber);
-                const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(seat.seatNumber);
-                const isReserved = reservedSeats.has(sid) || reservedSeats.has(seat.seatNumber);
+                const isOccupied = occupiedSeats.has(sid);
+                const isReserved = reservedSeats.has(sid);
                 const isSelected = selectedSeats.includes(seat.seatNumber);
                 const isLadies = seat.isLadiesOnly;
                 const conductorId = conductorSeatMap.get(seat.seatNumber);
@@ -227,8 +240,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
             let rowSeats = standardRowIndices.map(num => {
               const sid = String(num);
-              const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(num);
-              const isReserved = reservedSeats.has(sid) || reservedSeats.has(num);
+              const isOccupied = occupiedSeats.has(sid);
+              const isReserved = reservedSeats.has(sid);
               const isSelected = selectedSeats.includes(num);
               const isLadies = ladiesOnlySeats.has(num);
               const conductorId = conductorSeatMap.get(num);
@@ -255,8 +268,8 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                 const lastRowIndices = Array.from({ length: lastRowSeats }, (_, i) => normalSeatCount + i + 1);
                 let rowSeats = lastRowIndices.map(num => {
                   const sid = String(num);
-                  const isOccupied = occupiedSeats.has(sid) || occupiedSeats.has(num);
-                  const isReserved = reservedSeats.has(sid) || reservedSeats.has(num);
+                  const isOccupied = occupiedSeats.has(sid);
+                  const isReserved = reservedSeats.has(sid);
                   const isSelected = selectedSeats.includes(num);
                   const isLadies = ladiesOnlySeats.has(num);
                   const conductorId = conductorSeatMap.get(num);
@@ -275,7 +288,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 };
 
 const Legend = ({ color, label }: { color: string; label: string }) => (
-  <div className="flex items-center gap-2">
+  <div className="flex items-center gap-2 text-sm font-medium">
     <div className={`w-4 h-4 rounded ${color}`} />
     <span>{label}</span>
   </div>
@@ -301,12 +314,13 @@ const SeatSelection: React.FC = () => {
 
   const { addBooking } = useBooking();
 
-  const [occupiedSeats, setOccupiedSeats] = useState<Set<string | number>>(new Set());
-  const [reservedSeats, setReservedSeats] = useState<Set<string | number>>(new Set());
-  const [blockedSeats, setBlockedSeats] = useState<Set<string | number>>(new Set());
-  const [offlineSeats, setOfflineSeats] = useState<Set<string | number>>(new Set());
+  const [occupiedSeats, setOccupiedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
+  const [reservedSeats, setReservedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
+  const [blockedSeats, setBlockedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
+  const [offlineSeats, setOfflineSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [isContinuing, setIsContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
+  const [pickupLocation, setPickupLocation] = useState("");
 
   // ---------------- FETCH OCCUPIED ----------------
   const fetchOccupied = useCallback(async () => {
@@ -318,10 +332,21 @@ const SeatSelection: React.FC = () => {
       { params: { busId, date: searchData.date } }
     );
 
-    setOccupiedSeats(new Set(res.data.occupiedSeats?.map(String) || []));
-    setReservedSeats(new Set(res.data.reservedSeats?.map(String) || []));
-    setBlockedSeats(new Set(res.data.blockedSeats?.map(String) || []));
-    setOfflineSeats(new Set(res.data.offlineSeats?.map(String) || []));
+    const occMap = new Map();
+    res.data.occupiedSeats.forEach(s => occMap.set(String(s.seatNumber), s));
+    setOccupiedSeats(occMap);
+
+    const resMap = new Map();
+    res.data.reservedSeats?.forEach(s => resMap.set(String(s.seatNumber), s));
+    setReservedSeats(resMap);
+
+    const blockMap = new Map();
+    res.data.blockedSeats?.forEach(s => blockMap.set(String(s.seatNumber), s));
+    setBlockedSeats(blockMap);
+
+    const offMap = new Map();
+    res.data.offlineSeats?.forEach(s => offMap.set(String(s.seatNumber), s));
+    setOfflineSeats(offMap);
   }, [busId, searchData?.date]);
 
   // ---------------- INIT ----------------
@@ -341,18 +366,17 @@ const SeatSelection: React.FC = () => {
       clearSelection();
       clearInterval(pollInterval);
     };
-  }, [busId]);
+  }, [busId, fetchBusSeats, fetchOccupied, clearSelection]);
 
   // ---------------- CLICK SEAT ----------------
   const handleSeatClick = async (seat: string | number) => {
-    // Safety check: find seat object to check permanent/manual blocks
-    const seatObj = busSeats?.seats.find((s: Seat) => String(s.seatNumber) === String(seat));
     const sid = String(seat);
+    const seatObj = busSeats?.seats.find((s: Seat) => String(s.seatNumber) === sid);
 
-    if (occupiedSeats.has(seat) || occupiedSeats.has(sid)) return;
-    if (reservedSeats.has(seat) || reservedSeats.has(sid)) return;
-    if (blockedSeats.has(seat) || blockedSeats.has(sid)) return;
-    if (offlineSeats.has(seat) || offlineSeats.has(sid)) return;
+    if (occupiedSeats.has(sid)) return;
+    if (reservedSeats.has(sid)) return;
+    if (blockedSeats.has(sid)) return;
+    if (offlineSeats.has(sid)) return;
 
     if (seatObj?.isPermanent) return;
     if (seatObj?.isBlocked) return;
@@ -365,7 +389,7 @@ const SeatSelection: React.FC = () => {
     }
   };
 
-  if (!searchData || !busSeats) return <p>Loading...</p>;
+  if (!searchData || !busSeats) return <p className="p-20 text-center font-bold">Loading bus layout...</p>;
 
   const ladiesSeats = new Set<string | number>(
     busSeats.seats.filter((s: any) => s.isLadiesOnly).map((s: any) => s.seatNumber)
@@ -376,87 +400,156 @@ const SeatSelection: React.FC = () => {
     if (s.isReservedForConductor) conductorMap.set(s.seatNumber, s.conductorId || "A");
   });
 
+  // Calculate Online Availability
+  const totalOnlineSeats = busSeats.seats.filter(s => s.isOnline !== false && !s.isPermanent).length;
+  const onlineBookedOrBlocked = [...occupiedSeats.values(), ...reservedSeats.values(), ...blockedSeats.values()].filter(s => {
+      const seatObj = busSeats.seats.find(bs => String(bs.seatNumber) === String(s.seatNumber));
+      return seatObj && seatObj.isOnline !== false;
+  }).length;
+  const availableOnlineCount = totalOnlineSeats - onlineBookedOrBlocked - selectedSeats.filter(s => {
+      const seatObj = busSeats.seats.find(bs => String(bs.seatNumber) === String(s));
+      return seatObj && seatObj.isOnline !== false;
+  }).length;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 mb-4">
-        <ArrowLeft /> Back
-      </button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-500 hover:text-[#fdc106] font-bold mb-2 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Search
+          </button>
+          <h1 className="text-3xl font-black italic tracking-tighter uppercase">{busSeats.name}</h1>
+          <p className="text-gray-500 font-bold text-sm tracking-tight">{searchData.from} → {searchData.to} • {new Date(searchData.date).toLocaleDateString()}</p>
+        </div>
 
-      <SeatLayout
-        totalSeats={busSeats.totalSeats}
-        occupiedSeats={occupiedSeats}
-        reservedSeats={reservedSeats}
-        blockedSeats={blockedSeats}
-        offlineSeats={offlineSeats}
-        ladiesOnlySeats={ladiesSeats}
-        conductorSeatMap={conductorMap}
-        selectedSeats={selectedSeats}
-        onSeatClick={handleSeatClick}
-        maxSeats={searchData.passengers}
-        seatLayout={busSeats.seatLayout}
-        seatNumberingType={busSeats.seatNumberingType}
-        lastRowSeats={busSeats.lastRowSeats}
-        seatsData={busSeats.seats}
-        useCustomLayout={busSeats.useCustomLayout}
-      />
+        <div className="bg-[#fdc106] px-6 py-4 rounded-3xl shadow-lg border-b-4 border-black/10">
+           <p className="text-[10px] font-black uppercase tracking-widest text-black/60 mb-1">Online Availability</p>
+           <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black italic tracking-tighter leading-none">{availableOnlineCount}</span>
+              <span className="text-sm font-bold uppercase opacity-80">Seats Left Online</span>
+           </div>
+        </div>
+      </div>
 
-      {continueError && (
-        <p className="mt-4 text-red-600 text-sm font-medium text-center">{continueError}</p>
-      )}
+      <div className="grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <SeatLayout
+            totalSeats={busSeats.totalSeats}
+            occupiedSeats={occupiedSeats}
+            reservedSeats={reservedSeats}
+            blockedSeats={blockedSeats}
+            offlineSeats={offlineSeats}
+            ladiesOnlySeats={ladiesSeats}
+            conductorSeatMap={conductorMap}
+            selectedSeats={selectedSeats}
+            onSeatClick={handleSeatClick}
+            maxSeats={searchData.passengers}
+            seatLayout={busSeats.seatLayout}
+            seatNumberingType={busSeats.seatNumberingType}
+            lastRowSeats={busSeats.lastRowSeats}
+            seatsData={busSeats.seats}
+            useCustomLayout={busSeats.useCustomLayout}
+          />
+        </div>
 
-      <button
-        disabled={selectedSeats.length !== searchData.passengers || isContinuing}
-        onClick={async () => {
-          if (!busSeats || !busId) return;
-          setContinueError(null);
-          setIsContinuing(true);
-          try {
-            // Create a PENDING booking immediately to lock the seats
-            const newBooking = await addBooking({
-              bus: {
-                id: busSeats.id,
-                name: busSeats.name,
-                type: busSeats.type,
-                busNumber: busSeats.busNumber,
-              },
-              searchData,
-              selectedSeats: selectedSeats.map(String),
-              totalAmount: busSeats.price * selectedSeats.length,
-              passengerDetails: { name: "", phone: "", address: "", nic: "" },
-              paymentStatus: "PENDING",
-            });
+        <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-6">Booking Details</h3>
+                
+                <div className="space-y-4 mb-8">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Selected Seats</label>
+                        <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl font-bold text-gray-900 dark:text-white flex flex-wrap gap-2 min-h-[56px]">
+                            {selectedSeats.length === 0 ? "None selected" : selectedSeats.map(s => (
+                                <span key={s} className="bg-[#fdc106] text-gray-900 px-3 py-1 rounded-lg text-sm font-black italic">#{s}</span>
+                            ))}
+                        </div>
+                    </div>
 
-            if (!newBooking) {
-              setContinueError("Failed to reserve seats. They may have just been taken. Please try again.");
-              // Refresh seats so user sees updated availability
-              fetchOccupied();
-              fetchBusSeats(busId);
-              return;
-            }
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Departure Point (Pickup)</label>
+                        <input 
+                            type="text" 
+                            placeholder="Where should we pick you up?"
+                            value={pickupLocation}
+                            onChange={(e) => setPickupLocation(e.target.value)}
+                            className="w-full p-4 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-[#fdc106]"
+                        />
+                        <p className="text-[9px] text-gray-400 font-medium px-1 italic mt-1">Example: Near Clock Tower, Main Station, etc.</p>
+                    </div>
+                </div>
 
-            navigate("/passenger-details", {
-              state: {
-                bus: busSeats,
-                selectedSeats,
-                searchData,
-                totalAmount: busSeats.price * selectedSeats.length,
-                bookingMongoId: newBooking._id,
-                bookingId: newBooking.bookingId,
-                referenceId: newBooking.referenceId,
-              },
-            });
-          } catch (err) {
-            setContinueError("An error occurred. Please try again.");
-          } finally {
-            setIsContinuing(false);
-          }
-        }}
-        className="w-full mt-6 py-4 bg-yellow-400 rounded-lg font-bold disabled:bg-gray-300"
-      >
-        {isContinuing ? "Reserving seats..." : "Continue"}
-      </button>
+                <div className="border-t dark:border-gray-700 pt-6 mb-8">
+                    <div className="flex justify-between items-end mb-2">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Amount</span>
+                        <span className="text-3xl font-black italic text-green-600 tracking-tighter">LKR {(busSeats.price * selectedSeats.length).toLocaleString()}</span>
+                    </div>
+                </div>
+
+                {continueError && (
+                    <p className="mb-4 text-red-600 text-sm font-bold bg-red-50 p-4 rounded-xl border border-red-100">{continueError}</p>
+                )}
+
+                <button
+                    disabled={selectedSeats.length !== searchData.passengers || !pickupLocation || isContinuing}
+                    onClick={async () => {
+                    if (!busSeats || !busId) return;
+                    setContinueError(null);
+                    setIsContinuing(true);
+                    try {
+                        const newBooking = await addBooking({
+                        bus: {
+                            id: busSeats.id,
+                            name: busSeats.name,
+                            type: busSeats.type,
+                            busNumber: busSeats.busNumber,
+                        },
+                        searchData,
+                        selectedSeats: selectedSeats.map(String),
+                        totalAmount: busSeats.price * selectedSeats.length,
+                        passengerDetails: { name: "", phone: "", address: "", nic: "" },
+                        pickupLocation,
+                        paymentStatus: "PENDING",
+                        });
+
+                        if (!newBooking) {
+                        setContinueError("Failed to reserve seats. They may have just been taken. Please try again.");
+                        fetchOccupied();
+                        fetchBusSeats(busId);
+                        return;
+                        }
+
+                        navigate("/passenger-details", {
+                        state: {
+                            bus: busSeats,
+                            selectedSeats,
+                            searchData,
+                            totalAmount: busSeats.price * selectedSeats.length,
+                            bookingMongoId: newBooking._id,
+                            bookingId: newBooking.bookingId,
+                            referenceId: newBooking.referenceId,
+                            pickupLocation
+                        },
+                        });
+                    } catch (err) {
+                        setContinueError("An error occurred. Please try again.");
+                    } finally {
+                        setIsContinuing(false);
+                    }
+                    }}
+                    className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl active:scale-95 ${
+                        selectedSeats.length === searchData.passengers && pickupLocation && !isContinuing
+                        ? "bg-[#fdc106] text-gray-900 shadow-[#fdc106]/20 hover:bg-[#e6ad05]"
+                        : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                    }`}
+                >
+                    {isContinuing ? "Processing..." : "Continue to Details"}
+                </button>
+            </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default SeatSelection;
+export default SeatSelection;

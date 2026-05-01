@@ -423,7 +423,7 @@ const SeatSelection: React.FC = () => {
               selectedSeats: selectedSeats.map(String),
               totalAmount: busSeats.price * selectedSeats.length,
               passengerDetails: { name: "", phone: "", address: "", nic: "" },
-              paymentStatus: "Pending",
+              paymentStatus: "PENDING",
             });
 
             if (!newBooking) {

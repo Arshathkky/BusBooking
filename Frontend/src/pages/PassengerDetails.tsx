@@ -86,7 +86,7 @@ const PassengerDetails: React.FC = () => {
           totalAmount: totalAmount ?? 0,
           passengerDetails,
           pickupLocation,
-          paymentStatus: "Pending",
+          paymentStatus: "PENDING",
         });
         if (!newBooking) throw new Error("Failed to create booking.");
       }

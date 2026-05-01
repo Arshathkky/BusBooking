@@ -23,6 +23,8 @@ export const createBooking = async (req, res) => {
   MUTEX[lockKey] = true;
 
   try {
+    const isOwnerOverride = searchData.from === 'Owner Override';
+
     // 2️⃣ 🔥 CONCURRENCY CHECK — reject if any seat is already locked
     const seatNumbers = selectedSeats.map(Number);
     const conflicting = await Booking.findOne({
@@ -31,18 +33,30 @@ export const createBooking = async (req, res) => {
       selectedSeats: { $in: seatNumbers },
       $or: [
         { paymentStatus: "PAID" },
+        // If it's a customer booking, block if any status exists. 
+        // If it's an owner booking (Override), we might want to allow it, but for now let's just add the statuses to the block list.
         { paymentStatus: "BLOCKED" },
         { paymentStatus: "OFFLINE" },
         { paymentStatus: "PENDING", holdExpiresAt: { $gt: new Date() } }
       ]
     });
 
-    if (conflicting) {
+    if (conflicting && !isOwnerOverride) {
       const overlap = conflicting.selectedSeats.filter(s => seatNumbers.includes(s));
       return res.status(409).json({
         success: false,
         message: `Seat(s) ${overlap.join(", ")} already reserved by another user`,
       });
+    }
+
+    // If owner override, delete all conflicting non-paid bookings for these seats
+    if (isOwnerOverride) {
+        await Booking.deleteMany({
+            "bus.id": bus.id,
+            "searchData.date": searchData.date,
+            selectedSeats: { $in: seatNumbers },
+            paymentStatus: { $ne: "PAID" }
+        });
     }
 
     // 3️⃣ Auto-increment bookingId
@@ -372,10 +386,10 @@ export const unblockSeatsAllDays = async (req, res) => {
 
     const seatsToUnblock = seatNumbers.map(Number);
 
-    // Find and delete/cancel all BLOCKED or OFFLINE bookings for these seats across ALL dates
+    // Find and delete/cancel all BLOCKED, OFFLINE, or PENDING bookings for these seats across ALL dates
     const result = await Booking.deleteMany({
       "bus.id": new mongoose.Types.ObjectId(busId),
-      paymentStatus: { $in: ["BLOCKED", "OFFLINE"] },
+      paymentStatus: { $in: ["BLOCKED", "OFFLINE", "PENDING"] },
       selectedSeats: { $in: seatsToUnblock }
     });
 

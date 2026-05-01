@@ -9,7 +9,8 @@ import {
   cancelBooking,
   generatePayHereHash,
   payHereNotify,
-  getOwnerRecentBookings
+  getOwnerRecentBookings,
+  unblockSeatsAllDays
 } from "../controllers/bookingController.js";
 
 const router = express.Router();
@@ -24,5 +25,6 @@ router.put("/:id", updateBooking); // Update booking details
 router.put("/:id/payment", updatePaymentStatus); // Update payment status
 router.patch("/:id/cancel", cancelBooking); // Cancel booking with remark
 router.post("/owner-recent", getOwnerRecentBookings); // Recent bookings for owner/dashboard
+router.post("/unblock-all", unblockSeatsAllDays); // Global unblock
 
 export default router;

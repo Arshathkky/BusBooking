@@ -44,27 +44,43 @@ export const searchBuses = async (req, res) => {
       schedule: { $in: [dayOfWeek] }
     });
 
-    // 3️⃣ Get PAID bookings ONLY (date-wise)
-    const paidBookings = await Booking.find({
+    // 3️⃣ Get ALL bookings (PAID, PENDING, BLOCKED, OFFLINE) for accurate availability
+    const now = new Date();
+    const allBookings = await Booking.find({
       "searchData.date": date,
-      paymentStatus: "PAID",
+      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE"] },
     });
 
-    const now = new Date();
-
     const results = buses.map(bus => {
-      // Booked seats (PAID only)
-      const busBookings = paidBookings.filter(
-        b => b.bus.id.toString() === bus._id.toString()
+      // Filter bookings for this specific bus
+      const busBookings = allBookings.filter(
+        b => b.bus.id.toString() === bus._id.toString() &&
+        (b.paymentStatus !== "PENDING" || (b.holdExpiresAt && new Date(b.holdExpiresAt) > now))
       );
 
-      const bookedSeatsCount = busBookings.reduce(
-        (sum, b) => sum + b.selectedSeats.length,
-        0
-      );
+      const bookedSeats = new Set(busBookings.flatMap(b => b.selectedSeats));
 
-      const seatsAvailable =
-        bus.totalSeats - bookedSeatsCount;
+      // Calculate seats that are NOT available for online booking:
+      // 1. Seats that have a booking (PAID, PENDING, BLOCKED, OFFLINE)
+      // 2. Seats that are marked globally as isOnline: false or isPermanent: true
+      let onlineAvailableCount = 0;
+      
+      // If bus has a defined seat layout, check each seat's flags
+      if (bus.seats && bus.seats.length > 0) {
+        bus.seats.forEach(seat => {
+          const isBooked = bookedSeats.has(seat.seatNumber);
+          const isGloballyUnavailable = seat.isOnline === false || seat.isPermanent === true;
+          
+          if (!isBooked && !isGloballyUnavailable) {
+            onlineAvailableCount++;
+          }
+        });
+      } else {
+        // Fallback for buses without explicit seat layouts yet
+        onlineAvailableCount = Math.max(bus.totalSeats - bookedSeats.size, 0);
+      }
+
+      const seatsAvailable = onlineAvailableCount;
 
       const route = matchingRoutes.find(
         r => r._id.toString() === bus.routeId.toString()

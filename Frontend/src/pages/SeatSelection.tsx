@@ -312,8 +312,9 @@ const SeatSelection: React.FC = () => {
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
+    const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
     const res = await axios.get<OccupiedSeatsResponse>(
-      `https://bus-booking-nt91.onrender.com/api/bookings/occupied-seats`,
+      `${API_BASE}/bookings/occupied-seats`,
       { params: { busId, date: searchData.date } }
     );
 

@@ -28,7 +28,7 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-const BASE_URL = 'https://bus-booking-nt91.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://bus-booking-nt91.onrender.com/api';
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
@@ -777,7 +777,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const [actionModal, setActionModal] = useState<{ show: boolean, type: "RESERVE" | "BLOCK" | "OFFLINE" }>({ show: false, type: "RESERVE" });
     const [actionDates, setActionDates] = useState<string[]>([travelDate]);
     const [newDate, setNewDate] = useState<string>("");
-    const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '' });
+    const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '', pickupLocation: '' });
     const { updateBus } = useBus();
 
     useEffect(() => {
@@ -845,6 +845,61 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         }
     };
 
+    const handleResetSeats = async () => {
+        if (!window.confirm("Are you sure you want to unblock these seats for ALL DAYS? This will clear all blocks and offline assignments globally.")) return;
+        
+        setUpdating(true);
+        try {
+            // 1. Clear Global Flags in Bus model
+            const updatedGlobal = localSeats.map(s => {
+                if (selectedManualSeats.map(String).includes(String(s.seatNumber))) {
+                    return { ...s, isOnline: true, isPermanent: false, isBlocked: false };
+                }
+                return s;
+            });
+
+            // Save global changes to bus model
+            await fetch(`${BASE_URL}/buses/${busId}/seats`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ seats: updatedGlobal, role: "owner" })
+            });
+            await updateBus(busId, { seats: updatedGlobal });
+            setLocalSeats(updatedGlobal);
+            
+            // 2. Clear Date-Specific Blocks/Offline (Global Unblock)
+            const resUnblock = await fetch(`${BOOKING_API}/unblock-all`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ busId, seatNumbers: selectedManualSeats })
+            });
+            
+            const unblockData = await resUnblock.json();
+            
+            if (unblockData.success) {
+                alert(`Seats unblocked for all days! Removed ${unblockData.deletedCount} block records.`);
+            }
+            
+            // Refresh manifest for current date
+            const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const data2 = await res2.json();
+            if (data2.success) {
+                const filtered = data2.bookings.filter((b: any) => 
+                    b.bus?.id === busId && b.searchData?.date === travelDate && 
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                );
+                setBookings(filtered);
+            }
+            
+            setSelectedManualSeats([]);
+        } catch (err) {
+            console.error("Reset failed:", err);
+            alert("Reset failed partially or fully.");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
     const handleActionSubmit = async () => {
         if (selectedManualSeats.length === 0) return;
         setUpdating(true);
@@ -876,6 +931,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         selectedSeats: selectedManualSeats.map(String),
                         totalAmount: 0,
                         passengerDetails: actionModal.type === "RESERVE" ? passengerData : { name: actionModal.type, phone: 'N/A', nic: 'N/A' },
+                        pickupLocation: actionModal.type === "RESERVE" ? passengerData.pickupLocation : "",
                         paymentStatus: pStatus
                     })
                 });
@@ -887,7 +943,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             setSelectedManualSeats([]);
             setActionModal({ show: false, type: "RESERVE" });
             setActionDates([travelDate]);
-            setPassengerData({ name: '', phone: '', email: '', nic: '' });
+            setPassengerData({ name: '', phone: '', email: '', nic: '', pickupLocation: '' });
             
             // Refresh manifest
             const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
@@ -1043,6 +1099,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                         <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{b.passengerDetails?.phone || "N/A"}</div>
                                         {b.paymentStatus === "BLOCKED" && <div className="text-[10px] font-black tracking-widest text-red-500 mt-1 uppercase">OWNER BLOCKED</div>}
                                         {b.paymentStatus === "OFFLINE" && <div className="text-[10px] font-black tracking-widest text-gray-500 mt-1 uppercase">OFFLINE ASSIGNED</div>}
+                                        {b.pickupLocation && <div className="text-[10px] font-black tracking-widest text-blue-600 mt-1 uppercase">📍 {b.pickupLocation}</div>}
                                     </td>
                                     <td className="px-8 py-4 text-right">
                                         <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
@@ -1099,6 +1156,11 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                             onClick={() => openActionModal("OFFLINE")}
                             className="bg-gray-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
                         >Offline</button>
+
+                        <button 
+                            onClick={handleResetSeats}
+                            className="bg-green-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                        >Reset</button>
                     </div>
                 </div>
             )}
@@ -1122,27 +1184,22 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                        const isActuallyBooked = bookings.some(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
 
                        return (
-                        <div key={seat.seatNumber} className={`border p-3 rounded-2xl space-y-3 transition-all ${isSelected ? 'bg-[#fdc106]/10 border-[#fdc106]/50' : 'bg-white/5 border-white/10 shadow-sm hover:bg-white/10'}`}>
-                           <div className="flex justify-between items-center px-1">
-                                 <span className="font-black text-sm italic text-white">{seat.seatNumber}</span>
-                                 <div className={`w-2 h-2 rounded-full ${seat.isPermanent ? 'bg-red-500' : isActuallyBooked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                        <div 
+                            key={seat.seatNumber} 
+                            onClick={() => toggleManualSeat(seat.seatNumber)}
+                            className={`border p-4 rounded-2xl space-y-2 transition-all cursor-pointer relative overflow-hidden group ${isSelected ? 'bg-[#fdc106] border-[#fdc106] shadow-lg scale-105 z-10' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+                        >
+                           {isSelected && (
+                               <div className="absolute top-0 right-0 p-1 bg-black/20 rounded-bl-xl">
+                                   <CheckCircle2 className="w-3 h-3 text-white" />
+                               </div>
+                           )}
+                           <div className="flex justify-between items-center">
+                                 <span className={`font-black text-lg italic ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
+                                 <div className={`w-3 h-3 rounded-full border-2 border-black/10 ${seat.isPermanent ? 'bg-red-500' : isActuallyBooked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
                            </div>
-                           <div className="flex justify-between gap-1">
-                              <button
-                                 onClick={() => openActionModal("OFFLINE", seat.seatNumber)}
-                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked ? 'bg-white/10 text-gray-500 opacity-50 cursor-not-allowed' : 'bg-gray-600 hover:bg-gray-500 text-white'}`}
-                                 disabled={isActuallyBooked}
-                               >WEB</button>
-                               <button
-                                 onClick={() => openActionModal("BLOCK", seat.seatNumber)}
-                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked ? 'bg-white/10 text-gray-500 opacity-50 cursor-not-allowed' : 'bg-red-500 hover:bg-red-400 text-white'}`}
-                                 disabled={isActuallyBooked}
-                               >PRM</button>
-                               <button
-                                 onClick={() => openActionModal("RESERVE", seat.seatNumber)}
-                                 disabled={isActuallyBooked}
-                                 className={`flex-1 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all ${isActuallyBooked || isSelected ? 'bg-indigo-500 text-white' : 'bg-[#fdc106] text-gray-900 hover:bg-[#e6ad05]'} ${isActuallyBooked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                               >{isActuallyBooked ? 'BOOKED' : isSelected ? 'SEL' : 'RES'}</button>
+                           <div className={`text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-gray-900/60' : 'text-gray-500'}`}>
+                               {seat.isPermanent ? 'Blocked' : isActuallyBooked ? 'Booked' : seat.isOnline !== false ? 'Online' : 'Offline'}
                            </div>
                         </div>
                        );
@@ -1165,31 +1222,28 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         <div className="p-8 space-y-6">
                             
                             {/* Date Selection */}
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Selected Dates</label>
-                                <div className="flex flex-wrap gap-2">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end px-1">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Global Date Selection</label>
+                                    <div className="text-[10px] font-black text-[#fdc106]">{actionDates.length} Days Selected</div>
+                                </div>
+                                
+                                <MiniCalendar 
+                                    selectedDates={actionDates} 
+                                    onToggleDate={(date) => {
+                                        setActionDates(prev => prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]);
+                                    }} 
+                                />
+
+                                <div className="flex flex-wrap gap-2 max-h-[60px] overflow-y-auto custom-scrollbar">
                                     {actionDates.map(d => (
-                                        <div key={d} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-200">
+                                        <div key={d} className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-xl text-[10px] font-bold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
                                             {d}
-                                            {actionDates.length > 1 && (
-                                                <button onClick={() => setActionDates(actionDates.filter(x => x !== d))} className="text-red-500 hover:text-red-700">
-                                                    <X className="w-3 h-3" />
-                                                </button>
-                                            )}
+                                            <button onClick={() => setActionDates(actionDates.filter(x => x !== d))} className="text-red-500 hover:text-red-700">
+                                                <X className="w-3 h-3" />
+                                            </button>
                                         </div>
                                     ))}
-                                </div>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="date" 
-                                        value={newDate} 
-                                        onChange={(e) => setNewDate(e.target.value)}
-                                        className="flex-1 bg-gray-50 dark:bg-gray-900 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-[#fdc106]"
-                                    />
-                                    <button 
-                                        onClick={() => { if(newDate && !actionDates.includes(newDate)) { setActionDates([...actionDates, newDate]); setNewDate(""); } }}
-                                        className="bg-gray-900 dark:bg-gray-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest"
-                                    >Add Date</button>
                                 </div>
                             </div>
 
@@ -1225,6 +1279,15 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                             />
                                         </div>
                                     </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Pickup Location</label>
+                                        <input 
+                                            className="w-full bg-gray-50 dark:bg-gray-900 border-none rounded-2xl p-4 text-sm font-bold focus:ring-[#fdc106]" 
+                                            placeholder="Where to pick up? (text)"
+                                            value={passengerData.pickupLocation}
+                                            onChange={(e) => setPassengerData({...passengerData, pickupLocation: e.target.value})}
+                                        />
+                                    </div>
                                 </div>
                             )}
                             
@@ -1250,4 +1313,70 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         </div>
     );
 };
+
+// --- MINI CALENDAR COMPONENT ---
+const MiniCalendar: React.FC<{ 
+    selectedDates: string[]; 
+    onToggleDate: (date: string) => void;
+}> = ({ selectedDates, onToggleDate }) => {
+    const today = new Date();
+    const [viewDate, setViewDate] = useState(new Date());
+    
+    const month = viewDate.getMonth();
+    const year = viewDate.getFullYear();
+    
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    
+    const monthName = viewDate.toLocaleString('default', { month: 'long' });
+    
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    
+    const handlePrev = () => setViewDate(new Date(year, month - 1, 1));
+    const handleNext = () => setViewDate(new Date(year, month + 1, 1));
+    
+    return (
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-3xl p-4 border border-gray-100 dark:border-gray-800">
+            <div className="flex justify-between items-center mb-4 px-2">
+                <button onClick={handlePrev} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRight className="w-4 h-4 rotate-180" /></button>
+                <div className="text-[10px] font-black uppercase tracking-widest">{monthName} {year}</div>
+                <button onClick={handleNext} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRight className="w-4 h-4" /></button>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 text-center">
+                {['S','M','T','W','T','F','S'].map(d => (
+                    <div key={d} className="text-[10px] font-black text-gray-400 py-1">{d}</div>
+                ))}
+                {days.map((day, i) => {
+                    if (day === null) return <div key={`empty-${i}`} />;
+                    
+                    const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                    const isSelected = selectedDates.includes(dateStr);
+                    const isToday = new Date().toISOString().slice(0,10) === dateStr;
+                    
+                    return (
+                        <button
+                            key={dateStr}
+                            type="button"
+                            onClick={() => onToggleDate(dateStr)}
+                            className={`aspect-square rounded-xl text-[10px] font-bold transition-all flex items-center justify-center
+                                ${isSelected 
+                                    ? 'bg-[#fdc106] text-gray-900 shadow-md scale-110 z-10' 
+                                    : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}
+                                ${isToday ? 'ring-2 ring-[#fdc106] ring-offset-2 dark:ring-offset-gray-900' : ''}
+                            `}
+                        >
+                            {day}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+export default OwnerDashboard;
+
 

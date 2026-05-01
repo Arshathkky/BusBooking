@@ -46,6 +46,7 @@ export interface Booking {
   paymentStatus?: PaymentStatus;
   cancelRemark?: string;  // ✅ ADDED
   cancelledBy?: string;   // ✅ ADDED
+  pickupLocation?: string; // ✅ NEW
   createdAt?: string;
   updatedAt?: string;
 }

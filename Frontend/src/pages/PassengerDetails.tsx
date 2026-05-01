@@ -49,6 +49,7 @@ const PassengerDetails: React.FC = () => {
     address: "",
     nic: "", // New field for NIC
   });
+  const [pickupLocation, setPickupLocation] = useState("");
 
   const [error, setError] = useState<string | null>(null);
 
@@ -60,8 +61,8 @@ const PassengerDetails: React.FC = () => {
   const handleProceedToPayment = async () => {
     if (!bus || !selectedSeats || !searchData) return;
 
-    if (!passengerDetails.name || !passengerDetails.phone || !passengerDetails.address || !passengerDetails.nic) {
-      setError("Please fill all required fields.");
+    if (!passengerDetails.name || !passengerDetails.phone || !passengerDetails.address || !passengerDetails.nic || !pickupLocation) {
+      setError("Please fill all required fields including pickup location.");
       return;
     }
 
@@ -74,7 +75,7 @@ const PassengerDetails: React.FC = () => {
 
       if (bookingMongoId) {
         // ✅ Booking was pre-created at SeatSelection — just update passenger details
-        newBooking = await updateBookingDetails(bookingMongoId, { passengerDetails });
+        newBooking = await updateBookingDetails(bookingMongoId, { passengerDetails, pickupLocation });
         if (!newBooking) throw new Error("Failed to update booking details.");
       } else {
         // 🔄 Fallback: create booking (shouldn't happen in normal flow)
@@ -84,6 +85,7 @@ const PassengerDetails: React.FC = () => {
           selectedSeats: selectedSeats.map(String),
           totalAmount: totalAmount ?? 0,
           passengerDetails,
+          pickupLocation,
           paymentStatus: "Pending",
         });
         if (!newBooking) throw new Error("Failed to create booking.");
@@ -107,7 +109,7 @@ const PassengerDetails: React.FC = () => {
     bookingMongoId: newBooking._id,     // optional (for API calls)
     bookingId: newBooking.bookingId,    // ✅ CORRECT
     referenceId: newBooking.referenceId ,
-    
+    pickupLocation: newBooking.pickupLocation,
   },
   
       });
@@ -139,7 +141,8 @@ const PassengerDetails: React.FC = () => {
     passengerDetails.name &&
     passengerDetails.phone &&
     passengerDetails.address &&
-    passengerDetails.nic;
+    passengerDetails.nic &&
+    pickupLocation;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -225,6 +228,19 @@ const PassengerDetails: React.FC = () => {
                   onChange={e => handleInputChange("address", e.target.value)}
                   rows={3}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                  required
+                />
+              </div>
+
+              {/* Pickup Location */}
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 w-5 h-5 text-indigo-400" />
+                <input
+                  type="text"
+                  placeholder="Where should the bus pick you up? (e.g. Near Clock Tower)"
+                  value={pickupLocation}
+                  onChange={e => setPickupLocation(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border-2 border-indigo-100 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-indigo-50/30 dark:bg-gray-700 text-gray-900 dark:text-white font-bold"
                   required
                 />
               </div>

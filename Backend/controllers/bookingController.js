@@ -357,3 +357,33 @@ export const getOwnerRecentBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/* ===========================
+   UNBLOCK SEATS FOR ALL DAYS
+=========================== */
+export const unblockSeatsAllDays = async (req, res) => {
+  try {
+    const { busId, seatNumbers } = req.body;
+    if (!busId || !seatNumbers || !Array.isArray(seatNumbers)) {
+      return res.status(400).json({ success: false, message: "Invalid busId or seatNumbers" });
+    }
+
+    const seatsToUnblock = seatNumbers.map(Number);
+
+    // Find and delete/cancel all BLOCKED or OFFLINE bookings for these seats across ALL dates
+    const result = await Booking.deleteMany({
+      "bus.id": new mongoose.Types.ObjectId(busId),
+      paymentStatus: { $in: ["BLOCKED", "OFFLINE"] },
+      selectedSeats: { $in: seatsToUnblock }
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      message: `Unblocked seats for all days. Removed ${result.deletedCount} block records.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error("Unblock all days error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

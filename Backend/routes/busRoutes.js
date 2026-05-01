@@ -35,6 +35,7 @@ router.put("/:id/conductor-seats", assignConductorSeats);
 router.get("/:id/conductor-seats", getConductorSeats);
 router.get("/:id/layout", getSeatLayout);
 router.patch("/:id/conductor-seats/remove", removeConductorSeats);
+router.put("/:id/schedule", updateSchedule);
 router.patch("/:id/approve-changes", approvePendingChanges);
 router.patch("/:id/reject-changes", rejectPendingChanges);
 

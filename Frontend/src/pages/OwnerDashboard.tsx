@@ -1377,6 +1377,6 @@ const MiniCalendar: React.FC<{
     );
 };
 
-export default OwnerDashboard;
+
 
 

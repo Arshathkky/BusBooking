@@ -52,7 +52,7 @@ export const createBooking = async (req, res) => {
     // If owner override, delete all conflicting non-paid bookings for these seats
     if (isOwnerOverride) {
         await Booking.deleteMany({
-            "bus.id": bus.id,
+            "bus.id": new mongoose.Types.ObjectId(bus.id),
             "searchData.date": searchData.date,
             selectedSeats: { $in: seatNumbers },
             paymentStatus: { $ne: "PAID" }
@@ -71,16 +71,18 @@ export const createBooking = async (req, res) => {
     // 4️⃣ Reference ID
     const referenceId = `${searchData.date}-${selectedSeats.join("")}-${bus.busNumber || bus.name}`;
 
-    // 5️⃣ Hold & payment expiry (15 mins)
+    // 5️⃣ Hold & payment expiry (15 mins for customers, far future for owner actions)
+    const isPermanentStatus = ["PAID", "BLOCKED", "OFFLINE"].includes(req.body.paymentStatus) || isOwnerOverride;
     const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
+    const farFuture = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
 
     // 6️⃣ Create booking (DATE-WISE)
     const booking = await Booking.create({
       ...req.body,
       bookingId,
       referenceId,
-      holdExpiresAt: req.body.paymentStatus === "PAID" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) : expiryTime, // Far future for paid
-      paymentExpiresAt: req.body.paymentStatus === "PAID" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) : expiryTime,
+      holdExpiresAt: isPermanentStatus ? farFuture : expiryTime,
+      paymentExpiresAt: isPermanentStatus ? farFuture : expiryTime,
       paymentStatus: req.body.paymentStatus || "PENDING",
     });
 

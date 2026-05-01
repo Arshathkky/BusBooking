@@ -937,7 +937,13 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 });
             });
 
-            await Promise.all(promises);
+            const responses = await Promise.all(promises);
+            const failed = responses.filter(r => !r.ok);
+            
+            if (failed.length > 0) {
+                const errData = await failed[0].json();
+                throw new Error(errData.message || "Some operations failed");
+            }
             
             alert(`${actionModal.type} operation completed successfully for ${datesToProcess.length} date(s)!`);
             setSelectedManualSeats([]);
@@ -955,8 +961,9 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 );
                 setBookings(filtered);
             }
-        } catch (err) {
-            alert("Connection error or operation failed");
+        } catch (err: any) {
+            console.error("Action failed:", err);
+            alert(err.message || "Connection error or operation failed");
         } finally {
             setUpdating(false);
         }

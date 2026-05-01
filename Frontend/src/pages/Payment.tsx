@@ -112,7 +112,7 @@ const Payment: React.FC = () => {
         merchant_id: merchant_id,
         return_url: window.location.origin + "/booking-confirmation",
         cancel_url: window.location.origin + "/payment",
-        notify_url: "https://bus-booking-nt91.onrender.com/api/bookings/payhere/notify",
+        notify_url: `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bookings/payhere/notify`,
         order_id: bookingId,
         items: `Bus Booking - ${bus.name}`,
         amount: Number(totalAmount).toFixed(2),

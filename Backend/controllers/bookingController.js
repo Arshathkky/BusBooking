@@ -31,6 +31,8 @@ export const createBooking = async (req, res) => {
       selectedSeats: { $in: seatNumbers },
       $or: [
         { paymentStatus: "PAID" },
+        { paymentStatus: "BLOCKED" },
+        { paymentStatus: "OFFLINE" },
         { paymentStatus: "PENDING", holdExpiresAt: { $gt: new Date() } }
       ]
     });

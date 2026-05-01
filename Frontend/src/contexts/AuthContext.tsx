@@ -81,8 +81,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       /* ===== 2️⃣ OWNER LOGIN ===== */
       try {
+        const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         const ownerResponse = await axios.post(
-          "https://bus-booking-nt91.onrender.com/api/owner/login",
+          `${API_BASE}/owner/login`,
           { email, password }
         );
 
@@ -107,8 +108,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       /* ===== 3️⃣ CONDUCTOR / AGENT LOGIN ===== */
       try {
+        const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         const condResp = await axios.post(
-          "https://bus-booking-nt91.onrender.com/api/conductors/login",
+          `${API_BASE}/conductors/login`,
           { email, password }
         );
 

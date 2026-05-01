@@ -47,7 +47,7 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/owner";
+  const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/owner`;
 
   const handleError = (err: unknown, defaultMessage: string) => {
     if (axios.isAxiosError(err)) {

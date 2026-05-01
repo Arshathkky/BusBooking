@@ -1181,7 +1181,9 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                      {localSeats.map(seat => {
                        const isSelected = selectedManualSeats.includes(seat.seatNumber);
-                       const isActuallyBooked = bookings.some(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                       const bookingForSeat = bookings.find(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                       const isActuallyBooked = !!bookingForSeat;
+                       const bookingStatus = bookingForSeat?.paymentStatus;
 
                        return (
                         <div 
@@ -1196,10 +1198,20 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                            )}
                            <div className="flex justify-between items-center">
                                  <span className={`font-black text-lg italic ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
-                                 <div className={`w-3 h-3 rounded-full border-2 border-black/10 ${seat.isPermanent ? 'bg-red-500' : isActuallyBooked ? 'bg-indigo-500' : seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                                 <div className={`w-3 h-3 rounded-full border-2 border-black/10 ${
+                                     seat.isPermanent || bookingStatus === "BLOCKED" ? 'bg-red-500' : 
+                                     bookingStatus === "PENDING" ? 'bg-orange-500' :
+                                     bookingStatus === "PAID" ? 'bg-indigo-500' :
+                                     bookingStatus === "OFFLINE" ? 'bg-gray-600' :
+                                     seat.isOnline !== false ? 'bg-green-500' : 'bg-gray-600'
+                                 }`}></div>
                            </div>
                            <div className={`text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-gray-900/60' : 'text-gray-500'}`}>
-                               {seat.isPermanent ? 'Blocked' : isActuallyBooked ? 'Booked' : seat.isOnline !== false ? 'Online' : 'Offline'}
+                               {seat.isPermanent || bookingStatus === "BLOCKED" ? 'Blocked' : 
+                                bookingStatus === "PENDING" ? 'Reserved' :
+                                bookingStatus === "PAID" ? 'Paid' :
+                                bookingStatus === "OFFLINE" ? 'Offline' :
+                                seat.isOnline !== false ? 'Online' : 'Offline'}
                            </div>
                         </div>
                        );

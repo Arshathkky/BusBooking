@@ -100,8 +100,9 @@ export const RouteProvider: React.FC<{ children: ReactNode }> = ({
   });
   const [searchResults, setSearchResults] = useState<BusType[]>([]);
 
-  const API_URL = "https://bus-booking-nt91.onrender.com/api/routes";
-  const SEARCH_API_URL = "https://bus-booking-nt91.onrender.com/api/search/buses";
+  const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+  const API_URL = `${API_BASE}/routes`;
+  const SEARCH_API_URL = `${API_BASE}/search/buses`;
 
   // -------------------- Fetch Routes --------------------
   const fetchRoutes = async (ownerId?: string): Promise<void> => {

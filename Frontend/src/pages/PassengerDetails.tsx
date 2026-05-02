@@ -67,6 +67,12 @@ const PassengerDetails: React.FC = () => {
       return;
     }
 
+    const slPhoneRegex = /^(?:\+94|94|0)?7[0-9]{8}$/;
+    if (!slPhoneRegex.test(passengerDetails.phone)) {
+      setError("Please enter a valid Sri Lankan mobile number (e.g., 07XXXXXXXX).");
+      return;
+    }
+
     try {
       setError(null);
       const busId = bus._id || bus.id;

@@ -4,6 +4,7 @@ import Bus from "../models/busModel.js";
 import Conductor from "../models/conductorModel.js";
 import { Counter } from "../models/counterModal.js";
 import crypto from "crypto";
+import { sendSMS } from "../utils/smsService.js";
 
 const MUTEX = {};
 
@@ -87,6 +88,18 @@ export const createBooking = async (req, res) => {
     });
 
     res.status(201).json({ success: true, booking });
+
+    // 📩 Send SMS if Paid or Reserved (e.g. Owner/Conductor manual booking)
+    if (booking.passengerDetails?.phone && (booking.paymentStatus === "PAID" || booking.paymentStatus === "BLOCKED" || isOwnerOverride)) {
+        if (booking.paymentStatus === "PAID") {
+            const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+            sendSMS(booking.passengerDetails.phone, msg);
+        } else {
+            // For PENDING/RESERVED or BLOCKED
+            const msg = `Reservation Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nPlease pay at the counter.`;
+            sendSMS(booking.passengerDetails.phone, msg);
+        }
+    }
   } catch (error) {
     console.error("Booking creation failed:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -153,6 +166,12 @@ export const updatePaymentStatus = async (req, res) => {
     // ✅ Mark booking PAID (NO BUS UPDATE)
     booking.paymentStatus = paymentStatus.toUpperCase();
     await booking.save();
+
+    // 📩 Send SMS if Paid
+    if (booking.paymentStatus === "PAID" && booking.passengerDetails?.phone) {
+        const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+        sendSMS(booking.passengerDetails.phone, msg);
+    }
 
     res.status(200).json({ success: true, booking });
   } catch (error) {
@@ -345,6 +364,13 @@ export const payHereNotify = async (req, res) => {
       }
       
       await booking.save();
+      
+      // 📩 Send SMS if Paid
+      if (booking.paymentStatus === "PAID" && booking.passengerDetails?.phone) {
+          const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+          sendSMS(booking.passengerDetails.phone, msg);
+      }
+
       res.status(200).send("OK");
     } else {
       res.status(400).send("Invalid signature");

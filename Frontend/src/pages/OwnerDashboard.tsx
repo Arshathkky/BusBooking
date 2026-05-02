@@ -1089,9 +1089,10 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     };
 
     const toggleManualSeat = (num: string | number) => {
+        const sid = String(num);
         setSelectedManualSeats(prev => {
-            const exists = prev.includes(num);
-            return exists ? prev.filter(s => s !== num) : [...prev, num];
+            const exists = prev.map(String).includes(sid);
+            return exists ? prev.filter(s => String(s) !== sid) : [...prev, sid];
         });
     };
 
@@ -1303,7 +1304,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
                                     if (!seat) return <div key={i} className="w-[45px] h-[45px]" />;
 
-                                    const isSelected = selectedManualSeats.includes(seat.seatNumber);
+                                    const isSelected = selectedManualSeats.map(String).includes(String(seat.seatNumber));
                                     const bookingForSeat = bookings.find(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
                                     const bookingStatus = bookingForSeat?.paymentStatus;
 

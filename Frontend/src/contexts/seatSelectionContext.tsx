@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import React, { createContext, useContext, useState, ReactNode, useCallback, useMemo } from "react";
 import axios from "axios";
 
 // -------------------- Types --------------------
@@ -150,30 +150,32 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   // -------------------- Seat Selection --------------------
-  const selectSeat = (seatNumber: string | number) => {
-    setSelectedSeats((prev) => (prev.includes(seatNumber) ? prev : [...prev, seatNumber]));
-  };
+  const selectSeat = useCallback((seatNumber: string | number) => {
+    const sid = String(seatNumber);
+    setSelectedSeats((prev) => (prev.map(String).includes(sid) ? prev : [...prev, sid]));
+  }, []);
 
-  const deselectSeat = (seatNumber: string | number) => {
-    setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
-  };
+  const deselectSeat = useCallback((seatNumber: string | number) => {
+    const sid = String(seatNumber);
+    setSelectedSeats((prev) => prev.filter((s) => String(s) !== sid));
+  }, []);
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectedSeats([]);
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    busSeats,
+    selectedSeats,
+    selectSeat,
+    deselectSeat,
+    clearSelection,
+    fetchBusSeats,
+    updateSeats,
+  }), [busSeats, selectedSeats, selectSeat, deselectSeat, clearSelection, fetchBusSeats, updateSeats]);
 
   return (
-    <SeatContext.Provider
-      value={{
-        busSeats,
-        selectedSeats,
-        selectSeat,
-        deselectSeat,
-        clearSelection,
-        fetchBusSeats,
-        updateSeats,
-      }}
-    >
+    <SeatContext.Provider value={contextValue}>
       {children}
     </SeatContext.Provider>
   );

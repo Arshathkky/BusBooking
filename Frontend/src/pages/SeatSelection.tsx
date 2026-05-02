@@ -209,9 +209,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                 const sid = String(seat.seatNumber);
                 const isOccupied = occupiedSeats.has(sid);
                 const isReserved = reservedSeats.has(sid);
-                const isSelected = selectedSeats.includes(seat.seatNumber);
+                const isSelected = selectedSeats.map(String).includes(String(seat.seatNumber));
                 const isLadies = seat.isLadiesOnly;
-                const conductorId = conductorSeatMap.get(seat.seatNumber);
+                const conductorId = conductorSeatMap.get(String(seat.seatNumber));
                 const isConductor = Boolean(conductorId);
 
                 return renderSeat(seat.seatNumber, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
@@ -242,9 +242,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
               const sid = String(num);
               const isOccupied = occupiedSeats.has(sid);
               const isReserved = reservedSeats.has(sid);
-              const isSelected = selectedSeats.includes(num);
-              const isLadies = ladiesOnlySeats.has(num);
-              const conductorId = conductorSeatMap.get(num);
+              const isSelected = selectedSeats.map(String).includes(String(num));
+              const isLadies = ladiesOnlySeats.has(String(num)) || ladiesOnlySeats.has(num);
+              const conductorId = conductorSeatMap.get(String(num));
               const isConductor = Boolean(conductorId);
               return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
             });
@@ -270,9 +270,9 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                   const sid = String(num);
                   const isOccupied = occupiedSeats.has(sid);
                   const isReserved = reservedSeats.has(sid);
-                  const isSelected = selectedSeats.includes(num);
-                  const isLadies = ladiesOnlySeats.has(num);
-                  const conductorId = conductorSeatMap.get(num);
+                  const isSelected = selectedSeats.map(String).includes(String(num));
+                  const isLadies = ladiesOnlySeats.has(String(num)) || ladiesOnlySeats.has(num);
+                  const conductorId = conductorSeatMap.get(String(num));
                   const isConductor = Boolean(conductorId);
                   return renderSeat(num, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
                 });
@@ -353,6 +353,7 @@ const SeatSelection: React.FC = () => {
   useEffect(() => {
     if (!busId) return;
 
+    // Initial fetch
     fetchBusSeats(busId);
     fetchOccupied();
 
@@ -363,15 +364,24 @@ const SeatSelection: React.FC = () => {
     }, 5000);
 
     return () => {
-      clearSelection();
       clearInterval(pollInterval);
+      // We don't necessarily want to clear selection on every small dependency change,
+      // only on actual unmount or bus change.
     };
-  }, [busId, fetchBusSeats, fetchOccupied, clearSelection]);
+  }, [busId, fetchBusSeats, fetchOccupied]);
+
+  // Separate effect for clearSelection on unmount or bus change
+  useEffect(() => {
+    return () => {
+      clearSelection();
+    };
+  }, [busId, clearSelection]);
 
   // ---------------- CLICK SEAT ----------------
   const handleSeatClick = async (seat: string | number) => {
     const sid = String(seat);
     const seatObj = busSeats?.seats.find((s: Seat) => String(s.seatNumber) === sid);
+    const isSelected = selectedSeats.map(String).includes(sid);
 
     if (occupiedSeats.has(sid)) return;
     if (reservedSeats.has(sid)) return;
@@ -382,9 +392,13 @@ const SeatSelection: React.FC = () => {
     if (seatObj?.isBlocked) return;
     if (seatObj?.isOnline === false) return;
 
-    if (selectedSeats.includes(seat)) {
+    if (isSelected) {
       deselectSeat(seat);
     } else {
+      if (selectedSeats.length >= (searchData?.passengers || 1)) {
+          alert(`You can only select ${searchData?.passengers || 1} seat(s).`);
+          return;
+      }
       selectSeat(seat);
     }
   };
@@ -395,21 +409,20 @@ const SeatSelection: React.FC = () => {
     busSeats.seats.filter((s: any) => s.isLadiesOnly).map((s: any) => s.seatNumber)
   );
 
-  const conductorMap = new Map<string | number, string>();
+  const conductorMap = new Map<string, string>();
   busSeats.seats.forEach((s: any) => {
-    if (s.isReservedForConductor) conductorMap.set(s.seatNumber, s.conductorId || "A");
+    if (s.isReservedForConductor) conductorMap.set(String(s.seatNumber), s.conductorId || "A");
   });
 
   // Calculate Online Availability
-  const totalOnlineSeats = busSeats.seats.filter(s => s.isOnline !== false && !s.isPermanent).length;
+  const totalOnlineSeats = busSeats.useCustomLayout 
+    ? busSeats.seats.filter(s => s.isOnline !== false && !s.isPermanent).length 
+    : (busSeats.totalSeats - busSeats.seats.filter(s => s.isOnline === false || s.isPermanent).length);
   const onlineBookedOrBlocked = [...occupiedSeats.values(), ...reservedSeats.values(), ...blockedSeats.values()].filter(s => {
       const seatObj = busSeats.seats.find(bs => String(bs.seatNumber) === String(s.seatNumber));
       return seatObj && seatObj.isOnline !== false;
   }).length;
-  const availableOnlineCount = totalOnlineSeats - onlineBookedOrBlocked - selectedSeats.filter(s => {
-      const seatObj = busSeats.seats.find(bs => String(bs.seatNumber) === String(s));
-      return seatObj && seatObj.isOnline !== false;
-  }).length;
+  const availableOnlineCount = Math.max(0, totalOnlineSeats - onlineBookedOrBlocked - selectedSeats.length);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -443,7 +456,7 @@ const SeatSelection: React.FC = () => {
             conductorSeatMap={conductorMap}
             selectedSeats={selectedSeats}
             onSeatClick={handleSeatClick}
-            maxSeats={searchData.passengers}
+            maxSeats={searchData?.passengers || 1}
             seatLayout={busSeats.seatLayout}
             seatNumberingType={busSeats.seatNumberingType}
             lastRowSeats={busSeats.lastRowSeats}
@@ -491,7 +504,7 @@ const SeatSelection: React.FC = () => {
                 )}
 
                 <button
-                    disabled={selectedSeats.length !== searchData.passengers || !pickupLocation || isContinuing}
+                    disabled={selectedSeats.length !== (Number(searchData?.passengers) || 1) || !pickupLocation || isContinuing}
                     onClick={async () => {
                     if (!busSeats || !busId) return;
                     setContinueError(null);
@@ -538,7 +551,7 @@ const SeatSelection: React.FC = () => {
                     }
                     }}
                     className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl active:scale-95 ${
-                        selectedSeats.length === searchData.passengers && pickupLocation && !isContinuing
+                        selectedSeats.length === (Number(searchData?.passengers) || 1) && pickupLocation && !isContinuing
                         ? "bg-[#fdc106] text-gray-900 shadow-[#fdc106]/20 hover:bg-[#e6ad05]"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                     }`}

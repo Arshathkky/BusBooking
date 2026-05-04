@@ -12,7 +12,7 @@ declare global {
 const Payment: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { updatePaymentStatus } = useBooking();
+  const { addBooking, updatePaymentStatus } = useBooking();
 
   const {
     bus,
@@ -21,75 +21,86 @@ const Payment: React.FC = () => {
     totalAmount,
     busNumber,
     passengerDetails,
-    bookingMongoId,
-    bookingId,
-    referenceId,
+    pickupLocation,
   } = location.state || {};
 
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    // Setup PayHere callbacks on mount
-    window.payhere.onCompleted = async function onCompleted(orderId: string) {
-      console.log("Payment completed. OrderID:" + orderId);
-      
-      try {
-        // Fallback status update for local testing where notify_url might not be reachable
-        await updatePaymentStatus(bookingMongoId, "PAID");
-      } catch (error) {
-        console.error("Local status update failed:", error);
-      }
-
-      navigate("/booking-confirmation", {
-        state: {
-          booking: {
-            bookingMongoId,
-            bookingId,
-            referenceId,
-            bus,
-            selectedSeats,
-            searchData,
-            totalAmount,
-            busNumber,
-            passengerDetails,
-            paymentStatus: "PAID",
-            bookingDate: new Date().toISOString(),
-          },
-        },
-      });
-    };
-
-    window.payhere.onDismissed = function onDismissed() {
-      console.log("Payment dismissed");
-      setProcessing(false);
-    };
-
-    window.payhere.onError = function onError(error: any) {
-      console.error("Payment Error:", error);
-      alert("Payment failed. Please try again.");
-      setProcessing(false);
-    };
-  }, [bookingMongoId, bookingId, referenceId, bus, selectedSeats, searchData, totalAmount, busNumber, passengerDetails, navigate, updatePaymentStatus]);
-
   const handlePayment = async () => {
-    if (!bookingMongoId || !bookingId) {
-      alert("Booking ID missing. Cannot proceed.");
-      return;
-    }
-
     setProcessing(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || "https://bus-booking-nt91.onrender.com/api";
+      // 1. Create Booking First
+      const newBooking = await addBooking({
+        bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
+        searchData,
+        selectedSeats: selectedSeats.map(String),
+        totalAmount,
+        passengerDetails,
+        pickupLocation,
+        paymentStatus: "PENDING",
+      });
+
+      if (!newBooking) throw new Error("Failed to create booking.");
+
+      const currentBookingId = newBooking.bookingId;
+      const currentMongoId = newBooking._id;
+      const currentReferenceId = newBooking.referenceId;
+      const currentBusNumber = newBooking.bus.busNumber;
+
+      // Setup PayHere callbacks
+      window.payhere.onCompleted = async function onCompleted(orderId: string) {
+        console.log("Payment completed. OrderID:" + orderId);
+        
+        try {
+          // Fallback status update for local testing where notify_url might not be reachable
+          if (currentMongoId) {
+            await updatePaymentStatus(currentMongoId, "PAID");
+          }
+        } catch (error) {
+          console.error("Local status update failed:", error);
+        }
+
+        navigate("/booking-confirmation", {
+          state: {
+            booking: {
+              bookingMongoId: currentMongoId,
+              bookingId: currentBookingId,
+              referenceId: currentReferenceId,
+              bus,
+              selectedSeats,
+              searchData,
+              totalAmount,
+              busNumber: currentBusNumber,
+              passengerDetails,
+              paymentStatus: "PAID",
+              bookingDate: new Date().toISOString(),
+            },
+          },
+        });
+      };
+
+      window.payhere.onDismissed = function onDismissed() {
+        console.log("Payment dismissed");
+        setProcessing(false);
+      };
+
+      window.payhere.onError = function onError(error: any) {
+        console.error("Payment Error:", error);
+        alert("Payment failed. Please try again.");
+        setProcessing(false);
+      };
+
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
       
-      // 1. Fetch payment hash from backend
+      // 2. Fetch payment hash from backend
       const response = await fetch(`${baseUrl}/bookings/payhere/hash`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          order_id: bookingId,
+          order_id: currentBookingId,
           amount: totalAmount,
           currency: "LKR",
         }),
@@ -113,7 +124,7 @@ const Payment: React.FC = () => {
         return_url: window.location.origin + "/booking-confirmation",
         cancel_url: window.location.origin + "/payment",
         notify_url: `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bookings/payhere/notify`,
-        order_id: bookingId,
+        order_id: currentBookingId,
         items: `Bus Booking - ${bus.name}`,
         amount: Number(totalAmount).toFixed(2),
         currency: "LKR",
@@ -137,25 +148,36 @@ const Payment: React.FC = () => {
   };
 
   const handleTestPayment = async () => {
-    if (!bookingMongoId || !bookingId) {
-      alert("Booking ID missing. Cannot proceed.");
-      return;
-    }
-
     setProcessing(true);
     try {
-      await updatePaymentStatus(bookingMongoId, "PAID");
+      // 1. Create Booking First
+      const newBooking = await addBooking({
+        bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
+        searchData,
+        selectedSeats: selectedSeats.map(String),
+        totalAmount,
+        passengerDetails,
+        pickupLocation,
+        paymentStatus: "PENDING",
+      });
+
+      if (!newBooking) throw new Error("Failed to create booking.");
+
+      if (newBooking._id) {
+        await updatePaymentStatus(newBooking._id, "PAID");
+      }
+      
       navigate("/booking-confirmation", {
         state: {
           booking: {
-            bookingMongoId,
-            bookingId,
-            referenceId,
+            bookingMongoId: newBooking._id,
+            bookingId: newBooking.bookingId,
+            referenceId: newBooking.referenceId,
             bus,
             selectedSeats,
             searchData,
             totalAmount,
-            busNumber,
+            busNumber: newBooking.bus.busNumber,
             passengerDetails,
             paymentStatus: "PAID",
             bookingDate: new Date().toISOString(),
@@ -170,7 +192,7 @@ const Payment: React.FC = () => {
   };
 
   // -------------------- Fallback --------------------
-  if (!bus || !selectedSeats || !searchData || !passengerDetails || !bookingId) {
+  if (!bus || !selectedSeats || !searchData || !passengerDetails) {
     return (
       <div className="text-center mt-20">
         <p className="text-gray-600">Invalid booking data. Please start over.</p>
@@ -198,7 +220,7 @@ const Payment: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold">Secure Checkout</h2>
           <p className="text-gray-600">
-            Booking No: <b>{bookingId}</b> • Ref: <b>{referenceId}</b>
+            Please complete the payment to finalize your booking
           </p>
         </div>
       </div>

@@ -40,7 +40,7 @@ const ConductorDashboard: React.FC = () => {
     const fetchDashboard = async () => {
       try {
         const res = await axios.get<DashboardData>(
-          `https://bus-booking-nt91.onrender.com/api/conductor/dashboard/${conductorId}`
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/conductor/dashboard/${conductorId}`
         );
         setData(res.data);
       } catch (err: unknown) {

@@ -85,7 +85,7 @@ export const useSeat = (): SeatContextType => {
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<(string | number)[]>([]);
-  const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
+  const API_URL = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/buses`;
 
   // -------------------- Fetch bus seats --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
@@ -151,13 +151,11 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // -------------------- Seat Selection --------------------
   const selectSeat = useCallback((seatNumber: string | number) => {
-    const sid = String(seatNumber);
-    setSelectedSeats((prev) => (prev.map(String).includes(sid) ? prev : [...prev, sid]));
+    setSelectedSeats((prev) => (prev.includes(seatNumber) ? prev : [...prev, seatNumber]));
   }, []);
 
   const deselectSeat = useCallback((seatNumber: string | number) => {
-    const sid = String(seatNumber);
-    setSelectedSeats((prev) => prev.filter((s) => String(s) !== sid));
+    setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
   }, []);
 
   const clearSelection = useCallback(() => {

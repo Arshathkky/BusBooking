@@ -87,18 +87,23 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
     // NEW: Advanced Operational Flags
     const sid = String(seatId);
-    const isPermanent = (seatObj && seatObj.isPermanent === true) || blockedSeats.has(sid) || blockedSeats.has(seatId);
+    const occupantInfo = occupiedSeats.get(sid) || reservedSeats.get(sid) || blockedSeats.get(sid) || offlineSeats.get(sid);
+
+    // If occupantInfo says it's BLOCKED, treat it as a block seat regardless of which map it came from
+    const isActuallyBlocked = occupantInfo?.status === "BLOCKED" || blockedSeats.has(sid) || blockedSeats.has(seatId);
+    
+    const isPermanent = (seatObj && seatObj.isPermanent === true) || isActuallyBlocked;
     const isOwnerBlocked = (seatObj && seatObj.isBlocked === true);
     const isBlockedForOnline = (seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
 
-    const occupantInfo = occupiedSeats.get(sid) || reservedSeats.get(sid) || blockedSeats.get(sid) || offlineSeats.get(sid);
+    const isActuallyOccupied = isOccupied && !isActuallyBlocked;
 
     let style =
       "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition group relative";
 
     if (isPermanent) {
       style += " bg-red-900 border-red-950 text-white cursor-not-allowed opacity-40 shadow-inner";
-    } else if (isOccupied) {
+    } else if (isActuallyOccupied) {
       style += " bg-gray-500 text-white cursor-not-allowed";
     } else if (isSelected) {
       style += " bg-yellow-400 border-yellow-500 cursor-pointer";
@@ -118,10 +123,10 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     return (
       <button
         key={String(seatId)}
-        onClick={() => !isPermanent && !isOccupied && !isReserved && !isConductor && !isOwnerBlocked && !isBlockedForOnline && onSeatClick(seatId)}
+        onClick={() => !isPermanent && !isActuallyOccupied && !isReserved && !isConductor && !isOwnerBlocked && !isBlockedForOnline && onSeatClick(seatId)}
         disabled={
           isPermanent ||
-          isOccupied ||
+          isActuallyOccupied ||
           (isReserved && !isSelected) ||
           isConductor ||
           isOwnerBlocked ||
@@ -141,7 +146,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
           <div className="w-full h-full flex items-center justify-center bg-black/20 rounded-md">
             <svg className="w-3 h-3 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
           </div>
-        ) : isOccupied ? (
+        ) : isActuallyOccupied ? (
           <UserX className="w-4 h-4" />
         ) : isSelected ? (
           <User className="w-4 h-4" />
@@ -326,7 +331,7 @@ const SeatSelection: React.FC = () => {
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
-    const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
     const res = await axios.get<OccupiedSeatsResponse>(
       `${API_BASE}/bookings/occupied-seats`,
       { params: { busId, date: searchData.date } }
@@ -510,37 +515,12 @@ const SeatSelection: React.FC = () => {
                     setContinueError(null);
                     setIsContinuing(true);
                     try {
-                        const newBooking = await addBooking({
-                        bus: {
-                            id: busSeats.id,
-                            name: busSeats.name,
-                            type: busSeats.type,
-                            busNumber: busSeats.busNumber,
-                        },
-                        searchData,
-                        selectedSeats: selectedSeats.map(String),
-                        totalAmount: busSeats.price * selectedSeats.length,
-                        passengerDetails: { name: "", phone: "", address: "", nic: "" },
-                        pickupLocation,
-                        paymentStatus: "PENDING",
-                        });
-
-                        if (!newBooking) {
-                        setContinueError("Failed to reserve seats. They may have just been taken. Please try again.");
-                        fetchOccupied();
-                        fetchBusSeats(busId);
-                        return;
-                        }
-
                         navigate("/passenger-details", {
                         state: {
                             bus: busSeats,
                             selectedSeats,
                             searchData,
                             totalAmount: busSeats.price * selectedSeats.length,
-                            bookingMongoId: newBooking._id,
-                            bookingId: newBooking.bookingId,
-                            referenceId: newBooking.referenceId,
                             pickupLocation
                         },
                         });

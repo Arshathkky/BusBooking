@@ -29,7 +29,7 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://bus-booking-nt91.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
@@ -814,7 +814,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const handleQuickSave = async (updatedSeats: any[]) => {
         setUpdating(true);
         try {
-            await fetch(`https://bus-booking-nt91.onrender.com/api/buses/${busId}/seats`, {
+            await fetch(`${BASE_URL}/buses/${busId}/seats`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ seats: updatedSeats, role: "owner" })
@@ -1311,8 +1311,11 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                     return (
                                         <div 
                                             key={seat.seatNumber}
-                                            onClick={() => toggleManualSeat(seat.seatNumber)}
-                                            className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all cursor-pointer relative group ${
+                                            onClick={() => {
+                                                if (seat.isPermanent || bookingStatus) return;
+                                                toggleManualSeat(seat.seatNumber);
+                                            }}
+                                            className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all ${!seat.isPermanent && !bookingStatus ? 'cursor-pointer hover:border-white/50' : 'cursor-not-allowed opacity-80'} relative group ${
                                                 isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10' :
                                                 seat.isPermanent || bookingStatus === "BLOCKED" ? 'bg-red-500 border-red-600 text-white' :
                                                 bookingStatus === "PENDING" ? 'bg-orange-500 border-orange-600 text-white' :

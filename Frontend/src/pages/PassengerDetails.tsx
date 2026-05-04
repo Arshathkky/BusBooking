@@ -78,46 +78,16 @@ const PassengerDetails: React.FC = () => {
       const busId = bus._id || bus.id;
       if (!busId) throw new Error("Missing bus ID");
 
-      let newBooking;
-
-      if (bookingMongoId) {
-        // ✅ Booking was pre-created at SeatSelection — just update passenger details
-        newBooking = await updateBookingDetails(bookingMongoId, { passengerDetails, pickupLocation });
-        if (!newBooking) throw new Error("Failed to update booking details.");
-      } else {
-        // 🔄 Fallback: create booking (shouldn't happen in normal flow)
-        newBooking = await addBooking({
-          bus: { id: busId, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
-          searchData,
-          selectedSeats: selectedSeats.map(String),
-          totalAmount: totalAmount ?? 0,
-          passengerDetails,
-          pickupLocation,
-          paymentStatus: "PENDING",
-        });
-        if (!newBooking) throw new Error("Failed to create booking.");
-      }
-
-      console.log("Booking updated successfully!");
-      console.log("Booking ID:", newBooking.bookingId);
-      console.log("Reference ID:", newBooking.referenceId);
-
-
-
       // ✅ Navigate to payment page
       navigate("/payment", {
         state: {
-    bus,
-    selectedSeats,
-    searchData,
-    totalAmount,
-    passengerDetails,
-     busNumber: newBooking.bus.busNumber,
-    bookingMongoId: newBooking._id,     // optional (for API calls)
-    bookingId: newBooking.bookingId,    // ✅ CORRECT
-    referenceId: newBooking.referenceId ,
-    pickupLocation: newBooking.pickupLocation,
-  },
+          bus,
+          selectedSeats,
+          searchData,
+          totalAmount,
+          passengerDetails,
+          pickupLocation,
+        },
   
       });
     } catch (err: unknown) {

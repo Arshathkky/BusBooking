@@ -20,7 +20,7 @@ const ScheduleTab: React.FC = () => {
       ? currentSchedule.filter((d) => d !== day)
       : [...currentSchedule, day];
 
-    const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
+    const API_URL = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/buses`;
     try {
       await axios.put(`${API_URL}/${bus.id}/schedule`, {
         schedule: newSchedule,

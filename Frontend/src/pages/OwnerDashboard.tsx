@@ -31,7 +31,7 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 

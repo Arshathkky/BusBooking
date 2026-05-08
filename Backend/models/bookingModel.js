@@ -26,7 +26,7 @@ const bookingSchema = new mongoose.Schema(
       date: String,
     },
 
-    selectedSeats: [{ type: Number, required: true }],
+    selectedSeats: [{ type: String, required: true }],
 
     totalAmount: Number,
 

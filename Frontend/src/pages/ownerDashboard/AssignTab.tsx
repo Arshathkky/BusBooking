@@ -11,7 +11,7 @@ const AssignConductorTab: React.FC = () => {
 
   const [selectedBusId, setSelectedBusId] = useState<string>("");
   const [selectedConductorId, setSelectedConductorId] = useState<string>("");
-  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<(string | number)[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [removing, setRemoving] = useState(false);
 

@@ -4,27 +4,18 @@ import Bus from "../models/busModel.js";
 export const releasePendingBookings = async () => {
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-  // Find all pending bookings older than 10 minutes
+  // Find all pending bookings that have expired
+  const now = new Date();
   const bookings = await Booking.find({
-    paymentStatus: "Pending",
-    createdAt: { $lte: tenMinutesAgo },
+    paymentStatus: "PENDING",
+    holdExpiresAt: { $lte: now },
   });
 
   for (let booking of bookings) {
-    // Release seats in bus
-    const bus = await Bus.findById(booking.bus.id);
-    if (!bus) continue;
-
-    bus.seats = bus.seats.map((seat) => {
-      if (booking.selectedSeats.includes(seat.seatNumber.toString())) {
-        return { ...seat.toObject(), isOccupied: false };
-      }
-      return seat;
-    });
-    await bus.save();
-
-    // Mark booking as cancelled
-    booking.paymentStatus = "Cancelled";
+    // Note: In the new date-wise system, we don't need to update the main Bus seats 
+    // because occupancy is determined by the existence of a booking.
+    // However, we mark the booking as CANCELLED so it's no longer counted.
+    booking.paymentStatus = "CANCELLED";
     await booking.save();
   }
 };

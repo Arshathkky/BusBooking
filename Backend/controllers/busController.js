@@ -445,11 +445,6 @@ export const getSeatLayout = async (req, res) => {
       });
     }
 
-    // 4️⃣ Save only if changes happened (OPTIMIZED)
-    if (updated) {
-      // await bus.save();
-    }
-
     // 5️⃣ Send response
     res.status(200).json({
       success: true,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, RotateCcw, User, Trash2, Layout as LayoutIcon, MousePointer2 } from "lucide-react";
+import { X, Save, RotateCcw, User, Trash2, Layout as LayoutIcon, MousePointer2, CheckCircle2, Users } from "lucide-react";
 import { SeatType } from "../contexts/busDataContexts";
 
 interface BusLayoutDesignerProps {
@@ -271,61 +271,58 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-4 mb-2">Operational Controls</p>
 
                         {/* Online Available */}
-                        <label className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border border-slate-100 dark:border-slate-800 rounded-2xl cursor-pointer hover:border-emerald-200 dark:hover:border-emerald-900 transition-all group shadow-sm">
-                            <div className="flex items-center space-x-4">
-                                <div className={`p-3 rounded-xl transition-colors ${seats[activeSeatIndex].isOnline !== false ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <LayoutIcon className="w-5 h-5" />
+                        <div className="grid grid-cols-1 gap-3">
+                            <button 
+                                type="button"
+                                onClick={() => updateActiveSeat({ isOnline: true, isPermanent: false, isBlocked: false })}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group shadow-sm ${seats[activeSeatIndex].isOnline !== false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900' : 'bg-white dark:bg-gray-900 border-slate-100 dark:border-slate-800 hover:border-green-200'}`}
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <div className={`p-3 rounded-xl ${seats[activeSeatIndex].isOnline !== false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <LayoutIcon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Online Booking</span>
+                                        <span className="text-xs text-gray-400">Available for public</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Available Online</span>
-                                    <span className="text-xs text-gray-400">Allow passengers to book this</span>
-                                </div>
-                            </div>
-                            <input 
-                                type="checkbox"
-                                checked={seats[activeSeatIndex].isOnline !== false}
-                                onChange={(e) => updateActiveSeat({ isOnline: e.target.checked })}
-                                className="w-6 h-6 rounded-lg border-2 border-slate-200 text-emerald-500 focus:ring-emerald-500/20"
-                            />
-                        </label>
+                                {seats[activeSeatIndex].isOnline !== false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                            </button>
 
-                        {/* Permanent Block */}
-                        <label className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border border-slate-100 dark:border-slate-800 rounded-2xl cursor-pointer hover:border-red-200 dark:hover:border-red-900 transition-all group shadow-sm">
-                            <div className="flex items-center space-x-4">
-                                <div className={`p-3 rounded-xl transition-colors ${seats[activeSeatIndex].isPermanent ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <MousePointer2 className="w-5 h-5" />
+                            <button 
+                                type="button"
+                                onClick={() => updateActiveSeat({ isOnline: false, isPermanent: false, isBlocked: false })}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group shadow-sm ${seats[activeSeatIndex].isOnline === false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked ? 'bg-orange-50 border-orange-400 dark:bg-orange-950/30 dark:border-orange-900' : 'bg-white dark:bg-gray-900 border-slate-100 dark:border-slate-800 hover:border-orange-400'}`}
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <div className={`p-3 rounded-xl ${seats[activeSeatIndex].isOnline === false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Manual Only</span>
+                                        <span className="text-xs text-gray-400">Restricted booking</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Permanent Block</span>
-                                    <span className="text-xs text-gray-400">Mark as out of service</span>
-                                </div>
-                            </div>
-                            <input 
-                                type="checkbox"
-                                checked={seats[activeSeatIndex].isPermanent || false}
-                                onChange={(e) => updateActiveSeat({ isPermanent: e.target.checked })}
-                                className="w-6 h-6 rounded-lg border-2 border-slate-200 text-red-500 focus:ring-red-500/20"
-                            />
-                        </label>
+                                {seats[activeSeatIndex].isOnline === false && !seats[activeSeatIndex].isPermanent && !seats[activeSeatIndex].isBlocked && <CheckCircle2 className="w-5 h-5 text-orange-500" />}
+                            </button>
 
-                        {/* Manual Reservation / Owner Block */}
-                        <label className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border border-slate-100 dark:border-slate-800 rounded-2xl cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group shadow-sm">
-                            <div className="flex items-center space-x-4">
-                                <div className={`p-3 rounded-xl transition-colors ${seats[activeSeatIndex].isBlocked ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <User className="w-5 h-5" />
+                            <button 
+                                type="button"
+                                onClick={() => updateActiveSeat({ isOnline: false, isPermanent: true, isBlocked: false })}
+                                className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group shadow-sm ${seats[activeSeatIndex].isPermanent ? 'bg-slate-100 border-slate-900 dark:bg-slate-900 dark:border-black' : 'bg-white dark:bg-gray-900 border-slate-100 dark:border-slate-800 hover:border-slate-900'}`}
+                            >
+                                <div className="flex items-center space-x-4">
+                                    <div className={`p-3 rounded-xl ${seats[activeSeatIndex].isPermanent ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                        <MousePointer2 className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Permanent Block</span>
+                                        <span className="text-xs text-gray-400">Out of service</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="block text-sm font-bold text-gray-700 dark:text-gray-200">Owner Reserve</span>
-                                    <span className="text-xs text-gray-400">Block for manual booking</span>
-                                </div>
-                            </div>
-                            <input 
-                                type="checkbox"
-                                checked={seats[activeSeatIndex].isBlocked || false}
-                                onChange={(e) => updateActiveSeat({ isBlocked: e.target.checked })}
-                                className="w-6 h-6 rounded-lg border-2 border-slate-200 text-indigo-500 focus:ring-indigo-500/20"
-                            />
-                        </label>
+                                {seats[activeSeatIndex].isPermanent && <CheckCircle2 className="w-5 h-5 text-slate-900" />}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="pt-6">

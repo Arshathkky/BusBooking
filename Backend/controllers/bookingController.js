@@ -27,7 +27,7 @@ export const createBooking = async (req, res) => {
     const isOwnerOverride = searchData.from === 'Owner Override';
 
     // 2️⃣ 🔥 CONCURRENCY CHECK — reject if any seat is already locked
-    const seatNumbers = selectedSeats.map(Number);
+    const seatNumbers = selectedSeats.map(String);
     const conflicting = await Booking.findOne({
       "bus.id": bus.id,
       "searchData.date": searchData.date,
@@ -413,7 +413,7 @@ export const unblockSeatsAllDays = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid busId or seatNumbers" });
     }
 
-    const seatsToUnblock = seatNumbers.map(Number);
+    const seatsToUnblock = seatNumbers.map(String);
 
     // Find and delete/cancel all BLOCKED, OFFLINE, or PENDING bookings for these seats across ALL dates
     const result = await Booking.deleteMany({

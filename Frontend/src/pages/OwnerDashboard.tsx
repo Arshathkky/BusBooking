@@ -16,7 +16,9 @@ import {
   AlertCircle,
   RefreshCw,
   X,
-  CircleDot as Steering
+  CircleDot as Steering,
+  ShieldAlert,
+  Monitor
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import AddBusModal from "../components/AddBusModal";
@@ -738,7 +740,74 @@ const fetchRecentBookings = async () => {
         </div>
       )}
     </div>
-  );
+    );
+};
+
+// --- MINI CALENDAR COMPONENT ---
+const MiniCalendar: React.FC<{ 
+    selectedDates: string[]; 
+    onToggleDate: (date: string) => void;
+}> = ({ selectedDates, onToggleDate }) => {
+    const today = new Date();
+    const [viewDate, setViewDate] = useState(new Date());
+    
+    const month = viewDate.getMonth();
+    const year = viewDate.getFullYear();
+    
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    
+    const monthName = viewDate.toLocaleString('default', { month: 'long' });
+    
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+    
+    const handlePrev = () => setViewDate(new Date(year, month - 1, 1));
+    const handleNext = () => setViewDate(new Date(year, month + 1, 1));
+    
+    const ArrowRightIcon = ({ className }: { className?: string }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
+    );
+    
+    return (
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-3xl p-4 border border-gray-100 dark:border-gray-800">
+            <div className="flex justify-between items-center mb-4 px-2">
+                <button onClick={handlePrev} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRightIcon className="w-4 h-4 rotate-180" /></button>
+                <div className="text-[10px] font-black uppercase tracking-widest">{monthName} {year}</div>
+                <button onClick={handleNext} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRightIcon className="w-4 h-4" /></button>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 text-center">
+                {['S','M','T','W','T','F','S'].map((d, i) => (
+                    <div key={`${d}-${i}`} className="text-[10px] font-black text-gray-400 py-1">{d}</div>
+                ))}
+                {days.map((day, i) => {
+                    if (day === null) return <div key={`empty-${i}`} />;
+                    
+                    const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                    const isSelected = selectedDates.includes(dateStr);
+                    const isToday = new Date().toISOString().slice(0,10) === dateStr;
+                    
+                    return (
+                        <button
+                            key={dateStr}
+                            type="button"
+                            onClick={() => onToggleDate(dateStr)}
+                            className={`aspect-square rounded-xl text-[10px] font-bold transition-all flex items-center justify-center
+                                ${isSelected 
+                                    ? 'bg-[#fdc106] text-gray-900 shadow-md scale-110 z-10' 
+                                    : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}
+                                ${isToday ? 'ring-2 ring-[#fdc106] ring-offset-2 dark:ring-offset-gray-900' : ''}
+                            `}
+                        >
+                            {day}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
 };
 
 export default OwnerDashboard;
@@ -775,9 +844,8 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const [hasPending, setHasPending] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [selectedManualSeats, setSelectedManualSeats] = useState<(string | number)[]>([]);
-    const [actionModal, setActionModal] = useState<{ show: boolean, type: "RESERVE" | "BLOCK" | "OFFLINE" }>({ show: false, type: "RESERVE" });
+    const [actionModal, setActionModal] = useState<{ show: boolean, type: "RESERVE" | "BLOCK" | "OFFLINE" | "ONLINE" | "BLOCK_GLOBAL" | "RESERVE_GLOBAL" }>({ show: false, type: "RESERVE" });
     const [actionDates, setActionDates] = useState<string[]>([travelDate]);
-    const [newDate, setNewDate] = useState<string>("");
     const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '', pickupLocation: '' });
     const { updateBus } = useBus();
 
@@ -789,7 +857,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 const data = await res2.json();
                 if (data.success) {
                     const filtered = data.bookings.filter((b: any) => 
-                        b.bus?.id === busId && 
+                        String(b.bus?.id) === String(busId) && 
                         b.searchData?.date === travelDate && 
                         (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
                     );
@@ -999,41 +1067,106 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             const busInfo = bD.data;
 
             const datesToProcess = actionDates.length > 0 ? actionDates : [travelDate];
+            let promises: any[] = [];
 
-            const promises = datesToProcess.map(date => {
-                let pStatus = 'PENDING';
-                if (actionModal.type === "BLOCK") pStatus = "BLOCKED";
-                if (actionModal.type === "OFFLINE") pStatus = "OFFLINE";
-
-                return fetch(`${BOOKING_API}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        bus: {
-                            id: busId,
-                            name: busInfo.name,
-                            type: busInfo.type,
-                            busNumber: busInfo.busNumber
-                        },
-                        searchData: { from: 'Owner Override', to: 'Owner Override', date: date },
-                        selectedSeats: selectedManualSeats.map(String),
-                        totalAmount: 0,
-                        passengerDetails: actionModal.type === "RESERVE" ? passengerData : { name: actionModal.type, phone: 'N/A', nic: 'N/A' },
-                        pickupLocation: actionModal.type === "RESERVE" ? passengerData.pickupLocation : "",
-                        paymentStatus: pStatus
-                    })
+            if (["ONLINE", "BLOCK_GLOBAL", "RESERVE_GLOBAL"].includes(actionModal.type)) {
+                // 1. Update Bus Model Permanently
+                const updatedSeats = localSeats.map(s => {
+                    if (selectedManualSeats.map(String).includes(String(s.seatNumber))) {
+                        if (actionModal.type === "ONLINE") return { ...s, isOnline: true, isPermanent: false, isBlocked: false };
+                        if (actionModal.type === "BLOCK_GLOBAL") return { ...s, isOnline: false, isPermanent: false, isBlocked: false };
+                        if (actionModal.type === "RESERVE_GLOBAL") return { ...s, isOnline: false, isPermanent: true, isBlocked: false };
+                    }
+                    return s;
                 });
-            });
+                
+                await fetch(`${BASE_URL}/buses/${busId}/seats`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ seats: updatedSeats, role: "owner" })
+                });
+                await updateBus(busId, { seats: updatedSeats });
+                setLocalSeats(updatedSeats);
+
+                // 2. Clear Daily Overrides for all selected dates (only for ONLINE)
+                if (actionModal.type === "ONLINE") {
+                    const res = await fetch(`${BOOKING_API}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        const toCancel = data.bookings.filter((b: any) => 
+                            String(b.bus?.id) === String(busId) && 
+                            datesToProcess.includes(b.searchData?.date) && 
+                            b.selectedSeats.some((s: any) => selectedManualSeats.map(String).includes(String(s))) &&
+                            ["BLOCKED", "OFFLINE", "PENDING"].includes(b.paymentStatus)
+                        );
+                        
+                        await Promise.all(toCancel.map((b: any) => 
+                            fetch(`${BOOKING_API}/${b._id}/cancel`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ remark: "Owner Online Override", cancelledBy: "admin" })
+                            })
+                        ));
+                    }
+                }
+                promises = [Promise.resolve({ ok: true, json: async () => ({ success: true }) })];
+            } else {
+                promises = datesToProcess.map(async (date) => {
+                    // Check if seats are already booked for this specific date
+                    const resOcc = await fetch(`${BOOKING_API}/occupied-seats?busId=${busId}&date=${date}`);
+                    const occData = await resOcc.json();
+                    let seatsToProcess = [...selectedManualSeats.map(String)];
+                    
+                    if (occData.success) {
+                        const allOcc = [...occData.occupiedSeats, ...occData.reservedSeats, ...occData.blockedSeats, ...occData.offlineSeats];
+                        const occNums = allOcc.map(s => String(s.seatNumber));
+                        seatsToProcess = seatsToProcess.filter(s => !occNums.includes(s));
+                    }
+
+                    if (seatsToProcess.length === 0) return Promise.resolve({ ok: true, json: async () => ({ success: true, message: "Already reserved" }) });
+
+                    let pStatus = 'PENDING';
+                    if (actionModal.type === "BLOCK") pStatus = "BLOCKED";
+                    if (actionModal.type === "OFFLINE") pStatus = "OFFLINE";
+
+                    return fetch(`${BOOKING_API}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            bus: {
+                                id: busId,
+                                name: busInfo.name,
+                                type: busInfo.type,
+                                busNumber: busInfo.busNumber
+                            },
+                            searchData: { from: 'Owner Override', to: 'Owner Override', date: date },
+                            selectedSeats: seatsToProcess,
+                            totalAmount: 0,
+                            passengerDetails: actionModal.type === "RESERVE" ? passengerData : { name: actionModal.type, phone: 'N/A', nic: 'N/A' },
+                            pickupLocation: actionModal.type === "RESERVE" ? passengerData.pickupLocation : "",
+                            paymentStatus: pStatus
+                        })
+                    });
+                });
+            }
 
             const responses = await Promise.all(promises);
-            const failed = responses.filter(r => !r.ok);
+            const failed = (responses as any[]).filter(r => r && r.ok === false);
             
             if (failed.length > 0) {
                 const errData = await failed[0].json();
                 throw new Error(errData.message || "Some operations failed");
             }
+
+            const results = await Promise.all(responses.map(r => r.json()));
+            const skippedDates = results.filter(r => r.message === "Already reserved").length;
             
-            alert(`${actionModal.type} operation completed successfully for ${datesToProcess.length} date(s)!`);
+            if (skippedDates === datesToProcess.length && datesToProcess.length > 0) {
+                alert("Selected seats are already reserved for all chosen dates.");
+            } else {
+                alert(`${actionModal.type} operation completed! ${skippedDates > 0 ? `(${skippedDates} dates skipped as seats were already occupied)` : ''}`);
+            }
+            
             setSelectedManualSeats([]);
             setActionModal({ show: false, type: "RESERVE" });
             setActionDates([travelDate]);
@@ -1044,7 +1177,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             const data2 = await res2.json();
             if (data2.success) {
                 const filtered = data2.bookings.filter((b: any) => 
-                    b.bus?.id === busId && b.searchData?.date === travelDate && 
+                    String(b.bus?.id) === String(busId) && b.searchData?.date === travelDate && 
                     (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
                 );
                 setBookings(filtered);
@@ -1096,7 +1229,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         });
     };
 
-    const openActionModal = (type: "RESERVE" | "BLOCK" | "OFFLINE", num?: string | number) => {
+    const openActionModal = (type: "RESERVE" | "BLOCK" | "OFFLINE" | "ONLINE" | "BLOCK_GLOBAL" | "RESERVE_GLOBAL", num?: string | number) => {
         if (num && !selectedManualSeats.includes(num)) {
             setSelectedManualSeats(prev => [...prev, num]);
         }
@@ -1239,29 +1372,24 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         <button onClick={() => setSelectedManualSeats([])} className="px-6 py-2 rounded-xl text-xs font-black text-white hover:bg-white/10 transition-all border border-white/10 uppercase tracking-widest">Clear</button>
                         
                         <button 
+                            onClick={() => openActionModal("ONLINE")}
+                            className="bg-emerald-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
+                        ><Monitor className="w-3 h-3" /> Set Online</button>
+
+                        <button 
+                            onClick={() => openActionModal("BLOCK_GLOBAL")}
+                            className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
+                        ><Users className="w-3 h-3" /> Block for Online</button>
+
+                        <button 
+                            onClick={() => openActionModal("RESERVE_GLOBAL")}
+                            className="bg-red-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
+                        ><ShieldAlert className="w-3 h-3" /> Permanent Reserve</button>
+
+                        <button 
                             onClick={() => openActionModal("RESERVE")}
                             className="bg-[#fdc106] text-gray-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20"
-                        >Reserve</button>
-
-                        <button 
-                            onClick={() => openActionModal("BLOCK")}
-                            className="bg-red-500 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Block</button>
-
-                        <button 
-                            onClick={handleUnblockToday}
-                            className="bg-green-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Unblock Today</button>
-
-                        <button 
-                            onClick={handleResetToday}
-                            className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Reset All Today</button>
-
-                        <button 
-                            onClick={handleResetSeats}
-                            className="bg-gray-700 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                        >Global Unblock</button>
+                        >Reserve for Date</button>
                     </div>
                 </div>
             )}
@@ -1273,9 +1401,12 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         <h4 className="text-xl font-black text-white italic uppercase tracking-tighter">Quick Seat Operations</h4>
                     </div>
                     <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter text-gray-400">
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online Availability</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Out of Service</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Owner Block</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-orange-500 rounded-full"></div> Manual Only</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-800 rounded-full"></div> Permanent</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-600 rounded-full"></div> Daily Block</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600 rounded-full"></div> Reserved</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-cyan-600 rounded-full"></div> Paid</div>
                     </div>
                 </div>
 
@@ -1287,44 +1418,47 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         </div>
 
                         <div
-                            className="grid gap-2"
-                            style={{
+                            className={localSeats.some(s => s.x !== undefined && s.y !== undefined) ? "grid gap-2" : "flex flex-wrap gap-2 justify-center"}
+                            style={localSeats.some(s => s.x !== undefined && s.y !== undefined) ? {
                                 gridTemplateColumns: `repeat(6, 45px)`,
                                 gridTemplateRows: `repeat(15, 45px)`
-                            }}
+                            } : { maxWidth: '300px' }}
                         >
                             {(() => {
-                                const gridMap = new Map();
-                                localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
-
-                                return Array.from({ length: 15 * 6 }).map((_, i) => {
-                                    const x = i % 6;
-                                    const y = Math.floor(i / 6);
-                                    const seat = gridMap.get(`${x},${y}`);
-
-                                    if (!seat) return <div key={i} className="w-[45px] h-[45px]" />;
-
+                                const renderSeat = (seat: any) => {
                                     const isSelected = selectedManualSeats.map(String).includes(String(seat.seatNumber));
-                                    const bookingForSeat = bookings.find(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                                    
+                                    // Smart lookup: find all bookings for this seat and pick the most relevant one
+                                    const seatBookings = bookings.filter(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                                    const bookingForSeat = seatBookings.sort((a, b) => {
+                                        const priority: any = { "PAID": 0, "BLOCKED": 1, "OFFLINE": 2, "PENDING": 3 };
+                                        return (priority[a.paymentStatus] ?? 99) - (priority[b.paymentStatus] ?? 99);
+                                    })[0];
+                                    
                                     const bookingStatus = bookingForSeat?.paymentStatus;
 
                                     return (
                                         <div 
-                                            key={seat.seatNumber}
+                                            key={`seat-${seat.seatNumber}`}
                                             onClick={() => {
-                                                if (seat.isPermanent || bookingStatus) return;
                                                 toggleManualSeat(seat.seatNumber);
                                             }}
-                                            className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all ${!seat.isPermanent && !bookingStatus ? 'cursor-pointer hover:border-white/50' : 'cursor-not-allowed opacity-80'} relative group ${
-                                                isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10' :
-                                                seat.isPermanent || bookingStatus === "BLOCKED" ? 'bg-red-500 border-red-600 text-white' :
-                                                bookingStatus === "PENDING" ? 'bg-orange-500 border-orange-600 text-white' :
-                                                bookingStatus === "PAID" ? 'bg-indigo-600 border-indigo-700 text-white' :
-                                                seat.isOnline !== false ? 'bg-green-500/20 border-green-500/30 text-green-500' : 
-                                                'bg-white/5 border-white/10 text-gray-500'
+                                            className={`w-[45px] h-[45px] rounded-full border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-white/50 relative group ${
+                                                isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10 shadow-[0_0_20px_rgba(253,193,6,0.4)]' :
+                                                bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
+                                                bookingStatus === "BLOCKED" ? 'bg-red-600 border-red-700 text-white' :
+                                                bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
+                                                seat.isPermanent ? 'bg-red-800 border-red-950 text-white' :
+                                                seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
+                                                'bg-green-500 border-green-600 text-white'
                                             }`}
                                         >
-                                            <span className={`text-[11px] font-black italic ${isSelected ? 'text-gray-900' : ''}`}>{seat.seatNumber}</span>
+                                            <div className="flex flex-col items-center justify-center">
+                                                {bookingStatus === "PENDING" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">RES</span>}
+                                                {bookingStatus === "PAID" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">PAID</span>}
+                                                {bookingStatus === "BLOCKED" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">BLK</span>}
+                                                <span className={`text-[12px] font-black italic leading-none ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
+                                            </div>
                                             {bookingForSeat && (
                                                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-white text-gray-900 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl">
                                                     {bookingForSeat.passengerDetails?.name || bookingStatus}
@@ -1332,7 +1466,25 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                             )}
                                         </div>
                                     );
-                                });
+                                };
+
+                                const hasCoords = localSeats.some(s => s.x > 0 || s.y > 0);
+
+                                if (hasCoords) {
+                                    const gridMap = new Map();
+                                    localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+
+                                    return Array.from({ length: 15 * 6 }).map((_, i) => {
+                                        const x = i % 6;
+                                        const y = Math.floor(i / 6);
+                                        const seat = gridMap.get(`${x},${y}`);
+
+                                        if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
+                                        return renderSeat(seat);
+                                    });
+                                } else {
+                                    return localSeats.map(seat => renderSeat(seat));
+                                }
                             })()}
                         </div>
                     </div>
@@ -1343,21 +1495,24 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             {actionModal.show && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className={`p-8 text-white relative ${actionModal.type === 'BLOCK' ? 'bg-red-500' : actionModal.type === 'OFFLINE' ? 'bg-gray-600' : 'bg-gray-900'}`}>
+                        <div className={`p-8 text-white relative ${actionModal.type === 'BLOCK' ? 'bg-red-500' : actionModal.type === 'OFFLINE' ? 'bg-gray-600' : actionModal.type === 'ONLINE' ? 'bg-green-600' : 'bg-gray-900'}`}>
                             <h4 className="text-2xl font-black italic uppercase tracking-tighter">
-                                {actionModal.type === 'BLOCK' ? 'Block Seats' : actionModal.type === 'OFFLINE' ? 'Set Offline' : 'Owner Reservation'}
+                                {actionModal.type === 'BLOCK' ? 'Daily Block' : 
+                                 actionModal.type === 'BLOCK_GLOBAL' ? 'Global Online Block' :
+                                 actionModal.type === 'RESERVE_GLOBAL' ? 'Permanent Reserve' :
+                                 actionModal.type === 'OFFLINE' ? 'Set Offline' : 
+                                 actionModal.type === 'ONLINE' ? 'Set Online (Available)' : 'Owner Reservation'}
                             </h4>
                             <p className="text-gray-200 text-xs font-bold uppercase tracking-widest mt-1">
                                 {selectedManualSeats.length} Seats: {selectedManualSeats.join(", ")}
                             </p>
                         </div>
                         <div className="p-8 space-y-6">
-                            
                             {/* Date Selection */}
                             <div className="space-y-4">
                                 <div className="flex justify-between items-end px-1">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Global Date Selection</label>
-                                    <div className="text-[10px] font-black text-[#fdc106]">{actionDates.length} Days Selected</div>
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Select Dates</label>
+                                    <div className="text-[10px] font-black text-[#fdc106]">{actionDates.length} Days</div>
                                 </div>
                                 
                                 <MiniCalendar 
@@ -1381,7 +1536,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
                             {/* Passenger Details ONLY for RESERVE */}
                             {actionModal.type === "RESERVE" && (
-                                <div className="space-y-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                                <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Passenger Name</label>
                                         <input 
@@ -1442,69 +1597,6 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     </div>
                 </div>
             )}
-        </div>
-    );
-};
-
-// --- MINI CALENDAR COMPONENT ---
-const MiniCalendar: React.FC<{ 
-    selectedDates: string[]; 
-    onToggleDate: (date: string) => void;
-}> = ({ selectedDates, onToggleDate }) => {
-    const today = new Date();
-    const [viewDate, setViewDate] = useState(new Date());
-    
-    const month = viewDate.getMonth();
-    const year = viewDate.getFullYear();
-    
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay();
-    
-    const monthName = viewDate.toLocaleString('default', { month: 'long' });
-    
-    const days = [];
-    for (let i = 0; i < firstDay; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(i);
-    
-    const handlePrev = () => setViewDate(new Date(year, month - 1, 1));
-    const handleNext = () => setViewDate(new Date(year, month + 1, 1));
-    
-    return (
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-3xl p-4 border border-gray-100 dark:border-gray-800">
-            <div className="flex justify-between items-center mb-4 px-2">
-                <button onClick={handlePrev} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRight className="w-4 h-4 rotate-180" /></button>
-                <div className="text-[10px] font-black uppercase tracking-widest">{monthName} {year}</div>
-                <button onClick={handleNext} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"><ArrowRight className="w-4 h-4" /></button>
-            </div>
-            
-            <div className="grid grid-cols-7 gap-1 text-center">
-                {['S','M','T','W','T','F','S'].map(d => (
-                    <div key={d} className="text-[10px] font-black text-gray-400 py-1">{d}</div>
-                ))}
-                {days.map((day, i) => {
-                    if (day === null) return <div key={`empty-${i}`} />;
-                    
-                    const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                    const isSelected = selectedDates.includes(dateStr);
-                    const isToday = new Date().toISOString().slice(0,10) === dateStr;
-                    
-                    return (
-                        <button
-                            key={dateStr}
-                            type="button"
-                            onClick={() => onToggleDate(dateStr)}
-                            className={`aspect-square rounded-xl text-[10px] font-bold transition-all flex items-center justify-center
-                                ${isSelected 
-                                    ? 'bg-[#fdc106] text-gray-900 shadow-md scale-110 z-10' 
-                                    : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'}
-                                ${isToday ? 'ring-2 ring-[#fdc106] ring-offset-2 dark:ring-offset-gray-900' : ''}
-                            `}
-                        >
-                            {day}
-                        </button>
-                    );
-                })}
-            </div>
         </div>
     );
 };

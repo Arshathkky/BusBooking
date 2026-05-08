@@ -99,21 +99,21 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isActuallyOccupied = isOccupied && !isActuallyBlocked;
 
     let style =
-      "w-12 h-12 rounded-lg border-2 text-xs font-semibold flex flex-col items-center justify-center transition group relative";
+      "w-12 h-12 rounded-full border-2 text-xs font-semibold flex flex-col items-center justify-center transition group relative";
 
-    if (isPermanent) {
-      style += " bg-red-900 border-red-950 text-white cursor-not-allowed opacity-40 shadow-inner";
-    } else if (isActuallyOccupied) {
-      style += " bg-gray-500 text-white cursor-not-allowed";
-    } else if (isSelected) {
+    if (isSelected) {
       style += " bg-yellow-400 border-yellow-500 cursor-pointer";
+    } else if (isActuallyOccupied) {
+      style += " bg-cyan-600 text-white cursor-not-allowed border-cyan-700";
     } else if (isReserved) {
-      style += " bg-orange-400 text-white cursor-not-allowed";
+      style += " bg-blue-600 text-white cursor-not-allowed border-blue-700";
+    } else if (isPermanent) {
+      style += " bg-slate-900 border-black text-white cursor-not-allowed shadow-inner";
     } else if (isConductor) {
       style += " bg-purple-300 cursor-not-allowed";
     } else if (isOwnerBlocked || isBlockedForOnline) {
       // Manual Booking Only 👈
-      style += " bg-red-100 text-red-700 border-red-200 cursor-not-allowed";
+      style += " bg-orange-500 text-white border-orange-600 cursor-not-allowed";
     } else if (isLadies) {
       style += " bg-pink-300 cursor-pointer text-pink-900";
     } else {
@@ -179,10 +179,12 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     <div className="bg-gray-50 p-6 rounded-3xl shadow-lg border border-gray-100">
       {/* Legend at Top */}
       <div className="flex flex-wrap justify-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-        <Legend color="bg-gray-500" label="Booked (Paid)" />
-        <Legend color="bg-orange-400" label="Reserved" />
+        <Legend color="bg-cyan-600" label="Paid" />
+        <Legend color="bg-blue-600" label="Reserved" />
         <Legend color="bg-yellow-400" label="Selected" />
         <Legend color="bg-pink-300" label="Ladies Only" />
+        <Legend color="bg-orange-500" label="Manual Only" />
+        <Legend color="bg-slate-900" label="Permanent Block" />
       </div>
 
       {/* Main Layout Area */}

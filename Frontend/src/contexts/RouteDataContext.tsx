@@ -100,7 +100,7 @@ export const RouteProvider: React.FC<{ children: ReactNode }> = ({
   });
   const [searchResults, setSearchResults] = useState<BusType[]>([]);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
   const API_URL = `${API_BASE}/routes`;
   const SEARCH_API_URL = `${API_BASE}/search/buses`;
 

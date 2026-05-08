@@ -333,7 +333,7 @@ const SeatSelection: React.FC = () => {
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
     const res = await axios.get<OccupiedSeatsResponse>(
       `${API_BASE}/bookings/occupied-seats`,
       { params: { busId, date: searchData.date } }
@@ -547,4 +547,4 @@ const SeatSelection: React.FC = () => {
   );
 };
 
-export default SeatSelection;
+export default SeatSelection;

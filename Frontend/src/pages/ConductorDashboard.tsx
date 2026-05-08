@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useBus } from "../contexts/busDataContexts";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 
 type SeatBookingRow = {
   id: string; // booking mongo id

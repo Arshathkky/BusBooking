@@ -29,14 +29,15 @@ import { useRouteData, RouteType } from "../contexts/RouteDataContext";
 import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
+import ReportsTab from "./ownerDashboard/ReportsTab";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
 const OwnerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "portal">("overview"); 
+  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal">("overview"); 
   const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
 
   // ---------------- Owner Overview ----------------
@@ -183,8 +184,8 @@ const fetchRecentBookings = async () => {
   const handleEditBus = (bus: BusType) => { setEditingBus(bus); setShowBusModal(true); };
   const handleEditConductor = (c: ConductorType) => { setEditingConductor(c); setShowAddConductorModal(true); };
 
-  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "portal"> =
-    ["overview", "buses", "conductors", "routes", "assignConductor", "schedule", "portal"];
+  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal"> =
+    ["overview", "buses", "conductors", "routes", "assignConductor", "schedule", "reports", "portal"];
 
   const ownerData = (user as any)?.ownerData; // Assuming auth context provides this or we fetch it
   const canAddBuses = ownerData?.canAddBuses !== false;
@@ -555,6 +556,9 @@ const fetchRecentBookings = async () => {
         </div>
       )}
 
+      {/* ---------------- Reports ---------------- */}
+      {activeTab === "reports" && user && <ReportsTab ownerId={user.id} />}
+
       {/* ---------------- Routes ---------------- */}
       {activeTab === "routes" && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
@@ -859,7 +863,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     const filtered = data.bookings.filter((b: any) => 
                         String(b.bus?.id) === String(busId) && 
                         b.searchData?.date === travelDate && 
-                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                     );
                     setBookings(filtered);
                 }
@@ -1069,11 +1073,10 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             const datesToProcess = actionDates.length > 0 ? actionDates : [travelDate];
             let promises: any[] = [];
 
-            if (["ONLINE", "BLOCK_GLOBAL", "RESERVE_GLOBAL"].includes(actionModal.type)) {
+            if (["BLOCK_GLOBAL", "RESERVE_GLOBAL"].includes(actionModal.type)) {
                 // 1. Update Bus Model Permanently
                 const updatedSeats = localSeats.map(s => {
                     if (selectedManualSeats.map(String).includes(String(s.seatNumber))) {
-                        if (actionModal.type === "ONLINE") return { ...s, isOnline: true, isPermanent: false, isBlocked: false };
                         if (actionModal.type === "BLOCK_GLOBAL") return { ...s, isOnline: false, isPermanent: false, isBlocked: false };
                         if (actionModal.type === "RESERVE_GLOBAL") return { ...s, isOnline: false, isPermanent: true, isBlocked: false };
                     }
@@ -1087,28 +1090,6 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 });
                 await updateBus(busId, { seats: updatedSeats });
                 setLocalSeats(updatedSeats);
-
-                // 2. Clear Daily Overrides for all selected dates (only for ONLINE)
-                if (actionModal.type === "ONLINE") {
-                    const res = await fetch(`${BOOKING_API}`);
-                    const data = await res.json();
-                    if (data.success) {
-                        const toCancel = data.bookings.filter((b: any) => 
-                            String(b.bus?.id) === String(busId) && 
-                            datesToProcess.includes(b.searchData?.date) && 
-                            b.selectedSeats.some((s: any) => selectedManualSeats.map(String).includes(String(s))) &&
-                            ["BLOCKED", "OFFLINE", "PENDING"].includes(b.paymentStatus)
-                        );
-                        
-                        await Promise.all(toCancel.map((b: any) => 
-                            fetch(`${BOOKING_API}/${b._id}/cancel`, {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ remark: "Owner Online Override", cancelledBy: "admin" })
-                            })
-                        ));
-                    }
-                }
                 promises = [Promise.resolve({ ok: true, json: async () => ({ success: true }) })];
             } else {
                 promises = datesToProcess.map(async (date) => {
@@ -1118,16 +1099,24 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     let seatsToProcess = [...selectedManualSeats.map(String)];
                     
                     if (occData.success) {
-                        const allOcc = [...occData.occupiedSeats, ...occData.reservedSeats, ...occData.blockedSeats, ...occData.offlineSeats];
+                        const allOcc = [...occData.occupiedSeats, ...occData.reservedSeats, ...occData.blockedSeats, ...occData.offlineSeats, ...occData.onlineOverrides];
                         const occNums = allOcc.map(s => String(s.seatNumber));
-                        seatsToProcess = seatsToProcess.filter(s => !occNums.includes(s));
+                        
+                        // For ONLINE action, we only care if it's already ONLINE or PAID/PENDING
+                        if (actionModal.type === "ONLINE") {
+                            // Can override BLOCKED or OFFLINE or GLOBAL_BLOCK
+                            // But should probably warn if it's PAID
+                        } else {
+                            seatsToProcess = seatsToProcess.filter(s => !occNums.includes(s));
+                        }
                     }
 
-                    if (seatsToProcess.length === 0) return Promise.resolve({ ok: true, json: async () => ({ success: true, message: "Already reserved" }) });
+                    if (seatsToProcess.length === 0 && actionModal.type !== "ONLINE") return Promise.resolve({ ok: true, json: async () => ({ success: true, message: "Already reserved" }) });
 
                     let pStatus = 'PENDING';
                     if (actionModal.type === "BLOCK") pStatus = "BLOCKED";
                     if (actionModal.type === "OFFLINE") pStatus = "OFFLINE";
+                    if (actionModal.type === "ONLINE") pStatus = "ONLINE";
 
                     return fetch(`${BOOKING_API}`, {
                         method: "POST",
@@ -1260,12 +1249,12 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             "CONFIRMED"
         ]);
         
-        doc.autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 45,
             theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0], textColor: [253, 193, 6] },
+            headStyles: { fillColor: "#000000", textColor: "#fdc106" },
             styles: { fontSize: 9, font: "helvetica" }
         });
         
@@ -1431,7 +1420,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                     // Smart lookup: find all bookings for this seat and pick the most relevant one
                                     const seatBookings = bookings.filter(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
                                     const bookingForSeat = seatBookings.sort((a, b) => {
-                                        const priority: any = { "PAID": 0, "BLOCKED": 1, "OFFLINE": 2, "PENDING": 3 };
+                                        const priority: any = { "PAID": 0, "BLOCKED": 1, "OFFLINE": 2, "PENDING": 3, "ONLINE": 4 };
                                         return (priority[a.paymentStatus] ?? 99) - (priority[b.paymentStatus] ?? 99);
                                     })[0];
                                     
@@ -1448,6 +1437,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                                 bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
                                                 bookingStatus === "BLOCKED" ? 'bg-red-600 border-red-700 text-white' :
                                                 bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
+                                                bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : // Force online for this date
                                                 seat.isPermanent ? 'bg-red-800 border-red-950 text-white' :
                                                 seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
                                                 'bg-green-500 border-green-600 text-white'

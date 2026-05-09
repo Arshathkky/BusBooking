@@ -229,13 +229,18 @@ export const getOccupiedSeatsForDate = async (req, res) => {
       paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE"] }
     });
 
+    // Fetch Bus to get global blocks
+    const bus = await Bus.findById(busId);
+    if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
+
     const occupiedSeats = [];
     const reservedSeats = [];
     const blockedSeats = [];
     const offlineSeats = [];
+    const onlineOverrides = [];
 
+    // 1. Process Overrides from Bookings
     allActiveBookings.forEach(b => {
-      // For PENDING, only include if not expired
       if (b.paymentStatus === "PENDING" && b.holdExpiresAt < new Date()) return;
 
       b.selectedSeats.forEach(seatNum => {
@@ -251,10 +256,31 @@ export const getOccupiedSeatsForDate = async (req, res) => {
         else if (b.paymentStatus === "PENDING") reservedSeats.push(info);
         else if (b.paymentStatus === "BLOCKED") blockedSeats.push(info);
         else if (b.paymentStatus === "OFFLINE") offlineSeats.push(info);
+        else if (b.paymentStatus === "ONLINE") onlineOverrides.push(info);
       });
     });
 
-    res.status(200).json({ success: true, occupiedSeats, reservedSeats, blockedSeats, offlineSeats });
+    // 2. Process Global States from Bus (if not overridden by a booking)
+    const overriddenSeatNums = new Set([
+      ...occupiedSeats.map(s => String(s.seatNumber)),
+      ...reservedSeats.map(s => String(s.seatNumber)),
+      ...blockedSeats.map(s => String(s.seatNumber)),
+      ...offlineSeats.map(s => String(s.seatNumber)),
+      ...onlineOverrides.map(s => String(s.seatNumber))
+    ]);
+
+    bus.seats.forEach(seat => {
+        const sNum = String(seat.seatNumber);
+        if (overriddenSeatNums.has(sNum)) return;
+
+        if (seat.isPermanent) {
+            blockedSeats.push({ seatNumber: sNum, status: "PERMANENT", passengerName: "PERMANENT BLOCK" });
+        } else if (seat.isOnline === false) {
+            blockedSeats.push({ seatNumber: sNum, status: "GLOBAL_BLOCK", passengerName: "MANUAL ONLY" });
+        }
+    });
+
+    res.status(200).json({ success: true, occupiedSeats, reservedSeats, blockedSeats, offlineSeats, onlineOverrides });
   } catch (error) {
     console.error("Occupied seats error:", error);
     res.status(500).json({ success: false, message: error.message });

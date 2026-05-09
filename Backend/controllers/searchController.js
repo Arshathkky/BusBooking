@@ -58,7 +58,8 @@ export const searchBuses = async (req, res) => {
         (b.paymentStatus !== "PENDING" || (b.holdExpiresAt && new Date(b.holdExpiresAt) > now))
       );
 
-      const bookedSeats = new Set(busBookings.flatMap(b => b.selectedSeats));
+      const bookedSeats = new Set(busBookings.filter(b => b.paymentStatus !== "ONLINE").flatMap(b => b.selectedSeats));
+      const onlineOverrides = new Set(busBookings.filter(b => b.paymentStatus === "ONLINE").flatMap(b => b.selectedSeats));
 
       // Calculate seats that are NOT available for online booking:
       // 1. Seats that have a booking (PAID, PENDING, BLOCKED, OFFLINE)
@@ -70,8 +71,12 @@ export const searchBuses = async (req, res) => {
         bus.seats.forEach(seat => {
           const isBooked = bookedSeats.has(seat.seatNumber);
           const isGloballyUnavailable = seat.isOnline === false || seat.isPermanent === true;
+          const isOverriddenOnline = onlineOverrides.has(seat.seatNumber);
           
-          if (!isBooked && !isGloballyUnavailable) {
+          if (isOverriddenOnline) {
+            // If explicitly set online for this date, it's available (unless booked by another PAID/PENDING booking)
+            if (!isBooked) onlineAvailableCount++;
+          } else if (!isBooked && !isGloballyUnavailable) {
             onlineAvailableCount++;
           }
         });

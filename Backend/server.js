@@ -10,6 +10,7 @@ import routeRoutes from "./routes/routeRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 // Import Background Tasks
 import { startReleaseInterval } from "./utils/releasePendingBookings.js";
@@ -32,6 +33,7 @@ app.use("/api/conductors", conductorRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Health Check Endpoint
 app.get("/", (req, res) => {

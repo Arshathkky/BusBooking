@@ -95,11 +95,11 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isOnlineOverride = onlineOverrides.has(sid) || onlineOverrides.has(seatId) || occupantInfo?.status === "ONLINE";
 
     // If occupantInfo says it's BLOCKED, treat it as a block seat regardless of which map it came from
-    const isActuallyBlocked = occupantInfo?.status === "BLOCKED" || blockedSeats.has(sid) || blockedSeats.has(seatId);
+    const isActuallyBlocked = !isOnlineOverride && (occupantInfo?.status === "BLOCKED" || blockedSeats.has(sid) || blockedSeats.has(seatId));
     
     const isPermanent = (!isOnlineOverride && seatObj && seatObj.isPermanent === true) || isActuallyBlocked;
-    const isOwnerBlocked = (!isOnlineOverride && seatObj && seatObj.isBlocked === true);
-    const isBlockedForOnline = (!isOnlineOverride && seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
+    const isOwnerBlocked = !isOnlineOverride && (seatObj && seatObj.isBlocked === true);
+    const isBlockedForOnline = !isOnlineOverride && ((seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId));
 
     const isActuallyOccupied = isOccupied && !isActuallyBlocked;
 

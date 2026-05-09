@@ -972,7 +972,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             if (data2.success) {
                 const filtered = data2.bookings.filter((b: any) => 
                     b.bus?.id === busId && b.searchData?.date === travelDate && 
-                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                 );
                 setBookings(filtered);
             }
@@ -1018,7 +1018,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             if (data.success) {
                 const filtered = data.bookings.filter((b: any) => 
                     b.bus?.id === busId && b.searchData?.date === travelDate && 
-                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                 );
                 setBookings(filtered);
             }
@@ -1060,7 +1060,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             if (data.success) {
                 const filtered = data.bookings.filter((b: any) => 
                     b.bus?.id === busId && b.searchData?.date === travelDate && 
-                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                 );
                 setBookings(filtered);
             }
@@ -1180,7 +1180,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             if (data2.success) {
                 const filtered = data2.bookings.filter((b: any) => 
                     String(b.bus?.id) === String(busId) && b.searchData?.date === travelDate && 
-                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE")
+                    (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                 );
                 setBookings(filtered);
             }
@@ -1211,7 +1211,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 if (data2.success) {
                     const filtered = data2.bookings.filter((b: any) => 
                         b.bus?.id === busId && b.searchData?.date === travelDate && 
-                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING")
+                        (b.paymentStatus === "PAID" || b.paymentStatus === "PENDING" || b.paymentStatus === "BLOCKED" || b.paymentStatus === "OFFLINE" || b.paymentStatus === "ONLINE")
                     );
                     setBookings(filtered);
                 }

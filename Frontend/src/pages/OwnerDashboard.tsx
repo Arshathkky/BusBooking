@@ -1241,36 +1241,65 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
     const generatePDF = () => {
         const doc = new jsPDF() as any;
-        
+
+        // Only include PAID and RESERVED (PENDING) bookings in the PDF
+        const pdfBookings = bookings.filter(
+            (b: any) => b.paymentStatus === "PAID" || b.paymentStatus === "PENDING"
+        );
+
+        const paidCount = pdfBookings.filter((b: any) => b.paymentStatus === "PAID").length;
+        const reservedCount = pdfBookings.filter((b: any) => b.paymentStatus === "PENDING").length;
+
         // Header
+        doc.setFillColor(0, 0, 0);
+        doc.rect(0, 0, 210, 40, 'F');
         doc.setFontSize(22);
-        doc.setTextColor(0, 0, 0);
-        doc.text("PASSENGER MANIFEST", 14, 20);
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`DATE: ${travelDate}`, 14, 30);
-        doc.text(`BUS ID: ${busId}`, 14, 35);
-        
+        doc.setTextColor(253, 193, 6);
+        doc.setFont("helvetica", "bold");
+        doc.text("PASSENGER MANIFEST", 14, 18);
+        doc.setFontSize(9);
+        doc.setTextColor(200, 200, 200);
+        doc.text(`DATE: ${travelDate}   |   BUS ID: ${busId}`, 14, 27);
+        doc.text(`PAID: ${paidCount}   |   RESERVED: ${reservedCount}   |   TOTAL: ${pdfBookings.length}`, 14, 34);
+
         // Table
-        const tableColumn = ["Seat(s)", "Passenger Name", "Phone Number", "NIC / ID", "Status"];
-        const tableRows = bookings.map(b => [
-            b.selectedSeats?.join(", "),
-            b.passengerDetails?.name || "RESERVED",
+        const tableColumn = ["Seat(s)", "Passenger Name", "Phone", "NIC / ID", "Pickup Location", "Status"];
+        const tableRows = pdfBookings.map((b: any) => [
+            b.selectedSeats?.join(", ") || "N/A",
+            b.passengerDetails?.name || "N/A",
             b.passengerDetails?.phone || "N/A",
             b.passengerDetails?.nic || "N/A",
-            "CONFIRMED"
+            b.pickupLocation || "-",
+            b.paymentStatus === "PAID" ? "PAID" : "RESERVED"
         ]);
-        
+
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
-            startY: 45,
+            startY: 48,
             theme: 'grid',
-            headStyles: { fillColor: "#000000", textColor: "#fdc106" },
-            styles: { fontSize: 9, font: "helvetica" }
+            headStyles: { fillColor: [0, 0, 0], textColor: [253, 193, 6], fontStyle: 'bold' },
+            styles: { fontSize: 9, font: "helvetica" },
+            didParseCell: (data: any) => {
+                // Colour the Status cell: PAID = green, RESERVED = blue
+                if (data.section === 'body' && data.column.index === 5) {
+                    if (data.cell.raw === 'PAID') {
+                        data.cell.styles.textColor = [22, 163, 74];   // green-600
+                        data.cell.styles.fontStyle = 'bold';
+                    } else {
+                        data.cell.styles.textColor = [37, 99, 235];   // blue-600
+                        data.cell.styles.fontStyle = 'bold';
+                    }
+                }
+            }
         });
-        
+
+        if (pdfBookings.length === 0) {
+            doc.setFontSize(11);
+            doc.setTextColor(150);
+            doc.text("No paid or reserved passengers for this date.", 14, 60);
+        }
+
         doc.save(`Manifest_${travelDate}_${busId}.pdf`);
     };
 

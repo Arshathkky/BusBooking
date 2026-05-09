@@ -232,35 +232,67 @@ const ConductorDashboard: React.FC = () => {
 
 
   const exportPDF = () => {
-    if (seatBookings.length === 0) {
-      alert("No data to export!");
+    // Always export PAID + RESERVED (PENDING) regardless of current filter tab
+    const pdfBookings = bookings.filter((b) => {
+      if (!selectedBusId || b.bus?.id !== selectedBusId) return false;
+      const bookingDate = b.searchData?.date || b.createdAt?.split("T")[0];
+      if (bookingDate !== selectedDate) return false;
+      return b.paymentStatus?.toUpperCase() === "PAID" || b.paymentStatus?.toUpperCase() === "PENDING";
+    });
+
+    if (pdfBookings.length === 0) {
+      alert("No paid or reserved bookings to export for this date!");
       return;
     }
+
+    // Flatten to per-seat rows
+    const rows = pdfBookings.flatMap((b) =>
+      b.selectedSeats.map((seat: any) => [
+        seat.toString(),
+        b.passengerDetails?.name || "N/A",
+        b.passengerDetails?.phone || "N/A",
+        b.passengerDetails?.nic || "N/A",
+        b.pickupLocation || "-",
+        b.paymentStatus?.toUpperCase() === "PAID" ? "PAID" : "RESERVED"
+      ])
+    );
+
+    const paidCount = pdfBookings.filter(b => b.paymentStatus?.toUpperCase() === "PAID").length;
+    const reservedCount = pdfBookings.filter(b => b.paymentStatus?.toUpperCase() === "PENDING").length;
+
     const doc = new jsPDF();
-    const columns = ["Seat", "Name", "Phone", "Booking ID", "Status", "Remark"];
-    const rows = seatBookings.map((row) => [
-      row.seat.toString(), 
-      row.name, 
-      row.phone, 
-      row.bookingId.toString(), 
-      row.status,
-      row.remark || ""
-    ]);
-    
-    doc.setFontSize(18);
-    doc.text("Booking Manifest", 14, 20);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Date: ${selectedDate}`, 14, 28);
-    doc.text(`Bus ID: ${selectedBusId || "N/A"}`, 14, 34);
-    
-    autoTable(doc, { 
-      head: [columns], 
+    const columns = ["Seat", "Name", "Phone", "NIC / ID", "Pickup Location", "Status"];
+
+    // Styled header band
+    (doc as any).setFillColor(0, 0, 0);
+    (doc as any).rect(0, 0, 210, 42, 'F');
+    doc.setFontSize(20);
+    (doc as any).setFont("helvetica", "bold");
+    doc.setTextColor(253, 193, 6);
+    doc.text("BOOKING MANIFEST", 14, 18);
+    doc.setFontSize(9);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`DATE: ${selectedDate}   |   BUS: ${currentBus?.name || selectedBusId || "N/A"} (${currentBus?.busNumber || ""})`, 14, 27);
+    doc.text(`PAID: ${paidCount}   |   RESERVED: ${reservedCount}   |   TOTAL SEATS: ${rows.length}`, 14, 35);
+
+    autoTable(doc, {
+      head: [columns],
       body: rows,
-      startY: 40,
+      startY: 50,
       styles: { fontSize: 9, cellPadding: 3 },
-      headStyles: { fillColor: "#FDC106", textColor: "#000000", fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: "#F5F5F5" }
+      headStyles: { fillColor: [0, 0, 0], textColor: [253, 193, 6], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      didParseCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          if (data.cell.raw === 'PAID') {
+            data.cell.styles.textColor = [22, 163, 74];
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [37, 99, 235];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      }
     } as any);
 
     doc.save(`Bus_Manifest_${selectedDate}.pdf`);

@@ -439,7 +439,8 @@ const SeatSelection: React.FC = () => {
     : (busSeats.totalSeats - busSeats.seats.filter(s => s.isOnline === false || s.isPermanent).length);
   const onlineBookedOrBlocked = [...occupiedSeats.values(), ...reservedSeats.values(), ...blockedSeats.values()].filter(s => {
       const seatObj = busSeats.seats.find(bs => String(bs.seatNumber) === String(s.seatNumber));
-      return seatObj && seatObj.isOnline !== false;
+      // Only count if the seat was originally considered "online" (not globally offline and not permanent)
+      return seatObj && seatObj.isOnline !== false && !seatObj.isPermanent;
   }).length;
   const availableOnlineCount = Math.max(0, totalOnlineSeats - onlineBookedOrBlocked - selectedSeats.length);
 

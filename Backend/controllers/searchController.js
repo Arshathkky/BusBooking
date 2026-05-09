@@ -69,9 +69,9 @@ export const searchBuses = async (req, res) => {
       // If bus has a defined seat layout, check each seat's flags
       if (bus.seats && bus.seats.length > 0) {
         bus.seats.forEach(seat => {
-          const isBooked = bookedSeats.has(seat.seatNumber);
+          const isBooked = bookedSeats.has(String(seat.seatNumber));
           const isGloballyUnavailable = seat.isOnline === false || seat.isPermanent === true;
-          const isOverriddenOnline = onlineOverrides.has(seat.seatNumber);
+          const isOverriddenOnline = onlineOverrides.has(String(seat.seatNumber));
           
           if (isOverriddenOnline) {
             // If explicitly set online for this date, it's available (unless booked by another PAID/PENDING booking)

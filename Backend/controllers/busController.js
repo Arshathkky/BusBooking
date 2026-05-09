@@ -227,7 +227,7 @@ export const updateSeatLayout = async (req, res) => {
     if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
     for (let updatedSeat of seats) {
-      const seat = bus.seats.find((s) => s.seatNumber === updatedSeat.seatNumber);
+      const seat = bus.seats.find((s) => String(s.seatNumber) === String(updatedSeat.seatNumber));
       if (!seat) continue;
 
       if (updatedSeat.isOccupied && seat.isOccupied) {
@@ -369,7 +369,7 @@ export const assignConductorSeats = async (req, res) => {
     if (!conductor) return res.status(404).json({ message: "Conductor not found" });
 
     bus.seats = bus.seats.map((seat) => {
-      if (seatNumbers.includes(seat.seatNumber)) {
+      if (seatNumbers.map(String).includes(String(seat.seatNumber))) {
         return {
           ...seat.toObject(),
           conductorAssigned: true,
@@ -398,7 +398,7 @@ export const removeConductorSeats = async (req, res) => {
     if (!bus) return res.status(404).json({ message: "Bus not found" });
 
     bus.seats = bus.seats.map((seat) => {
-      if (seatNumbers.includes(seat.seatNumber)) {
+      if (seatNumbers.map(String).includes(String(seat.seatNumber))) {
         return {
           ...seat.toObject(),
           conductorAssigned: false,
@@ -435,7 +435,7 @@ export const getSeatLayout = async (req, res) => {
 
     // 2️⃣ Fetch bus
     const bus = await Bus.findById(id).select(
-      "seats totalSeats name type price busNumber seatLayout lastRowSeats"
+      "seats totalSeats name type price busNumber seatLayout lastRowSeats useCustomLayout"
     );
 
     if (!bus) {

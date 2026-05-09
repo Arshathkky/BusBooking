@@ -1393,12 +1393,12 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
                         <button 
                             onClick={() => openActionModal("RESERVE")}
-                            className="bg-[#fdc106] text-gray-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20 flex items-center gap-2"
+                            className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
                         ><Users className="w-3 h-3" /> Reserve</button>
 
                         <button 
-                            onClick={() => openActionModal("BLOCK_GLOBAL")}
-                            className="bg-red-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
+                            onClick={() => openActionModal("BLOCK")}
+                            className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
                         ><ShieldAlert className="w-3 h-3" /> Block</button>
                     </div>
                 </div>
@@ -1412,7 +1412,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     </div>
                     <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter text-gray-400">
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-800 rounded-full"></div> Blocked</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-orange-500 rounded-full"></div> Blocked</div>
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600 rounded-full"></div> Reserved</div>
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-cyan-600 rounded-full"></div> Paid</div>
                     </div>
@@ -1454,18 +1454,14 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                             className={`w-[45px] h-[45px] rounded-full border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-white/50 relative group ${
                                                 isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10 shadow-[0_0_20px_rgba(253,193,6,0.4)]' :
                                                 bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
-                                                bookingStatus === "BLOCKED" ? 'bg-red-800 border-red-950 text-white' :
+                                                bookingStatus === "BLOCKED" ? 'bg-orange-500 border-orange-600 text-white' :
                                                 bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
                                                 bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : 
-                                                seat.isPermanent ? 'bg-red-800 border-red-950 text-white' :
-                                                seat.isOnline === false ? 'bg-red-800 border-red-950 text-white' : 
+                                                seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
                                                 'bg-green-500 border-green-600 text-white'
                                             }`}
                                         >
                                             <div className="flex flex-col items-center justify-center">
-                                                {bookingStatus === "PENDING" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">RES</span>}
-                                                {bookingStatus === "PAID" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">PAID</span>}
-                                                {bookingStatus === "BLOCKED" && <span className="text-[6px] font-black leading-none opacity-80 mb-0.5 uppercase tracking-tighter">BLK</span>}
                                                 <span className={`text-[12px] font-black italic leading-none ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
                                             </div>
                                             {bookingForSeat && (

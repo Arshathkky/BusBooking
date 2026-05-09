@@ -186,7 +186,6 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
             isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
             isOccupied: false,
             isOnline: false,
-            isPermanent: true,
             isBlocked: false,
             conductorAssigned: false,
             conductorCode: null,

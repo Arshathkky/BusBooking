@@ -900,6 +900,19 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         }
     };
 
+    const handleCheckIn = async (bookingId: string) => {
+        try {
+            const res = await fetch(`${BOOKING_API}/${bookingId}/check-in`, { method: "PATCH" });
+            const data = await res.json();
+            if (data.success) {
+                setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, isCheckedIn: data.isCheckedIn } : b));
+            }
+        } catch (err) {
+            console.error("Check-in failed:", err);
+        }
+    };
+
+
     const handleApprove = async () => {
         setUpdating(true);
         try {
@@ -1077,8 +1090,8 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 // 1. Update Bus Model Permanently
                 const updatedSeats = localSeats.map(s => {
                     if (selectedManualSeats.map(String).includes(String(s.seatNumber))) {
-                        if (actionModal.type === "BLOCK_GLOBAL") return { ...s, isOnline: false, isPermanent: false, isBlocked: false };
-                        if (actionModal.type === "RESERVE_GLOBAL") return { ...s, isOnline: false, isPermanent: true, isBlocked: false };
+                        if (actionModal.type === "BLOCK_GLOBAL") return { ...s, isOnline: false, isPermanent: true, isBlocked: false };
+                        if (actionModal.type === "RESERVE_GLOBAL") return { ...s, isOnline: false, isPermanent: true, isBlocked: true };
                     }
                     return s;
                 });
@@ -1298,6 +1311,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         <tr className="bg-gray-100 dark:bg-gray-800/50 text-[10px] uppercase font-black tracking-[0.2em] text-gray-500">
                             <th className="px-8 py-4">Seat</th>
                             <th className="px-8 py-4">Passenger Info</th>
+                            <th className="px-8 py-4 text-center">Check-in</th>
                             <th className="px-8 py-4 text-right">Fare</th>
                             <th className="px-8 py-4 text-center">Ticket</th>
                             <th className="px-8 py-4 text-center">Void</th>
@@ -1318,6 +1332,18 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                         {b.paymentStatus === "BLOCKED" && <div className="text-[10px] font-black tracking-widest text-red-500 mt-1 uppercase">OWNER BLOCKED</div>}
                                         {b.paymentStatus === "OFFLINE" && <div className="text-[10px] font-black tracking-widest text-gray-500 mt-1 uppercase">OFFLINE ASSIGNED</div>}
                                         {b.pickupLocation && <div className="text-[10px] font-black tracking-widest text-blue-600 mt-1 uppercase">📍 {b.pickupLocation}</div>}
+                                    </td>
+                                    <td className="px-8 py-4 text-center">
+                                        <button 
+                                            onClick={() => handleCheckIn(b._id)}
+                                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                b.isCheckedIn 
+                                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' 
+                                                : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            {b.isCheckedIn ? "Boarded" : "Check-in"}
+                                        </button>
                                     </td>
                                     <td className="px-8 py-4 text-right">
                                         <div className="font-black italic text-gray-900 dark:text-white">{b.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">LKR</span></div>
@@ -1366,19 +1392,14 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                         ><Monitor className="w-3 h-3" /> Set Online</button>
 
                         <button 
-                            onClick={() => openActionModal("BLOCK_GLOBAL")}
-                            className="bg-orange-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
-                        ><Users className="w-3 h-3" /> Block for Online</button>
-
-                        <button 
-                            onClick={() => openActionModal("RESERVE_GLOBAL")}
-                            className="bg-red-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
-                        ><ShieldAlert className="w-3 h-3" /> Permanent Reserve</button>
-
-                        <button 
                             onClick={() => openActionModal("RESERVE")}
-                            className="bg-[#fdc106] text-gray-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20"
-                        >Reserve for Date</button>
+                            className="bg-[#fdc106] text-gray-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-[#fdc106]/20 flex items-center gap-2"
+                        ><Users className="w-3 h-3" /> Reserve</button>
+
+                        <button 
+                            onClick={() => openActionModal("BLOCK_GLOBAL")}
+                            className="bg-red-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl flex items-center gap-2"
+                        ><ShieldAlert className="w-3 h-3" /> Block</button>
                     </div>
                 </div>
             )}
@@ -1391,9 +1412,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     </div>
                     <div className="flex gap-4 text-[9px] font-black uppercase tracking-tighter text-gray-400">
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"></div> Online</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-orange-500 rounded-full"></div> Manual Only</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-800 rounded-full"></div> Permanent</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-600 rounded-full"></div> Daily Block</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-800 rounded-full"></div> Blocked</div>
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600 rounded-full"></div> Reserved</div>
                         <div className="flex items-center gap-1"><div className="w-2 h-2 bg-cyan-600 rounded-full"></div> Paid</div>
                     </div>
@@ -1435,11 +1454,11 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                             className={`w-[45px] h-[45px] rounded-full border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-white/50 relative group ${
                                                 isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10 shadow-[0_0_20px_rgba(253,193,6,0.4)]' :
                                                 bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
-                                                bookingStatus === "BLOCKED" ? 'bg-red-600 border-red-700 text-white' :
+                                                bookingStatus === "BLOCKED" ? 'bg-red-800 border-red-950 text-white' :
                                                 bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
-                                                bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : // Force online for this date
+                                                bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : 
                                                 seat.isPermanent ? 'bg-red-800 border-red-950 text-white' :
-                                                seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
+                                                seat.isOnline === false ? 'bg-red-800 border-red-950 text-white' : 
                                                 'bg-green-500 border-green-600 text-white'
                                             }`}
                                         >

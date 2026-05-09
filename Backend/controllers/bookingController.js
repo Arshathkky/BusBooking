@@ -458,3 +458,17 @@ export const unblockSeatsAllDays = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const toggleCheckIn = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
+
+    booking.isCheckedIn = !booking.isCheckedIn;
+    await booking.save();
+
+    res.status(200).json({ success: true, isCheckedIn: booking.isCheckedIn });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -55,6 +55,9 @@ const BusLayoutDesigner: React.FC<BusLayoutDesignerProps> = ({
           isLadiesOnly: false,
           isOccupied: false,
           isWindow: x === 0 || x === cols - 1,
+          isOnline: false,
+          isPermanent: true,
+          isBlocked: false,
         };
         setSeats([...seats, newSeat]);
         setActiveSeatIndex(seats.length);

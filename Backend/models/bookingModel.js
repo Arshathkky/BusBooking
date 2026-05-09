@@ -47,6 +47,7 @@ const bookingSchema = new mongoose.Schema(
     cancelRemark: { type: String, default: "" },
     cancelledBy: { type: String, enum: ["customer", "conductor", "admin"], default: null },
     pickupLocation: { type: String, default: "" },
+    isCheckedIn: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

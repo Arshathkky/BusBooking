@@ -28,6 +28,7 @@ interface OccupiedSeatsResponse {
   reservedSeats?: OccupiedSeatInfo[];
   blockedSeats?: OccupiedSeatInfo[];
   offlineSeats?: OccupiedSeatInfo[];
+  onlineOverrides?: OccupiedSeatInfo[];
 }
 
 
@@ -37,6 +38,7 @@ interface SeatLayoutProps {
   reservedSeats: Map<string | number, OccupiedSeatInfo>;
   blockedSeats: Map<string | number, OccupiedSeatInfo>;
   offlineSeats: Map<string | number, OccupiedSeatInfo>;
+  onlineOverrides: Map<string | number, OccupiedSeatInfo>;
   ladiesOnlySeats: Set<string | number>;
   conductorSeatMap: Map<string | number, string>;
   selectedSeats: (string | number)[];
@@ -59,6 +61,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
   reservedSeats,
   blockedSeats,
   offlineSeats,
+  onlineOverrides,
   ladiesOnlySeats,
   conductorSeatMap,
   selectedSeats,
@@ -87,14 +90,16 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
     // NEW: Advanced Operational Flags
     const sid = String(seatId);
-    const occupantInfo = occupiedSeats.get(sid) || reservedSeats.get(sid) || blockedSeats.get(sid) || offlineSeats.get(sid);
+    const occupantInfo = occupiedSeats.get(sid) || reservedSeats.get(sid) || blockedSeats.get(sid) || offlineSeats.get(sid) || onlineOverrides.get(sid);
+
+    const isOnlineOverride = onlineOverrides.has(sid) || onlineOverrides.has(seatId) || occupantInfo?.status === "ONLINE";
 
     // If occupantInfo says it's BLOCKED, treat it as a block seat regardless of which map it came from
     const isActuallyBlocked = occupantInfo?.status === "BLOCKED" || blockedSeats.has(sid) || blockedSeats.has(seatId);
     
     const isPermanent = (seatObj && seatObj.isPermanent === true) || isActuallyBlocked;
     const isOwnerBlocked = (seatObj && seatObj.isBlocked === true);
-    const isBlockedForOnline = (seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
+    const isBlockedForOnline = (!isOnlineOverride && seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId);
 
     const isActuallyOccupied = isOccupied && !isActuallyBlocked;
 
@@ -325,6 +330,7 @@ const SeatSelection: React.FC = () => {
   const [reservedSeats, setReservedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [blockedSeats, setBlockedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [offlineSeats, setOfflineSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
+  const [onlineOverrides, setOnlineOverrides] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [isContinuing, setIsContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [pickupLocation, setPickupLocation] = useState("");
@@ -354,6 +360,10 @@ const SeatSelection: React.FC = () => {
     const offMap = new Map();
     res.data.offlineSeats?.forEach(s => offMap.set(String(s.seatNumber), s));
     setOfflineSeats(offMap);
+
+    const onlineMap = new Map();
+    res.data.onlineOverrides?.forEach(s => onlineMap.set(String(s.seatNumber), s));
+    setOnlineOverrides(onlineMap);
   }, [busId, searchData?.date]);
 
   // ---------------- INIT ----------------
@@ -395,9 +405,11 @@ const SeatSelection: React.FC = () => {
     if (blockedSeats.has(sid)) return;
     if (offlineSeats.has(sid)) return;
 
+    const isOnlineOverride = onlineOverrides.has(sid);
+
     if (seatObj?.isPermanent) return;
     if (seatObj?.isBlocked) return;
-    if (seatObj?.isOnline === false) return;
+    if (!isOnlineOverride && seatObj?.isOnline === false) return;
 
     if (isSelected) {
       deselectSeat(seat);
@@ -459,6 +471,7 @@ const SeatSelection: React.FC = () => {
             reservedSeats={reservedSeats}
             blockedSeats={blockedSeats}
             offlineSeats={offlineSeats}
+            onlineOverrides={onlineOverrides}
             ladiesOnlySeats={ladiesSeats}
             conductorSeatMap={conductorMap}
             selectedSeats={selectedSeats}

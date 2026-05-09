@@ -1444,6 +1444,11 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                     })[0];
                                     
                                     const bookingStatus = bookingForSeat?.paymentStatus;
+                                    
+                                    // Debugging log as requested by user
+                                    if (isSelected || seat.seatNumber === selectedManualSeats[0]) {
+                                        console.log(`[DEBUG] Seat: ${seat.seatNumber}, Status: ${bookingStatus || 'None'}, isOnline: ${seat.isOnline}`);
+                                    }
 
                                     return (
                                         <div 

@@ -48,7 +48,7 @@ export const searchBuses = async (req, res) => {
     const now = new Date();
     const allBookings = await Booking.find({
       "searchData.date": date,
-      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE"] },
+      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE", "ONLINE"] },
     });
 
     const results = buses.map(bus => {

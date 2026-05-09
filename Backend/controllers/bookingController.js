@@ -226,7 +226,7 @@ export const getOccupiedSeatsForDate = async (req, res) => {
     const allActiveBookings = await Booking.find({
       "bus.id": new mongoose.Types.ObjectId(busId),
       "searchData.date": date,
-      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE"] }
+      paymentStatus: { $in: ["PAID", "PENDING", "BLOCKED", "OFFLINE", "ONLINE"] }
     });
 
     // Fetch Bus to get global blocks
@@ -444,7 +444,7 @@ export const unblockSeatsAllDays = async (req, res) => {
     // Find and delete/cancel all BLOCKED, OFFLINE, or PENDING bookings for these seats across ALL dates
     const result = await Booking.deleteMany({
       "bus.id": new mongoose.Types.ObjectId(busId),
-      paymentStatus: { $in: ["BLOCKED", "OFFLINE", "PENDING"] },
+      paymentStatus: { $in: ["BLOCKED", "OFFLINE", "PENDING", "ONLINE"] },
       selectedSeats: { $in: seatsToUnblock }
     });
 

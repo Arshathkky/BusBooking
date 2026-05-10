@@ -1112,15 +1112,13 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     let seatsToProcess = [...selectedManualSeats.map(String)];
                     
                     if (occData.success) {
-                        const allOcc = [...occData.occupiedSeats, ...occData.reservedSeats, ...occData.blockedSeats, ...occData.offlineSeats, ...occData.onlineOverrides];
-                        const occNums = allOcc.map(s => String(s.seatNumber));
-                        
                         // For ONLINE action, we only care if it's already ONLINE or PAID/PENDING
                         if (actionModal.type === "ONLINE") {
                             // Can override BLOCKED or OFFLINE or GLOBAL_BLOCK
                             // But should probably warn if it's PAID
                         } else {
-                            seatsToProcess = seatsToProcess.filter(s => !occNums.includes(s));
+                            const paidNums = occData.occupiedSeats.map((s: any) => String(s.seatNumber));
+                            seatsToProcess = seatsToProcess.filter(s => !paidNums.includes(s));
                         }
                     }
 

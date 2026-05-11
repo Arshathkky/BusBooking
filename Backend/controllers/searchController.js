@@ -36,13 +36,30 @@ export const searchBuses = async (req, res) => {
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const searchDateObj = new Date(date);
     const dayOfWeek = days[searchDateObj.getDay()];
+    const dateString = date; // YYYY-MM-DD format
 
-    // 2️⃣ Get buses that run on this day
-    const buses = await Bus.find({
+    // 2️⃣ Get buses that run on this day/route combination
+    // Handle both weekly and custom schedules
+    const weeklyBuses = await Bus.find({
       routeId: { $in: routeIds },
       status: "active",
-      schedule: { $in: [dayOfWeek] }
+      scheduleMode: { $ne: "custom" }, // Default to weekly mode or null
+      weeklySchedule: { $in: [dayOfWeek] }
     });
+
+    const customBuses = await Bus.find({
+      status: "active",
+      scheduleMode: "custom",
+      "customSchedule.date": dateString,
+      "customSchedule.routeId": { $in: routeIds }
+    });
+
+    // Combine and deduplicate buses
+    const busMap = new Map();
+    [...weeklyBuses, ...customBuses].forEach(bus => {
+      busMap.set(bus._id.toString(), bus);
+    });
+    const buses = Array.from(busMap.values());
 
     // 3️⃣ Get ALL bookings (PAID, PENDING, BLOCKED, OFFLINE) for accurate availability
     const now = new Date();
@@ -91,20 +108,40 @@ export const searchBuses = async (req, res) => {
         r => r._id.toString() === bus.routeId.toString()
       );
 
+      // Check if this bus has a custom schedule for this date
+      let actualRouteId = bus.routeId;
+      let actualDepartureTime = bus.departureTime;
+      let actualArrivalTime = bus.arrivalTime;
+      let actualPrice = bus.price;
+
+      if (bus.scheduleMode === "custom") {
+        const customEntry = bus.customSchedule.find(entry => entry.date === dateString);
+        if (customEntry) {
+          actualRouteId = customEntry.routeId;
+          actualDepartureTime = customEntry.departureTime || bus.departureTime;
+          actualArrivalTime = customEntry.arrivalTime || bus.arrivalTime;
+          actualPrice = customEntry.price || bus.price;
+        }
+      }
+
+      const actualRoute = matchingRoutes.find(
+        r => r._id.toString() === actualRouteId.toString()
+      );
+
       return {
         id: bus._id,
         name: bus.name,
         type: bus.type,
         company: bus.companyName,
-        routeId: bus.routeId,
-        startPoint: route?.startPoint,
-        endPoint: route?.endPoint,
-        stops: route?.stops || [],
-        departureTime: bus.departureTime,
-        arrivalTime: bus.arrivalTime,
+        routeId: actualRouteId,
+        startPoint: actualRoute?.startPoint,
+        endPoint: actualRoute?.endPoint,
+        stops: actualRoute?.stops || [],
+        departureTime: actualDepartureTime,
+        arrivalTime: actualArrivalTime,
         duration: bus.duration,
-        price: bus.price,
-        totalSeats: bus.totalSeats,                 // ✅ ADD
+        price: actualPrice,
+        totalSeats: bus.totalSeats,
         seatsAvailable: Math.max(seatsAvailable, 0),
         status: bus.status,
       };

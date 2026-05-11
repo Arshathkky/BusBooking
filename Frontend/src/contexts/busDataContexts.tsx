@@ -48,7 +48,15 @@ export interface BusType {
   seatLayout: SeatLayoutType; // main layout
   seatNumberingType: "driver_side" | "door_side";
   lastRowSeats?: LastRowType;  // last row layout
-  schedule?: string[]; 
+  scheduleMode?: "weekly" | "custom";
+  weeklySchedule?: string[];
+  customSchedule?: {
+    date: string;
+    routeId: string;
+    departureTime?: string;
+    arrivalTime?: string;
+    price?: number;
+  }[];
   useCustomLayout?: boolean; // 👈 NEW
 }
 

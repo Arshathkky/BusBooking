@@ -466,15 +466,32 @@ export const getSeatLayout = async (req, res) => {
 export const updateSchedule = async (req, res) => {
   console.log("📅 Updating schedule for bus:", req.params.id, "Data:", req.body);
   try {
-    const { schedule } = req.body;
+    const { scheduleMode, weeklySchedule, customSchedule } = req.body;
     const bus = await Bus.findById(req.params.id);
     if (!bus) return res.status(404).json({ success: false, message: "Bus not found" });
 
-    bus.schedule = schedule;
+    // Validate schedule mode
+    if (scheduleMode && !["weekly", "custom"].includes(scheduleMode)) {
+      return res.status(400).json({ success: false, message: "Invalid schedule mode" });
+    }
+
+    // Update schedule fields
+    if (scheduleMode) bus.scheduleMode = scheduleMode;
+    if (weeklySchedule) bus.weeklySchedule = weeklySchedule;
+    if (customSchedule) bus.customSchedule = customSchedule;
+
     await bus.save();
 
     console.log("✅ Schedule saved successfully");
-    res.status(200).json({ success: true, message: "Schedule updated", data: bus.schedule });
+    res.status(200).json({ 
+      success: true, 
+      message: "Schedule updated", 
+      data: {
+        scheduleMode: bus.scheduleMode,
+        weeklySchedule: bus.weeklySchedule,
+        customSchedule: bus.customSchedule
+      }
+    });
   } catch (error) {
     console.error("❌ Schedule update error:", error);
     res.status(500).json({ success: false, message: error.message });

@@ -71,11 +71,34 @@ const busSchema = new mongoose.Schema(
       max: 10,
     },
 
-    // ✅ New: Days-based scheduling (Monday, Tuesday, etc.)
-    schedule: {
+    // ✅ New: Advanced scheduling system
+    scheduleMode: {
+      type: String,
+      enum: ["weekly", "custom"],
+      default: "weekly"
+    },
+    
+    // For weekly mode: days of week
+    weeklySchedule: {
       type: [String],
       enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
       default: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    },
+    
+    // For custom mode: specific dates with routes
+    customSchedule: [{
+      date: { type: String, required: true }, // YYYY-MM-DD format
+      routeId: { type: mongoose.Schema.Types.ObjectId, ref: "Route", required: true },
+      departureTime: { type: String },
+      arrivalTime: { type: String },
+      price: { type: Number }
+    }],
+    
+    // Legacy field for backward compatibility
+    schedule: {
+      type: [String],
+      enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      default: undefined
     },
     
     useCustomLayout: { type: Boolean, default: false },
@@ -86,5 +109,15 @@ const busSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-save hook to migrate old schedule data
+busSchema.pre('save', function(next) {
+  // If old schedule exists and new fields don't, migrate
+  if (this.schedule && this.schedule.length > 0 && !this.weeklySchedule) {
+    this.weeklySchedule = this.schedule;
+    this.scheduleMode = "weekly";
+  }
+  next();
+});
 
 export default mongoose.model("Bus", busSchema);

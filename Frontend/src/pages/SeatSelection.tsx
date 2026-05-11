@@ -101,12 +101,12 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isPaidOccupied = occupantInfo?.status === "PAID";
     const tooltipText = occupantInfo
       ? isPaidOccupied
-        ? `Occupied by: ${occupantInfo.passengerName}`
+        ? "Occupied"
         : occupantInfo.status === "PENDING"
           ? "Reserved"
           : occupantInfo.status === "BLOCKED"
             ? "Blocked"
-            : occupantInfo.passengerName || ""
+            : ""
       : "";
     const isOwnerBlocked = !isOnlineOverride && (seatObj && seatObj.isBlocked === true);
     const isBlockedForOnline = !isOnlineOverride && ((seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId));

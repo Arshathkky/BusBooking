@@ -66,6 +66,7 @@ const ScheduleTab: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((day) => {
+                    const currentSchedule = Array.isArray(bus.schedule) ? bus.schedule : [];
                     const isActive = currentSchedule.includes(day);
                     return (
                       <button

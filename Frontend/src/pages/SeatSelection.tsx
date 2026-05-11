@@ -98,6 +98,16 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
     const isActuallyBlocked = !isOnlineOverride && (occupantInfo?.status === "BLOCKED" || blockedSeats.has(sid) || blockedSeats.has(seatId));
     
     const isPermanent = (!isOnlineOverride && seatObj && seatObj.isPermanent === true) || isActuallyBlocked;
+    const isPaidOccupied = occupantInfo?.status === "PAID";
+    const tooltipText = occupantInfo
+      ? isPaidOccupied
+        ? `Occupied by: ${occupantInfo.passengerName}`
+        : occupantInfo.status === "PENDING"
+          ? "Reserved"
+          : occupantInfo.status === "BLOCKED"
+            ? "Blocked"
+            : occupantInfo.passengerName || ""
+      : "";
     const isOwnerBlocked = !isOnlineOverride && (seatObj && seatObj.isBlocked === true);
     const isBlockedForOnline = !isOnlineOverride && ((seatObj && seatObj.isOnline === false) || offlineSeats.has(sid) || offlineSeats.has(seatId));
 
@@ -139,11 +149,11 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
           (!isSelected && selectedSeats.length >= maxSeats)
         }
         className={style}
-        title={occupantInfo ? `Occupied by: ${occupantInfo.passengerName}` : ""}
+        title={tooltipText}
       >
-        {occupantInfo && (
+        {tooltipText && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
-            {occupantInfo.passengerName}
+            {tooltipText}
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Phone, MapPin, Key } from "lucide-react";
+import { ArrowLeft, User, Phone, MapPin } from "lucide-react";
 import {
   useBooking,
   PassengerDetails as PassengerDetailsType,
@@ -62,7 +62,7 @@ const PassengerDetails: React.FC = () => {
   const handleProceedToPayment = async () => {
     if (!bus || !selectedSeats || !searchData) return;
 
-    if (!passengerDetails.name || !passengerDetails.phone || !passengerDetails.address || !passengerDetails.nic || !pickupLocation) {
+    if (!passengerDetails.name || !passengerDetails.phone || !pickupLocation) {
       setError("Please fill all required fields including pickup location.");
       return;
     }
@@ -117,8 +117,6 @@ const PassengerDetails: React.FC = () => {
   const isFormValid =
     passengerDetails.name &&
     passengerDetails.phone &&
-    passengerDetails.address &&
-    passengerDetails.nic &&
     pickupLocation;
 
   return (
@@ -168,19 +166,6 @@ const PassengerDetails: React.FC = () => {
                 />
               </div>
 
-              {/* NIC */}
-              <div className="relative">
-                <Key className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="NIC Number"
-                  value={passengerDetails.nic}
-                  onChange={e => handleInputChange("nic", e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-
               {/* Phone */}
               <div className="relative">
                 <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
@@ -195,19 +180,6 @@ const PassengerDetails: React.FC = () => {
               </div>
 
 
-
-              {/* Address */}
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <textarea
-                  placeholder="Address"
-                  value={passengerDetails.address}
-                  onChange={e => handleInputChange("address", e.target.value)}
-                  rows={3}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-                  required
-                />
-              </div>
 
               {/* Pickup Location */}
               <div className="relative">

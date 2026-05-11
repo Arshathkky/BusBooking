@@ -133,7 +133,7 @@ const Payment: React.FC = () => {
         last_name: lastName,
         email: "passenger@example.com", // PayHere requires an email
         phone: passengerDetails.phone,
-        address: passengerDetails.address,
+        address: passengerDetails.address || "Not Provided",
         city: "Colombo",
         country: "Sri Lanka",
       };

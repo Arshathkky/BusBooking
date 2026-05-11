@@ -15,7 +15,7 @@ const ScheduleTab: React.FC = () => {
 
   const toggleDay = async (bus: BusType, day: string) => {
     setUpdating(bus.id);
-    const currentSchedule = bus.schedule || DAYS;
+    const currentSchedule = Array.isArray(bus.schedule) ? bus.schedule : [];
     const newSchedule = currentSchedule.includes(day)
       ? currentSchedule.filter((d) => d !== day)
       : [...currentSchedule, day];
@@ -66,7 +66,7 @@ const ScheduleTab: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((day) => {
-                    const isActive = (bus.schedule || DAYS).includes(day);
+                    const isActive = currentSchedule.includes(day);
                     return (
                       <button
                         key={day}

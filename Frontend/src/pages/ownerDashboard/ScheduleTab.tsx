@@ -62,11 +62,13 @@ const ScheduleTab: React.FC = () => {
     nextWeek.setDate(today.getDate() + 7);
     const dateString = nextWeek.toISOString().split('T')[0];
 
-    const newEntry = {
-      date: dateString,
-      routeId: bus.routeId,
-      departureTime: bus.departureTime,
-      arrivalTime: bus.arrivalTime,
+    // Check if date already exists
+    const existingEntry = (bus.customSchedule || []).find(entry => entry.date === dateString);
+    if (existingEntry) {
+      alert(`This bus already has a schedule for ${new Date(dateString).toLocaleDateString()}. Please edit the existing entry or choose a different date.`);
+      return;
+    }
+
       price: bus.price
     };
 
@@ -76,6 +78,16 @@ const ScheduleTab: React.FC = () => {
 
   const updateCustomSchedule = async (bus: BusType, index: number, updates: any) => {
     const currentCustom = [...(bus.customSchedule || [])];
+    
+    // Check for date conflicts if date is being updated
+    if (updates.date && updates.date !== currentCustom[index].date) {
+      const existingEntry = currentCustom.find((entry, i) => i !== index && entry.date === updates.date);
+      if (existingEntry) {
+        alert(`This bus already has a schedule for ${new Date(updates.date).toLocaleDateString()}. Please choose a different date.`);
+        return;
+      }
+    }
+    
     currentCustom[index] = { ...currentCustom[index], ...updates };
     await updateSchedule(bus, { customSchedule: currentCustom });
   };
@@ -349,7 +361,20 @@ const ScheduleTab: React.FC = () => {
                                 <input
                                   type="date"
                                   value={entry.date}
-                                  onChange={(e) => updateCustomSchedule(bus, index, { date: e.target.value })}
+                                  onChange={(e) => {
+                                    const newDate = e.target.value;
+                                    const isDuplicate = (bus.customSchedule || []).some((otherEntry, otherIndex) => 
+                                      otherIndex !== index && otherEntry.date === newDate
+                                    );
+                                    
+                                    if (isDuplicate) {
+                                      alert(`This bus already has a schedule for ${new Date(newDate).toLocaleDateString()}. Please choose a different date.`);
+                                      return;
+                                    }
+                                    
+                                    updateCustomSchedule(bus, index, { date: newDate });
+                                  }}
+                                  min={new Date().toISOString().split('T')[0]}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fdc106]"
                                 />
                               </div>

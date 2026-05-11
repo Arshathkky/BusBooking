@@ -475,6 +475,29 @@ export const updateSchedule = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid schedule mode" });
     }
 
+    // Validate custom schedule for duplicate dates
+    if (customSchedule && Array.isArray(customSchedule)) {
+      const dates = customSchedule.map(entry => entry.date);
+      const uniqueDates = new Set(dates);
+      if (dates.length !== uniqueDates.size) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Duplicate dates found in custom schedule. Each date can only have one route assignment." 
+        });
+      }
+
+      // Validate date format and future dates
+      const today = new Date().toISOString().split('T')[0];
+      for (const entry of customSchedule) {
+        if (!entry.date || entry.date < today) {
+          return res.status(400).json({ 
+            success: false, 
+            message: "All schedule dates must be today or in the future." 
+          });
+        }
+      }
+    }
+
     // Update schedule fields
     if (scheduleMode) bus.scheduleMode = scheduleMode;
     if (weeklySchedule) bus.weeklySchedule = weeklySchedule;

@@ -63,13 +63,16 @@ const ScheduleTab: React.FC = () => {
     const dateString = nextWeek.toISOString().split('T')[0];
 
     // Check if date already exists
-    const existingEntry = (bus.customSchedule || []).find(entry => entry.date === dateString);
+    const existingEntry = (bus.customSchedule || []).find((entry) => entry.date === dateString);
     if (existingEntry) {
       alert(`This bus already has a schedule for ${new Date(dateString).toLocaleDateString()}. Please edit the existing entry or choose a different date.`);
       return;
     }
 
-      price: bus.price
+    const newEntry = {
+      date: dateString,
+      routeId: bus.routeId,
+      price: bus.price,
     };
 
     const currentCustom = bus.customSchedule || [];

@@ -16,8 +16,14 @@ export interface Owner {
   password?: string;
 
   // Permission Flags
+  canViewBuses?: boolean;
   canAddBuses?: boolean;
   canAddConductors?: boolean;
+  canAssignConductors?: boolean;
+  canViewRoutes?: boolean;
+  canViewSchedule?: boolean;
+  canViewReports?: boolean;
+  canAccessConductorPortal?: boolean;
   canManageBookings?: boolean;
 }
 

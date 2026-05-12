@@ -192,6 +192,48 @@ export const addOwner = async (req, res) => {
 };
 
 // ------------------------------
+// Update owner features
+// ------------------------------
+export const updateOwnerFeatures = async (req, res) => {
+  try {
+    const {
+      canViewBuses,
+      canAssignConductors,
+      canViewRoutes,
+      canViewSchedule,
+      canViewReports,
+      canAccessConductorPortal,
+      // legacy flags for backward compatibility
+      canAddBuses,
+      canAddConductors,
+      canManageBookings,
+    } = req.body;
+
+    const updateData = {
+      ...(canViewBuses !== undefined && { canViewBuses }),
+      ...(canAssignConductors !== undefined && { canAssignConductors }),
+      ...(canViewRoutes !== undefined && { canViewRoutes }),
+      ...(canViewSchedule !== undefined && { canViewSchedule }),
+      ...(canViewReports !== undefined && { canViewReports }),
+      ...(canAccessConductorPortal !== undefined && { canAccessConductorPortal }),
+      ...(canAddBuses !== undefined && { canAddBuses }),
+      ...(canAddConductors !== undefined && { canAddConductors }),
+      ...(canManageBookings !== undefined && { canManageBookings }),
+    };
+
+    const owner = await Owner.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    }).select("-password");
+
+    if (!owner) return res.status(404).json({ message: "Owner not found" });
+    res.json(owner);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ------------------------------
 // Update owner
 // ------------------------------
 export const updateOwner = async (req, res) => {

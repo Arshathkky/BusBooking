@@ -22,6 +22,13 @@ const ownerSchema = new mongoose.Schema(
     canAddBuses: { type: Boolean, default: true },
     canAddConductors: { type: Boolean, default: true },
     canManageBookings: { type: Boolean, default: true },
+    // Feature Toggles for Owner Dashboard modules
+    canViewBuses: { type: Boolean, default: true },
+    canAssignConductors: { type: Boolean, default: true },
+    canViewRoutes: { type: Boolean, default: true },
+    canViewSchedule: { type: Boolean, default: true },
+    canViewReports: { type: Boolean, default: true },
+    canAccessConductorPortal: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

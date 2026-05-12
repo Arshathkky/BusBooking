@@ -36,9 +36,21 @@ const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onren
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
+type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal";
+
 const OwnerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal">("overview"); 
-  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
+  const { user } = useAuth();
+  const ownerData = (user as any)?.ownerData;
+  const canViewBuses = ownerData?.canViewBuses !== false;
+  const canAddBuses = ownerData?.canAddBuses !== false;
+  const canAssignConductors = ownerData?.canAssignConductors !== false;
+  const canAddConductors = ownerData?.canAddConductors !== false;
+  const canViewRoutes = ownerData?.canViewRoutes !== false;
+  const canViewSchedule = ownerData?.canViewSchedule !== false;
+  const canViewReports = ownerData?.canViewReports !== false;
+  const canAccessConductorPortal = ownerData?.canAccessConductorPortal !== false;
+
+  const [activeTab, setActiveTab] = useState<OwnerTab>("overview");  const [editingRoute, setEditingRoute] = useState<RouteType | null>(null);
 
   // ---------------- Owner Overview ----------------
   interface OwnerOverview {
@@ -59,7 +71,7 @@ const OwnerDashboard: React.FC = () => {
   const [loadingOverview, setLoadingOverview] = useState<boolean>(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+
   const { buses, deleteBus, toggleBusStatus } = useBus();
   const { routes, deleteRoute, toggleRouteStatus } = useRouteData();
   const { conductors, deleteConductor, toggleConductorStatus } = useConductor();
@@ -184,13 +196,18 @@ const fetchRecentBookings = async () => {
   const handleEditBus = (bus: BusType) => { setEditingBus(bus); setShowBusModal(true); };
   const handleEditConductor = (c: ConductorType) => { setEditingConductor(c); setShowAddConductorModal(true); };
 
-  const tabs: Array<"overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal"> =
-    ["overview", "buses", "conductors", "routes", "assignConductor", "schedule", "reports", "portal"];
+  const tabs: OwnerTab[] = [
+    "overview",
+    ...(canViewBuses ? ["buses" as OwnerTab] : []),
+    ...(canAddConductors ? ["conductors" as OwnerTab] : []),
+    ...(canViewRoutes ? ["routes" as OwnerTab] : []),
+    ...(canAssignConductors ? ["assignConductor" as OwnerTab] : []),
+    ...(canViewSchedule ? ["schedule" as OwnerTab] : []),
+    ...(canViewReports ? ["reports" as OwnerTab] : []),
+    ...(canAccessConductorPortal ? ["portal" as OwnerTab] : []),
+  ];
 
-  const ownerData = (user as any)?.ownerData; // Assuming auth context provides this or we fetch it
-  const canAddBuses = ownerData?.canAddBuses !== false;
-  const canAddConductors = ownerData?.canAddConductors !== false;
-  const canManageBookings = ownerData?.canManageBookings !== false;
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -431,7 +448,7 @@ const fetchRecentBookings = async () => {
 
 
       {/* ---------------- Buses ---------------- */}
-      {activeTab === "buses" && (
+      {activeTab === "buses" && canViewBuses && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Your Buses</h3>
@@ -493,7 +510,7 @@ const fetchRecentBookings = async () => {
       )}
 
       {/* ---------------- Conductors ---------------- */}
-      {activeTab === "conductors" && (
+      {activeTab === "conductors" && canAddConductors && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Conductors</h3>
@@ -557,10 +574,10 @@ const fetchRecentBookings = async () => {
       )}
 
       {/* ---------------- Reports ---------------- */}
-      {activeTab === "reports" && user && <ReportsTab ownerId={user.id} />}
+      {activeTab === "reports" && canViewReports && user && <ReportsTab ownerId={user.id} />}
 
       {/* ---------------- Routes ---------------- */}
-      {activeTab === "routes" && (
+      {activeTab === "routes" && canViewRoutes && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Route Management</h3>
@@ -648,17 +665,17 @@ const fetchRecentBookings = async () => {
       )}
 
       {/* ---------------- Assign Conductor Tab ---------------- */}
-      {activeTab === "assignConductor" && (
+      {activeTab === "assignConductor" && canAssignConductors && (
         <AssignConductorTab />
       )}
 
       {/* ---------------- Schedule Tab ---------------- */}
-      {activeTab === "schedule" && (
+      {activeTab === "schedule" && canViewSchedule && (
         <ScheduleTab />
       )}
 
       {/* ---------------- Portal Tab (Manifest View) ---------------- */}
-      {activeTab === "portal" && (
+      {activeTab === "portal" && canAccessConductorPortal && (
         <div className="space-y-6">
             {selectedBusForManifest ? (
                 <div className="animate-in fade-in zoom-in-95 duration-300">
@@ -1271,21 +1288,21 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             b.paymentStatus === "PAID" ? "PAID" : "RESERVED"
         ]);
 
-        autoTable(doc, {
+        (doc as any).autoTable({
             head: [tableColumn],
             body: tableRows,
             startY: 48,
             theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0], textColor: [253, 193, 6], fontStyle: 'bold' },
+            headStyles: { fillColor: '#000000', textColor: '#fdc106', fontStyle: 'bold' },
             styles: { fontSize: 9, font: "helvetica" },
             didParseCell: (data: any) => {
                 // Colour the Status cell: PAID = green, RESERVED = blue
                 if (data.section === 'body' && data.column.index === 5) {
                     if (data.cell.raw === 'PAID') {
-                        data.cell.styles.textColor = [22, 163, 74];   // green-600
+                        data.cell.styles.textColor = '#16a34a';   // green-600
                         data.cell.styles.fontStyle = 'bold';
                     } else {
-                        data.cell.styles.textColor = [37, 99, 235];   // blue-600
+                        data.cell.styles.textColor = '#2563eb';   // blue-600
                         data.cell.styles.fontStyle = 'bold';
                     }
                 }

@@ -31,15 +31,22 @@ export const initiateGeniePayment = async (req, res) => {
             callback_url: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
         };
 
-        // Note: Real Genie integration usually requires a signature or token.
-        // We'll use the API Key in headers as a placeholder for now.
+        console.log("--- Genie Initiation Request ---");
+        console.log("URL:", `${GENIE_BASE_URL}/payment/v2/checkout/initiate`);
+        console.log("Payload:", JSON.stringify(payload, null, 2));
+        console.log("Headers (Partial):", { "API-Key": process.env.GENIE_API_KEY ? "EXISTS" : "MISSING" });
+
         const response = await axios.post(`${GENIE_BASE_URL}/payment/v2/checkout/initiate`, payload, {
             headers: {
                 "API-Key": process.env.GENIE_API_KEY,
-                "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`, // Placeholder for JWT
+                "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`,
                 "Content-Type": "application/json"
             }
         });
+
+        console.log("--- Genie Initiation Response ---");
+        console.log("Status:", response.status);
+        console.log("Data:", JSON.stringify(response.data, null, 2));
 
         if (response.data && response.data.payment_url) {
             res.status(200).json({ 

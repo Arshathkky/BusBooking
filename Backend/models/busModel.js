@@ -106,6 +106,10 @@ const busSchema = new mongoose.Schema(
     // ✅ Approval System for Conductor Changes
     pendingSeats: { type: [seatSchema], default: [] },
     hasPendingChanges: { type: Boolean, default: false },
+
+    // ✅ Owner Notification Settings
+    notifyOwnerOnBooking: { type: Boolean, default: false },
+    ownerPhoneForSMS: { type: String, default: "" },
   },
   { timestamps: true }
 );

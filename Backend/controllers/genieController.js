@@ -1,5 +1,6 @@
 import axios from "axios";
 import Booking from "../models/bookingModel.js";
+import Bus from "../models/busModel.js";
 import { sendSMS } from "../utils/smsService.js";
 
 const GENIE_BASE_URL = process.env.GENIE_ENV === "production" 
@@ -81,6 +82,17 @@ export const genieNotify = async (req, res) => {
             if (booking.passengerDetails?.phone) {
                 const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
                 sendSMS(booking.passengerDetails.phone, msg);
+
+                // ✅ Also notify owner if enabled
+                try {
+                    const bus = await Bus.findById(booking.bus.id);
+                    if (bus && bus.notifyOwnerOnBooking && bus.ownerPhoneForSMS) {
+                        const ownerMsg = `[OWNER COPY] ${msg}`;
+                        sendSMS(bus.ownerPhoneForSMS, ownerMsg);
+                    }
+                } catch (err) {
+                    console.error("Owner SMS failed:", err);
+                }
             }
             
             console.log(`✅ Genie Payment Success for Order: ${order_id}`);

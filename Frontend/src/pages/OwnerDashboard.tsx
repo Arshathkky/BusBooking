@@ -868,6 +868,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const [actionModal, setActionModal] = useState<{ show: boolean, type: "RESERVE" | "BLOCK" | "OFFLINE" | "ONLINE" | "BLOCK_GLOBAL" | "RESERVE_GLOBAL" }>({ show: false, type: "RESERVE" });
     const [actionDates, setActionDates] = useState<string[]>([travelDate]);
     const [passengerData, setPassengerData] = useState({ name: '', phone: '', email: '', nic: '', pickupLocation: '' });
+    const [sendSMS, setSendSMS] = useState(false);
     const { updateBus } = useBus();
 
     useEffect(() => {
@@ -1161,7 +1162,8 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                             totalAmount: 0,
                             passengerDetails: actionModal.type === "RESERVE" ? passengerData : { name: actionModal.type, phone: 'N/A', nic: 'N/A' },
                             pickupLocation: actionModal.type === "RESERVE" ? passengerData.pickupLocation : "",
-                            paymentStatus: pStatus
+                            paymentStatus: pStatus,
+                            sendSMS: sendSMS
                         })
                     });
                 });
@@ -1188,6 +1190,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             setActionModal({ show: false, type: "RESERVE" });
             setActionDates([travelDate]);
             setPassengerData({ name: '', phone: '', email: '', nic: '', pickupLocation: '' });
+            setSendSMS(false);
             
             // Refresh manifest
             const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
@@ -1628,6 +1631,25 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                                             value={passengerData.pickupLocation}
                                             onChange={(e) => setPassengerData({...passengerData, pickupLocation: e.target.value})}
                                         />
+                                    </div>
+                                    
+                                    {/* Send SMS Toggle */}
+                                    <div className="flex items-center justify-between p-4 bg-[#fdc106]/10 rounded-2xl border border-[#fdc106]/20">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-[#fdc106] rounded-xl flex items-center justify-center">
+                                                <RefreshCw className={`w-4 h-4 ${sendSMS ? 'animate-spin' : ''}`} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest leading-none">SMS Notification</p>
+                                                <p className="text-[9px] text-gray-500 font-bold mt-1">Send ticket details to passenger</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setSendSMS(!sendSMS)}
+                                            className={`w-12 h-6 rounded-full transition-all relative ${sendSMS ? 'bg-[#fdc106]' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${sendSMS ? 'left-7' : 'left-1'}`} />
+                                        </button>
                                     </div>
                                 </div>
                             )}

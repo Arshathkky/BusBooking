@@ -89,15 +89,29 @@ export const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, booking });
 
-    // 📩 Send SMS if Paid or Reserved (e.g. Owner/Conductor manual booking)
-    if (booking.passengerDetails?.phone && (booking.paymentStatus === "PAID" || booking.paymentStatus === "BLOCKED" || isOwnerOverride)) {
+    // 📩 Send SMS if requested and phone is present
+    const shouldSendSMS = req.body.sendSMS !== false; // Default to true if not provided
+    if (booking.passengerDetails?.phone && shouldSendSMS && (booking.paymentStatus === "PAID" || booking.paymentStatus === "BLOCKED" || isOwnerOverride)) {
+        let msg = "";
         if (booking.paymentStatus === "PAID") {
-            const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
-            sendSMS(booking.passengerDetails.phone, msg);
+            msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
         } else {
             // For PENDING/RESERVED or BLOCKED
-            const msg = `Reservation Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nPlease pay at the counter.`;
-            sendSMS(booking.passengerDetails.phone, msg);
+            msg = `Reservation Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nPlease pay at the counter.`;
+        }
+        
+        // Send to Passenger
+        sendSMS(booking.passengerDetails.phone, msg);
+
+        // ✅ Also send to Owner if enabled
+        try {
+            const busDetails = await Bus.findById(booking.bus.id);
+            if (busDetails && busDetails.notifyOwnerOnBooking && busDetails.ownerPhoneForSMS) {
+                const ownerMsg = `[OWNER COPY] ${msg}`;
+                sendSMS(busDetails.ownerPhoneForSMS, ownerMsg);
+            }
+        } catch (err) {
+            console.error("Owner SMS failed:", err);
         }
     }
   } catch (error) {
@@ -341,69 +355,6 @@ export const assignConductorSeats = async (req, res) => {
     res.status(200).json({ message: "Conductor seats assigned", bus });
   } catch (error) {
     res.status(500).json({ message: "Failed", error });
-  }
-};
-
-/* ===========================
-   PAYHERE INTEGRATION
-=========================== */
-export const generatePayHereHash = (req, res) => {
-  try {
-    const { order_id, amount, currency } = req.body;
-    const merchant_id = process.env.PAYHERE_MERCHANT_ID;
-    const merchant_secret = process.env.PAYHERE_SECRET;
-
-    if (!merchant_id || !merchant_secret) {
-      return res.status(500).json({ success: false, message: "PayHere credentials missing" });
-    }
-
-    const hashed_secret = crypto.createHash('md5').update(merchant_secret).digest('hex').toUpperCase();
-    const amountFormatted = parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/,/g, '');
-    const hash = crypto.createHash('md5').update(merchant_id + order_id + amountFormatted + currency + hashed_secret).digest('hex').toUpperCase();
-
-    res.status(200).json({ success: true, hash, merchant_id });
-  } catch (error) {
-    console.error("Generate Hash Error:", error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const payHereNotify = async (req, res) => {
-  try {
-    const { merchant_id, order_id, payhere_amount, payhere_currency, status_code, md5sig } = req.body;
-    const merchant_secret = process.env.PAYHERE_SECRET;
-
-    const hashed_secret = crypto.createHash('md5').update(merchant_secret).digest('hex').toUpperCase();
-    const local_md5sig = crypto.createHash('md5').update(merchant_id + order_id + payhere_amount + payhere_currency + status_code + hashed_secret).digest('hex').toUpperCase();
-
-    if (local_md5sig === md5sig) {
-      // Find booking using bookingId (which is what we pass as order_id)
-      const booking = await Booking.findOne({ bookingId: order_id });
-      if (!booking) {
-        return res.status(404).send("Booking not found");
-      }
-
-      if (status_code === "2") { // 2 = Success
-        booking.paymentStatus = "PAID";
-      } else if (status_code === "-1" || status_code === "-2" || status_code === "-3") {
-        booking.paymentStatus = "CANCELLED";
-      }
-      
-      await booking.save();
-      
-      // 📩 Send SMS if Paid
-      if (booking.paymentStatus === "PAID" && booking.passengerDetails?.phone) {
-          const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
-          sendSMS(booking.passengerDetails.phone, msg);
-      }
-
-      res.status(200).send("OK");
-    } else {
-      res.status(400).send("Invalid signature");
-    }
-  } catch (error) {
-    console.error("PayHere Notify Error:", error);
-    res.status(500).send("Internal Server Error");
   }
 };
 

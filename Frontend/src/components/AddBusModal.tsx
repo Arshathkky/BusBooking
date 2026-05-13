@@ -38,6 +38,8 @@ interface FormData {
   seatNumberingType: "driver_side" | "door_side";
   lastRowSeats: LastRowType;
   useCustomLayout: boolean; // 👈 NEW
+  notifyOwnerOnBooking: boolean;
+  ownerPhoneForSMS: string;
 }
 
 // ------------------------------
@@ -67,6 +69,8 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     seatNumberingType: "driver_side",
     lastRowSeats: 6,
     useCustomLayout: false, // 👈 NEW
+    notifyOwnerOnBooking: false,
+    ownerPhoneForSMS: "",
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
@@ -96,6 +100,8 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         seatNumberingType: editingBus.seatNumberingType || "driver_side",
         lastRowSeats: editingBus.lastRowSeats || 6,
         useCustomLayout: editingBus.useCustomLayout || false, // 👈 NEW
+        notifyOwnerOnBooking: editingBus.notifyOwnerOnBooking || false,
+        ownerPhoneForSMS: editingBus.ownerPhoneForSMS || "",
       });
       if (editingBus.seats) {
           setCustomSeats(editingBus.seats);
@@ -215,6 +221,8 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       seatNumberingType: formData.seatNumberingType,
       lastRowSeats: formData.lastRowSeats,
       useCustomLayout: formData.useCustomLayout, // 👈 NEW
+      notifyOwnerOnBooking: formData.notifyOwnerOnBooking,
+      ownerPhoneForSMS: formData.ownerPhoneForSMS,
     };
 
     try {
@@ -427,6 +435,42 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {/* Notification Settings */}
+              <div className="p-6 bg-[#fdc106]/5 rounded-2xl border-2 border-[#fdc106]/20 space-y-4">
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center">
+                              <Bus className="w-5 h-5 text-gray-900" />
+                          </div>
+                          <div>
+                              <h4 className="text-sm font-black uppercase tracking-tight">Owner Copy Notifications</h4>
+                              <p className="text-[10px] text-gray-500 font-bold">Receive a duplicate SMS for every booking</p>
+                          </div>
+                      </div>
+                      <button 
+                          type="button"
+                          onClick={() => handleInputChange("notifyOwnerOnBooking", !formData.notifyOwnerOnBooking)}
+                          className={`w-12 h-6 rounded-full transition-all relative ${formData.notifyOwnerOnBooking ? 'bg-[#fdc106]' : 'bg-gray-300'}`}
+                      >
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.notifyOwnerOnBooking ? 'left-7' : 'left-1'}`} />
+                      </button>
+                  </div>
+
+                  {formData.notifyOwnerOnBooking && (
+                      <div className="animate-in slide-in-from-top-2 duration-300">
+                          <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 ml-1">Owner Mobile Number (to receive alerts)</label>
+                          <input 
+                              type="text" 
+                              placeholder="07X XXX XXXX" 
+                              value={formData.ownerPhoneForSMS} 
+                              onChange={(e) => handleInputChange("ownerPhoneForSMS", e.target.value)} 
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-900 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#fdc106]" 
+                              required={formData.notifyOwnerOnBooking}
+                          />
+                      </div>
+                  )}
               </div>
 
               {/* Buttons */}

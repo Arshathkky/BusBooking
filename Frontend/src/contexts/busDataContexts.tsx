@@ -58,6 +58,8 @@ export interface BusType {
     price?: number;
   }[];
   useCustomLayout?: boolean; // 👈 NEW
+  notifyOwnerOnBooking?: boolean;
+  ownerPhoneForSMS?: string;
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {

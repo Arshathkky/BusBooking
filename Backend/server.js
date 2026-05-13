@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+dotenv.config();
 import connectDB from "./config/db.js";
 
 // Import routes
@@ -11,13 +12,11 @@ import searchRoutes from "./routes/searchRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import genieRoutes from "./routes/genieRoutes.js";
 
 // Import Background Tasks
 import { startReleaseInterval } from "./utils/releasePendingBookings.js";
 import { startExpireCron } from "./expireBooking.js";
-
-// Load environment variables
-dotenv.config();
 
 // Initialize express app
 const app = express();
@@ -25,6 +24,12 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Request Logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // API Routes
 app.use("/api/bookings", bookingRoutes);
@@ -34,6 +39,7 @@ app.use("/api/routes", routeRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/genie", genieRoutes);
 
 // Health Check Endpoint
 app.get("/", (req, res) => {

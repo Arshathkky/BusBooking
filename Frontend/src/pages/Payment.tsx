@@ -30,7 +30,7 @@ const Payment: React.FC = () => {
     setProcessing(true);
 
     try {
-      // 1. Create Booking First
+      // 1. Create Booking First (Status: PENDING)
       const newBooking = await addBooking({
         bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
         searchData,
@@ -44,105 +44,40 @@ const Payment: React.FC = () => {
       if (!newBooking) throw new Error("Failed to create booking.");
 
       const currentBookingId = newBooking.bookingId;
-      const currentMongoId = newBooking._id;
-      const currentReferenceId = newBooking.referenceId;
-      const currentBusNumber = newBooking.bus.busNumber;
-
-      // Setup PayHere callbacks
-      window.payhere.onCompleted = async function onCompleted(orderId: string) {
-        console.log("Payment completed. OrderID:" + orderId);
-        
-        try {
-          // Fallback status update for local testing where notify_url might not be reachable
-          if (currentMongoId) {
-            await updatePaymentStatus(currentMongoId, "PAID");
-          }
-        } catch (error) {
-          console.error("Local status update failed:", error);
-        }
-
-        navigate("/booking-confirmation", {
-          state: {
-            booking: {
-              bookingMongoId: currentMongoId,
-              bookingId: currentBookingId,
-              referenceId: currentReferenceId,
-              bus,
-              selectedSeats,
-              searchData,
-              totalAmount,
-              busNumber: currentBusNumber,
-              passengerDetails,
-              paymentStatus: "PAID",
-              bookingDate: new Date().toISOString(),
-            },
-          },
-        });
-      };
-
-      window.payhere.onDismissed = function onDismissed() {
-        console.log("Payment dismissed");
-        setProcessing(false);
-      };
-
-      window.payhere.onError = function onError(error: any) {
-        console.error("Payment Error:", error);
-        alert("Payment failed. Please try again.");
-        setProcessing(false);
-      };
-
       const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
-      
-      // 2. Fetch payment hash from backend
-      const response = await fetch(`${baseUrl}/bookings/payhere/hash`, {
+
+      // 2. Initiate Genie Payment via Backend
+      const response = await fetch(`${baseUrl}/genie/pay`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          order_id: currentBookingId,
+          bookingId: currentBookingId,
           amount: totalAmount,
-          currency: "LKR",
+          customerDetails: {
+            name: passengerDetails.name,
+            phone: passengerDetails.phone,
+            email: passengerDetails.email || "passenger@example.com"
+          }
         }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || "Failed to generate payment hash");
+        throw new Error(data.message || "Failed to initiate Genie payment");
       }
 
-      const { hash, merchant_id } = data;
-
-      // 2. Setup PayHere object
-      const firstName = passengerDetails.name.split(' ')[0] || "Passenger";
-      const lastName = passengerDetails.name.split(' ').slice(1).join(' ') || "Name";
-
-      const paymentObj = {
-        sandbox: false,
-        merchant_id: merchant_id,
-        return_url: window.location.origin + "/booking-confirmation",
-        cancel_url: window.location.origin + "/payment",
-        notify_url: `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bookings/payhere/notify`,
-        order_id: currentBookingId,
-        items: `Bus Booking - ${bus.name}`,
-        amount: Number(totalAmount).toFixed(2),
-        currency: "LKR",
-        hash: hash,
-        first_name: firstName,
-        last_name: lastName,
-        email: "passenger@example.com", // PayHere requires an email
-        phone: passengerDetails.phone,
-        address: passengerDetails.address || "Not Provided",
-        city: "Colombo",
-        country: "Sri Lanka",
-      };
-
-      // 3. Start Payment
-      window.payhere.startPayment(paymentObj);
-    } catch (error) {
-      console.error("Payment initiation failed:", error);
-      alert("Could not start payment. Please check your connection and try again.");
+      // 3. Redirect to Genie Payment URL
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        throw new Error("Genie payment URL not found in response");
+      }
+    } catch (error: any) {
+      console.error("Genie Payment failed:", error);
+      alert(error.message || "Could not start payment. Please try again.");
       setProcessing(false);
     }
   };
@@ -231,16 +166,15 @@ const Payment: React.FC = () => {
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="flex items-center space-x-2 mb-6">
               <Shield className="w-6 h-6 text-green-600" />
-              <h3 className="text-xl font-bold">PayHere Gateway</h3>
+              <h3 className="text-xl font-bold">Genie by Dialog</h3>
             </div>
             
             <p className="text-gray-600 mb-6">
-              You will be redirected to the secure PayHere payment gateway to complete your transaction. You can pay using your Credit/Debit Card, Mobile Wallet, or Internet Banking.
+              You will be redirected to the secure Genie payment gateway to complete your transaction. You can pay using your Genie Wallet, Credit/Debit Card, or Internet Banking.
             </p>
 
             <div className="flex gap-4 items-center justify-center py-6 border rounded-lg bg-gray-50">
-               {/* Display PayHere supported methods logos if desired, or just text */}
-               <span className="font-semibold text-gray-500">Secured by PayHere</span>
+               <span className="font-semibold text-gray-500">Secured by Genie</span>
             </div>
           </div>
         </div>
@@ -282,7 +216,7 @@ const Payment: React.FC = () => {
                 : "bg-gray-300 cursor-not-allowed"
             }`}
           >
-            {processing ? "Starting Payment..." : `Pay LKR ${totalAmount} with PayHere`}
+            {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
           </button>
 
           <button

@@ -7,8 +7,6 @@ import {
   getOccupiedSeatsForDate,
   updateBooking,
   cancelBooking,
-  generatePayHereHash,
-  payHereNotify,
   getOwnerRecentBookings,
   unblockSeatsAllDays,
   toggleCheckIn

@@ -29,7 +29,7 @@ const testGenie = async () => {
         { "API-Key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
         { "api-key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
         { "apiKey": process.env.GENIE_API_KEY, "Authorization": `Bearer ${process.env.GENIE_API_SECRET}` },
-        { "Authorization": `Basic ${Buffer.from(process.env.GENIE_API_KEY + ":" + process.env.GENIE_API_SECRET).toString("base64")}` },
+        { "Authorization": `Bearer ${process.env.GENIE_API_KEY}` },
         { "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`, "API-Key": process.env.GENIE_API_KEY },
     ];
 

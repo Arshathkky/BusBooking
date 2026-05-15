@@ -3,7 +3,7 @@ import Booking from "../models/bookingModel.js";
 import Bus from "../models/busModel.js";
 import { sendSMS } from "../utils/smsService.js";
 
-const GENIE_BASE_URL = process.env.GENIE_ENV === "production" 
+const getGenieBaseUrl = () => process.env.GENIE_ENV === "production" 
     ? "https://api.geniebiz.lk" 
     : "https://sandbox-api.geniebiz.lk";
 
@@ -49,11 +49,11 @@ export const initiateGeniePayment = async (req, res) => {
         payload.callback_url = payload.callbackUrl;
 
         console.log("--- Genie Initiation Request ---");
-        console.log("URL:", `${GENIE_BASE_URL}/payment/v2/checkout/initiate`);
+        console.log("URL:", `${getGenieBaseUrl()}/payment/v2/checkout/initiate`);
         console.log("Payload:", JSON.stringify(payload, null, 2));
         console.log("Headers (Partial):", { "API-Key": process.env.GENIE_API_KEY ? "EXISTS" : "MISSING" });
 
-        const response = await axios.post(`${GENIE_BASE_URL}/payment/v2/checkout/initiate`, payload, {
+        const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
             headers: {
                 "API-Key": process.env.GENIE_API_KEY,
                 "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`,

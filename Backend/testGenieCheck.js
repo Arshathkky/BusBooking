@@ -16,8 +16,7 @@ const payload = {
 };
 
 const headers = {
-  'API-Key': process.env.GENIE_API_KEY,
-  'Authorization': `Bearer ${process.env.GENIE_API_SECRET}`,
+  'Authorization': `Bearer ${process.env.GENIE_API_KEY}`,
   'Content-Type': 'application/json',
 };
 

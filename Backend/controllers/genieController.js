@@ -4,8 +4,8 @@ import Bus from "../models/busModel.js";
 import { sendSMS } from "../utils/smsService.js";
 
 const GENIE_BASE_URL = process.env.GENIE_ENV === "production" 
-    ? "https://api.genie.lk" 
-    : "https://sandbox-api.genie.lk";
+    ? "https://api.geniebiz.lk" 
+    : "https://sandbox-api.geniebiz.lk";
 
 /**
  * Initiate Genie Payment

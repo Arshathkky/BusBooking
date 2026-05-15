@@ -35,34 +35,36 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
-            merchantId: process.env.GENIE_MERCHANT_ID,
-            amount: parseFloat(amount).toFixed(2),
-            currency: "LKR",
-            orderId: bookingId.toString(),
-            customerName: customerDetails.name,
-            customerEmail: customerDetails.email || "passenger@example.com",
-            customerMobile: formattedPhone,
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             callbackUrl: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
+            order: {
+                orderId: bookingId.toString(),
+                amount: parseFloat(amount).toFixed(2),
+                currency: "LKR",
+                shopId: process.env.GENIE_MERCHANT_ID,
+                items: [
+                    {
+                        name: `Bus Booking - ${booking.bus.name}`,
+                        quantity: selectedSeats?.length || 1,
+                        unitPrice: parseFloat(amount) / (selectedSeats?.length || 1)
+                    }
+                ]
+            },
+            customer: {
+                name: customerDetails.name,
+                email: customerDetails.email || "passenger@example.com",
+                mobile: formattedPhone
+            }
         };
 
-        // Also add snake_case for older versions/compatibility if needed
-        payload.merchant_id = payload.merchantId;
-        payload.order_id = payload.orderId;
-        payload.customer_name = payload.customerName;
-        payload.customer_email = payload.customerEmail;
-        payload.customer_mobile = payload.customerMobile;
-        payload.redirect_url = payload.redirectUrl;
-        payload.callback_url = payload.callbackUrl;
-
-        console.log("--- Genie Initiation Request ---");
-        console.log("URL:", `${getGenieBaseUrl()}/payment/v2/checkout/initiate`);
+        console.log("--- Genie Initiation Request (V2) ---");
+        console.log("URL:", `${getGenieBaseUrl()}/public/v2/transactions`);
         console.log("Payload:", JSON.stringify(payload, null, 2));
-        console.log("Using Authorization:", process.env.GENIE_API_KEY ? "Bearer ****** (set)" : "MISSING");
+        console.log("Using Authorization:", process.env.GENIE_API_KEY ? "Set (no Bearer)" : "MISSING");
 
-        const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
+        const response = await axios.post(`${getGenieBaseUrl()}/public/v2/transactions`, payload, {
             headers: {
-                "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                "Authorization": process.env.GENIE_API_KEY,
                 "Content-Type": "application/json"
             }
         });
@@ -71,26 +73,28 @@ export const initiateGeniePayment = async (req, res) => {
         console.log("Status:", response.status);
         console.log("Data:", JSON.stringify(response.data, null, 2));
 
-        if (response.data && response.data.payment_url) {
+        if (response.data && response.data.paymentUrl) {
             res.status(200).json({ 
                 success: true, 
-                payment_url: response.data.payment_url,
+                payment_url: response.data.paymentUrl,
                 token: response.data.token 
             });
         } else {
             throw new Error(response.data.message || "Failed to get payment URL from Genie");
         }
     } catch (error) {
-        console.error("Genie Initiation Error:", error.response?.data || error.message);
+        console.error("Genie Initiation Error Details:", error.response?.data || error.message);
         
-        // Detailed error for debugging
         const genieErrorData = error.response?.data;
+        // Extract as much info as possible from Genie's error response
         const genieErrorMessage = genieErrorData?.message || genieErrorData?.error || error.message || "Failed to initiate Genie payment";
+        const genieExtraInfo = genieErrorData?.extraInfo ? JSON.stringify(genieErrorData.extraInfo) : "";
         
         res.status(500).json({ 
             success: false, 
             message: `Genie Payment Error: ${genieErrorMessage}`,
             details: genieErrorData,
+            extraInfo: genieExtraInfo,
             originalError: error.message
         });
     }

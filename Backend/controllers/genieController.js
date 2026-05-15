@@ -35,27 +35,26 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
-            amount: parseFloat(amount),
+            amount: Number(amount),
             currency: "LKR",
             localId: bookingId.toString(),
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
-            tokenize: false,
-            paymentType: "UNSCHEDULED",
+            tokenizationDetails: {
+                tokenize: false,
+                paymentType: "UNSCHEDULED",
+                recurringFrequency: "UNSCHEDULED"
+            },
             customer: {
                 name: customerDetails.name,
                 email: customerDetails.email || "passenger@example.com",
-                billingEmail: customerDetails.email || "passenger@example.com",
-                billingAddress1: "Not provided",
-                billingCity: "Colombo",
-                billingCountry: "LK",
-                billingPostCode: "00100"
+                billingEmail: customerDetails.email || "passenger@example.com"
             }
         };
 
         const genieUrl = "https://api.geniebiz.lk/public/v2/transactions";
 
-        console.log("--- Genie Initiation Request (V2 - Transactions) ---");
+        console.log("--- Genie Initiation Request (V2 - Final) ---");
         console.log("URL:", genieUrl);
         console.log("Payload:", JSON.stringify(payload, null, 2));
 

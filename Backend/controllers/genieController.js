@@ -53,15 +53,15 @@ export const initiateGeniePayment = async (req, res) => {
             }
         };
 
-        const genieUrl = "https://api.geniebusiness.lk/v2/checkout/initiate";
+        const genieUrl = "https://api.geniebiz.lk/public/v2/transactions";
 
-        console.log("--- Genie Initiation Request (V2 - Business) ---");
+        console.log("--- Genie Initiation Request (V2 - Transactions) ---");
         console.log("URL:", genieUrl);
         console.log("Payload:", JSON.stringify(payload, null, 2));
 
         const response = await axios.post(genieUrl, payload, {
             headers: {
-                "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                "Authorization": process.env.GENIE_API_KEY,
                 "Content-Type": "application/json"
             }
         });

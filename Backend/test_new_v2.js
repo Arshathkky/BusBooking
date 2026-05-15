@@ -2,29 +2,27 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 import axios from 'axios';
 
-const url = 'https://api.geniebiz.lk/payment/v2/checkout/initiate';
+const url = 'https://api.geniebusiness.lk/v2/checkout/initiate';
 const apiKey = process.env.GENIE_API_KEY;
 
 const payload = {
-  merchantId: process.env.GENIE_MERCHANT_ID,
-  amount: '100.00',
+  amount: 100,
   currency: 'LKR',
-  orderId: Date.now().toString().slice(0, 10),
-  customerName: 'Test User',
-  customerEmail: 'test@example.com',
-  customerMobile: '94771234567',
+  localId: Date.now().toString().slice(0, 10),
   redirectUrl: 'https://mseat.touchmeplus.com/booking-confirmation',
-  callbackUrl: 'https://bus-booking-nt91.onrender.com/api/genie/notify',
+  webhook: 'https://bus-booking-nt91.onrender.com/api/genie/notify',
+  tokenize: false,
+  paymentType: 'UNSCHEDULED'
 };
 
-console.log('Testing OLD Genie URL with NEW header (no Bearer)...');
+console.log('Testing NEW GenieBusiness.lk URL...');
 console.log('URL:', url);
 
 (async () => {
   try {
     const response = await axios.post(url, payload, {
       headers: {
-        'Authorization': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       }
     });

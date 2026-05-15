@@ -35,36 +35,33 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
+            amount: parseFloat(amount),
+            currency: "LKR",
+            localId: bookingId.toString(),
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
-            callbackUrl: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
-            order: {
-                orderId: bookingId.toString(),
-                amount: parseFloat(amount).toFixed(2),
-                currency: "LKR",
-                shopId: process.env.GENIE_MERCHANT_ID,
-                items: [
-                    {
-                        name: `Bus Booking - ${booking.bus.name}`,
-                        quantity: selectedSeats?.length || 1,
-                        unitPrice: parseFloat(amount) / (selectedSeats?.length || 1)
-                    }
-                ]
-            },
+            webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
+            tokenize: false,
+            paymentType: "UNSCHEDULED",
             customer: {
                 name: customerDetails.name,
                 email: customerDetails.email || "passenger@example.com",
-                mobile: formattedPhone
+                billingEmail: customerDetails.email || "passenger@example.com",
+                billingAddress1: "Not provided",
+                billingCity: "Colombo",
+                billingCountry: "LK",
+                billingPostCode: "00100"
             }
         };
 
-        console.log("--- Genie Initiation Request (V2) ---");
-        console.log("URL:", `${getGenieBaseUrl()}/public/v2/transactions`);
-        console.log("Payload:", JSON.stringify(payload, null, 2));
-        console.log("Using Authorization:", process.env.GENIE_API_KEY ? "Set (no Bearer)" : "MISSING");
+        const genieUrl = "https://api.geniebusiness.lk/v2/checkout/initiate";
 
-        const response = await axios.post(`${getGenieBaseUrl()}/public/v2/transactions`, payload, {
+        console.log("--- Genie Initiation Request (V2 - Business) ---");
+        console.log("URL:", genieUrl);
+        console.log("Payload:", JSON.stringify(payload, null, 2));
+
+        const response = await axios.post(genieUrl, payload, {
             headers: {
-                "Authorization": process.env.GENIE_API_KEY,
+                "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
                 "Content-Type": "application/json"
             }
         });
@@ -86,7 +83,6 @@ export const initiateGeniePayment = async (req, res) => {
         console.error("Genie Initiation Error Details:", error.response?.data || error.message);
         
         const genieErrorData = error.response?.data;
-        // Extract as much info as possible from Genie's error response
         const genieErrorMessage = genieErrorData?.message || genieErrorData?.error || error.message || "Failed to initiate Genie payment";
         const genieExtraInfo = genieErrorData?.extraInfo ? JSON.stringify(genieErrorData.extraInfo) : "";
         

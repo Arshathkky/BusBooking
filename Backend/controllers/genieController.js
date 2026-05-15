@@ -35,7 +35,7 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
-            amount: Number(amount),
+            amount: Math.round(Number(amount) * 100), // Genie expects amount in cents (integer)
             currency: "LKR",
             localId: bookingId.toString(),
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
@@ -52,7 +52,7 @@ export const initiateGeniePayment = async (req, res) => {
             }
         };
 
-        const genieUrl = "https://api.geniebiz.lk/public/v2/transactions";
+        const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions`;
 
         console.log("--- Genie Initiation Request (V2 - Final) ---");
         console.log("URL:", genieUrl);
@@ -69,11 +69,12 @@ export const initiateGeniePayment = async (req, res) => {
         console.log("Status:", response.status);
         console.log("Data:", JSON.stringify(response.data, null, 2));
 
-        if (response.data && response.data.paymentUrl) {
+        if (response.data && (response.data.url || response.data.paymentUrl)) {
+            const paymentUrl = response.data.url || response.data.paymentUrl;
             res.status(200).json({ 
                 success: true, 
-                payment_url: response.data.paymentUrl,
-                token: response.data.token 
+                payment_url: paymentUrl,
+                token: response.data.token || response.data.id 
             });
         } else {
             throw new Error(response.data.message || "Failed to get payment URL from Genie");
@@ -100,6 +101,9 @@ export const initiateGeniePayment = async (req, res) => {
  */
 export const genieNotify = async (req, res) => {
     try {
+        console.log("--- Genie Webhook Received ---");
+        console.log("Body:", JSON.stringify(req.body, null, 2));
+
         const { order_id, status, signature } = req.body;
         
         // TODO: Verify signature from Genie to ensure authenticity

@@ -58,15 +58,71 @@ export const initiateGeniePayment = async (req, res) => {
         console.log("--- Genie Initiation Request ---");
         console.log("URL:", `${getGenieBaseUrl()}/payment/v2/checkout/initiate`);
         console.log("Payload:", JSON.stringify(payload, null, 2));
-        console.log("Headers (Partial):", { "API-Key": process.env.GENIE_API_KEY ? "EXISTS" : "MISSING" });
-
-        const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
-            headers: {
-                "API-Key": process.env.GENIE_API_KEY,
-                "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`,
-                "Content-Type": "application/json"
-            }
+        console.log("Headers (Partial):", {
+            "API-Key": process.env.GENIE_API_KEY ? "EXISTS" : "MISSING",
+            "X-API-Key": process.env.GENIE_API_KEY ? "EXISTS" : "MISSING",
+            "Authorization": process.env.GENIE_API_SECRET ? "EXISTS" : "MISSING"
         });
+
+        const headerVariants = [
+            {
+                name: "API-Key + secret",
+                headers: {
+                    "API-Key": process.env.GENIE_API_KEY,
+                    "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`,
+                    "Content-Type": "application/json"
+                }
+            },
+            {
+                name: "X-API-Key + secret",
+                headers: {
+                    "X-API-Key": process.env.GENIE_API_KEY,
+                    "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`,
+                    "Content-Type": "application/json"
+                }
+            },
+            {
+                name: "API-Key + apiKey bearer",
+                headers: {
+                    "API-Key": process.env.GENIE_API_KEY,
+                    "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                    "Content-Type": "application/json"
+                }
+            },
+            {
+                name: "X-API-Key + apiKey bearer",
+                headers: {
+                    "X-API-Key": process.env.GENIE_API_KEY,
+                    "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        ];
+
+        let response;
+        let lastError;
+        for (const variant of headerVariants) {
+            try {
+                console.log(`Trying Genie headers variant: ${variant.name}`);
+                response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
+                    headers: variant.headers
+                });
+                console.log(`Genie headers variant succeeded: ${variant.name}`);
+                break;
+            } catch (err) {
+                lastError = err;
+                const status = err.response?.status;
+                const data = err.response?.data;
+                console.warn(`Genie variant ${variant.name} failed:`, status, data || err.message);
+                if (status !== 403) {
+                    throw err;
+                }
+            }
+        }
+
+        if (!response) {
+            throw lastError;
+        }
 
         console.log("--- Genie Initiation Response ---");
         console.log("Status:", response.status);

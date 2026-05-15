@@ -20,6 +20,7 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
+            // snake_case
             merchant_id: process.env.GENIE_MERCHANT_ID,
             amount: parseFloat(amount).toFixed(2),
             currency: "LKR",
@@ -29,6 +30,15 @@ export const initiateGeniePayment = async (req, res) => {
             customer_mobile: customerDetails.phone,
             redirect_url: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             callback_url: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
+            
+            // camelCase (adding for compatibility with different Genie API versions)
+            merchantId: process.env.GENIE_MERCHANT_ID,
+            orderId: bookingId.toString(),
+            customerName: customerDetails.name,
+            customerEmail: customerDetails.email || "passenger@example.com",
+            customerMobile: customerDetails.phone,
+            redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
+            callbackUrl: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
         };
 
         console.log("--- Genie Initiation Request ---");
@@ -59,9 +69,11 @@ export const initiateGeniePayment = async (req, res) => {
         }
     } catch (error) {
         console.error("Genie Initiation Error:", error.response?.data || error.message);
+        const genieErrorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to initiate Genie payment";
+        
         res.status(500).json({ 
             success: false, 
-            message: "Failed to initiate Genie payment",
+            message: `Genie Payment Error: ${genieErrorMessage}`,
             error: error.response?.data || error.message 
         });
     }

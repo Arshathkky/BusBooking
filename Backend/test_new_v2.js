@@ -6,28 +6,19 @@ const url = 'https://api.geniebiz.lk/payment/v2/checkout/initiate';
 const apiKey = process.env.GENIE_API_KEY;
 
 const payload = {
-  order: {
-    shopId: process.env.GENIE_MERCHANT_ID,
-    items: [
-      {
-        name: 'Bus Booking',
-        quantity: 1,
-        unitPrice: 100.00
-      }
-    ]
-  },
-  customer: {
-    name: 'Test User',
-    email: 'test@example.com',
-    mobile: '94771234567'
-  },
+  merchantId: process.env.GENIE_MERCHANT_ID,
+  amount: '100.00',
+  currency: 'LKR',
+  orderId: Date.now().toString().slice(0, 10),
+  customerName: 'Test User',
+  customerEmail: 'test@example.com',
+  customerMobile: '94771234567',
   redirectUrl: 'https://mseat.touchmeplus.com/booking-confirmation',
-  callbackUrl: 'https://bus-booking-nt91.onrender.com/api/genie/notify'
+  callbackUrl: 'https://bus-booking-nt91.onrender.com/api/genie/notify',
 };
 
-console.log('Testing NEW Genie V2 API...');
+console.log('Testing OLD Genie URL with NEW header (no Bearer)...');
 console.log('URL:', url);
-console.log('Authorization (Header):', apiKey.substring(0, 20) + '...');
 
 (async () => {
   try {

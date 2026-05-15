@@ -19,27 +19,34 @@ export const initiateGeniePayment = async (req, res) => {
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
+        // Format phone number to 94XXXXXXXXX format
+        let formattedPhone = customerDetails.phone.replace(/\D/g, "");
+        if (formattedPhone.startsWith("0")) {
+            formattedPhone = "94" + formattedPhone.substring(1);
+        } else if (formattedPhone.length === 9) {
+            formattedPhone = "94" + formattedPhone;
+        }
+
         const payload = {
-            // snake_case
-            merchant_id: process.env.GENIE_MERCHANT_ID,
+            merchantId: process.env.GENIE_MERCHANT_ID,
             amount: parseFloat(amount).toFixed(2),
             currency: "LKR",
-            order_id: bookingId.toString(),
-            customer_name: customerDetails.name,
-            customer_email: customerDetails.email || "passenger@example.com",
-            customer_mobile: customerDetails.phone,
-            redirect_url: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
-            callback_url: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
-            
-            // camelCase (adding for compatibility with different Genie API versions)
-            merchantId: process.env.GENIE_MERCHANT_ID,
             orderId: bookingId.toString(),
             customerName: customerDetails.name,
             customerEmail: customerDetails.email || "passenger@example.com",
-            customerMobile: customerDetails.phone,
+            customerMobile: formattedPhone,
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             callbackUrl: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
         };
+
+        // Also add snake_case for older versions/compatibility if needed
+        payload.merchant_id = payload.merchantId;
+        payload.order_id = payload.orderId;
+        payload.customer_name = payload.customerName;
+        payload.customer_email = payload.customerEmail;
+        payload.customer_mobile = payload.customerMobile;
+        payload.redirect_url = payload.redirectUrl;
+        payload.callback_url = payload.callbackUrl;
 
         console.log("--- Genie Initiation Request ---");
         console.log("URL:", `${GENIE_BASE_URL}/payment/v2/checkout/initiate`);

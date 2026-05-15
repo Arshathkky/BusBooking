@@ -1,28 +1,24 @@
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
+dotenv.config({ path: path.resolve("Backend/.env") });
 import axios from "axios";
 
+console.log("GENIE_ENV:", process.env.GENIE_ENV);
 const GENIE_BASE_URL = process.env.GENIE_ENV === "production" 
     ? "https://api.geniebiz.lk" 
     : "https://sandbox-api.geniebiz.lk";
+console.log("GENIE_BASE_URL:", GENIE_BASE_URL);
 
 const testGenie = async () => {
     const payload = {
-        merchant_id: process.env.GENIE_MERCHANT_ID,
         merchantId: process.env.GENIE_MERCHANT_ID,
         amount: "100.00",
         currency: "LKR",
-        order_id: "TEST-" + Date.now(),
-        orderId: "TEST-" + Date.now(),
-        customer_name: "Test User",
+        orderId: Date.now().toString().substring(0, 10),
         customerName: "Test User",
-        customer_email: "test@example.com",
         customerEmail: "test@example.com",
-        customer_mobile: "0771234567",
-        customerMobile: "0771234567",
-        redirect_url: "https://mseat.touchmeplus.com/booking-confirmation",
+        customerMobile: "94771234567",
         redirectUrl: "https://mseat.touchmeplus.com/booking-confirmation",
-        callback_url: "https://bus-booking-nt91.onrender.com/api/genie/notify",
         callbackUrl: "https://bus-booking-nt91.onrender.com/api/genie/notify",
     };
 
@@ -33,7 +29,8 @@ const testGenie = async () => {
         { "API-Key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
         { "api-key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
         { "apiKey": process.env.GENIE_API_KEY, "Authorization": `Bearer ${process.env.GENIE_API_SECRET}` },
-        { "Authorization": `Bearer ${process.env.GENIE_API_KEY}` }, // maybe key is used here?
+        { "Authorization": `Basic ${Buffer.from(process.env.GENIE_API_KEY + ":" + process.env.GENIE_API_SECRET).toString("base64")}` },
+        { "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`, "API-Key": process.env.GENIE_API_KEY },
     ];
 
     for (let i = 0; i < headerVariations.length; i++) {
@@ -45,10 +42,12 @@ const testGenie = async () => {
             console.log("Success! Data:", response.data);
             return; // Stop if success
         } catch (error) {
-            console.log("Failed with status:", error.response?.status);
-            if (error.response?.status !== 403 && error.response?.status !== 401) {
-                console.log("Error details:", error.response?.data);
-                return; // Stop if it's a payload error (400) because auth succeeded
+            console.log("Failed. Message:", error.message);
+            if (error.response) {
+                console.log("Status:", error.response.status);
+                console.log("Data:", error.response.data);
+            } else {
+                console.log("No response received. Error code:", error.code);
             }
         }
     }

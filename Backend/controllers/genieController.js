@@ -69,12 +69,16 @@ export const initiateGeniePayment = async (req, res) => {
         }
     } catch (error) {
         console.error("Genie Initiation Error:", error.response?.data || error.message);
-        const genieErrorMessage = error.response?.data?.message || error.response?.data?.error || "Failed to initiate Genie payment";
+        
+        // Detailed error for debugging
+        const genieErrorData = error.response?.data;
+        const genieErrorMessage = genieErrorData?.message || genieErrorData?.error || error.message || "Failed to initiate Genie payment";
         
         res.status(500).json({ 
             success: false, 
             message: `Genie Payment Error: ${genieErrorMessage}`,
-            error: error.response?.data || error.message 
+            details: genieErrorData,
+            originalError: error.message
         });
     }
 };

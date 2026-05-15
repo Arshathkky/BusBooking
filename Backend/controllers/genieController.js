@@ -58,6 +58,7 @@ export const initiateGeniePayment = async (req, res) => {
         console.log("--- Genie Initiation Request ---");
         console.log("URL:", `${getGenieBaseUrl()}/payment/v2/checkout/initiate`);
         console.log("Payload:", JSON.stringify(payload, null, 2));
+        console.log("Using Authorization:", process.env.GENIE_API_KEY ? "Bearer ****** (set)" : "MISSING");
 
         const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
             headers: {
@@ -141,5 +142,21 @@ export const genieNotify = async (req, res) => {
     } catch (error) {
         console.error("Genie Notify Error:", error);
         res.status(500).send("Internal Server Error");
+    }
+};
+
+/**
+ * Return a lightweight status of the Genie config (no secrets)
+ */
+export const getGenieStatus = (req, res) => {
+    try {
+        res.json({
+            env: process.env.GENIE_ENV || null,
+            merchantId: process.env.GENIE_MERCHANT_ID ? "SET" : null,
+            apiKeySet: !!process.env.GENIE_API_KEY,
+            baseUrl: getGenieBaseUrl()
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to read Genie config" });
     }
 };

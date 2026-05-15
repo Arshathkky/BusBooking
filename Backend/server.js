@@ -8,6 +8,30 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, ".env") });
 import connectDB from "./config/db.js";
 
+// Lightweight Genie config validation for startup
+const mask = (s) => {
+  if (!s) return "MISSING";
+  if (s.length <= 8) return "****";
+  return s.slice(0, 4) + "..." + s.slice(-4);
+};
+
+const validateGenieConfig = () => {
+  const env = process.env.GENIE_ENV || "(not set)";
+  const merchant = process.env.GENIE_MERCHANT_ID ? "SET" : "MISSING";
+  const apiKeySet = !!process.env.GENIE_API_KEY;
+  const baseUrl = process.env.GENIE_BASE_URL || (process.env.GENIE_ENV === "production" ? "https://api.geniebiz.lk" : "https://sandbox-api.geniebiz.lk");
+
+  console.log("--- Genie Configuration ---");
+  console.log("GENIE_ENV:", env);
+  console.log("GENIE_MERCHANT_ID:", merchant);
+  console.log("GENIE_API_KEY:", apiKeySet ? mask(process.env.GENIE_API_KEY) : "MISSING");
+  console.log("GENIE_BASE_URL:", baseUrl);
+
+  if (!apiKeySet || !process.env.GENIE_MERCHANT_ID) {
+    console.warn("⚠️ Genie configuration looks incomplete. Please verify Backend/.env and Genie dashboard settings.");
+  }
+};
+
 // Import routes
 import busRoutes from "./routes/busRoutes.js";
 import conductorRoutes from "./routes/conductorRoutes.js";
@@ -59,6 +83,8 @@ app.use((err, req, res, next) => {
 // Start Server and DB
 const startServer = async () => {
   try {
+    // Log Genie config early to help diagnose integration issues
+    validateGenieConfig();
     // 1. Connect DB
     await connectDB();
 

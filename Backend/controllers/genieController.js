@@ -19,7 +19,7 @@ const getGenieBaseUrl = () => {
  */
 export const initiateGeniePayment = async (req, res) => {
     try {
-        const { bookingId, amount, customerDetails } = req.body;
+        const { bookingId, amount, customerDetails, selectedSeats } = req.body;
 
         const booking = await Booking.findOne({ bookingId });
         if (!booking) {

@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
 import axios from 'axios';
 
-const url = 'https://api.geniebiz.lk/public/v2/transactions';
+const url = 'https://api.geniebiz.lk/payment/v2/checkout/initiate';
 const apiKey = process.env.GENIE_API_KEY;
 
 const payload = {
@@ -43,7 +43,7 @@ console.log('Authorization (Header):', apiKey.substring(0, 20) + '...');
     console.log('❌ FAILED');
     if (error.response) {
       console.log('Status:', error.response.status);
-      console.log('Data:', error.response.data);
+      console.log('Data:', JSON.stringify(error.response.data, null, 2));
     } else {
       console.log('Error:', error.message);
     }

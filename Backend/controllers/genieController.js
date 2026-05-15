@@ -27,7 +27,7 @@ export const initiateGeniePayment = async (req, res) => {
             customer_name: customerDetails.name,
             customer_email: customerDetails.email || "passenger@example.com",
             customer_mobile: customerDetails.phone,
-            redirect_url: `${req.headers.origin}/booking-confirmation`,
+            redirect_url: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             callback_url: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
         };
 

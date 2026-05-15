@@ -25,25 +25,31 @@ const Payment: React.FC = () => {
   } = location.state || {};
 
   const [processing, setProcessing] = useState(false);
+  const [existingBookingId, setExistingBookingId] = useState<string | null>(null);
 
   const handlePayment = async () => {
     setProcessing(true);
 
     try {
-      // 1. Create Booking First (Status: PENDING)
-      const newBooking = await addBooking({
-        bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
-        searchData,
-        selectedSeats: selectedSeats.map(String),
-        totalAmount,
-        passengerDetails,
-        pickupLocation,
-        paymentStatus: "PENDING",
-      });
+      let currentBookingId = existingBookingId;
 
-      if (!newBooking) throw new Error("Failed to create booking.");
+      if (!currentBookingId) {
+        // 1. Create Booking First (Status: PENDING)
+        const newBooking = await addBooking({
+          bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
+          searchData,
+          selectedSeats: selectedSeats.map(String),
+          totalAmount,
+          passengerDetails,
+          pickupLocation,
+          paymentStatus: "PENDING",
+        });
 
-      const currentBookingId = newBooking.bookingId;
+        if (!newBooking) throw new Error("Failed to create booking.");
+        currentBookingId = String(newBooking.bookingId);
+        setExistingBookingId(currentBookingId);
+      }
+
       const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 
       // 2. Initiate Genie Payment via Backend

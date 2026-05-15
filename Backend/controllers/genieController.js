@@ -3,9 +3,16 @@ import Booking from "../models/bookingModel.js";
 import Bus from "../models/busModel.js";
 import { sendSMS } from "../utils/smsService.js";
 
-const getGenieBaseUrl = () => process.env.GENIE_ENV === "production" 
-    ? "https://api.geniebiz.lk" 
-    : "https://sandbox-api.geniebiz.lk";
+const sanitizeUrl = (url) => url?.toString().trim().replace(/\/+$/, "");
+const getGenieBaseUrl = () => {
+    const override = sanitizeUrl(process.env.GENIE_BASE_URL);
+    if (override && override.toLowerCase().includes("genie")) {
+        return override;
+    }
+    return process.env.GENIE_ENV === "production"
+        ? "https://api.geniebiz.lk"
+        : "https://sandbox-api.geniebiz.lk";
+};
 
 /**
  * Initiate Genie Payment

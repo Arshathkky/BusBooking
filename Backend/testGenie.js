@@ -4,10 +4,10 @@ dotenv.config({ path: path.resolve("Backend/.env") });
 import axios from "axios";
 
 console.log("GENIE_ENV:", process.env.GENIE_ENV);
-const GENIE_BASE_URL = process.env.GENIE_ENV === "production" 
+const getGenieBaseUrl = () => process.env.GENIE_ENV === "production" 
     ? "https://api.geniebiz.lk" 
     : "https://sandbox-api.geniebiz.lk";
-console.log("GENIE_BASE_URL:", GENIE_BASE_URL);
+console.log("GENIE_BASE_URL:", getGenieBaseUrl());
 
 const testGenie = async () => {
     const payload = {
@@ -36,7 +36,7 @@ const testGenie = async () => {
     for (let i = 0; i < headerVariations.length; i++) {
         console.log(`\nTesting variation ${i + 1}:`, Object.keys(headerVariations[i]));
         try {
-            const response = await axios.post(`${GENIE_BASE_URL}/payment/v2/checkout/initiate`, payload, {
+            const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
                 headers: { ...headerVariations[i], "Content-Type": "application/json" }
             });
             console.log("Success! Data:", response.data);

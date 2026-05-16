@@ -21,13 +21,21 @@ export const initiateGeniePayment = async (req, res) => {
     try {
         const { bookingId, amount, customerDetails, selectedSeats } = req.body;
 
+        if (!bookingId) {
+            return res.status(400).json({ success: false, message: "Booking ID is required" });
+        }
+
         const booking = await Booking.findOne({ bookingId });
         if (!booking) {
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
+        if (!amount || isNaN(Number(amount))) {
+            return res.status(400).json({ success: false, message: "Invalid amount provided" });
+        }
+
         // Format phone number to 94XXXXXXXXX format
-        let formattedPhone = customerDetails.phone.replace(/\D/g, "");
+        let formattedPhone = customerDetails?.phone ? customerDetails.phone.replace(/\D/g, "") : "";
         if (formattedPhone.startsWith("0")) {
             formattedPhone = "94" + formattedPhone.substring(1);
         } else if (formattedPhone.length === 9) {
@@ -37,17 +45,13 @@ export const initiateGeniePayment = async (req, res) => {
         const payload = {
             amount: Math.round(Number(amount) * 100), // Genie expects amount in cents (integer)
             currency: "LKR",
-            localId: `${bookingId}_${Date.now()}`,
+            localId: `${bookingId}-${Date.now()}`, // Using hyphen for better compatibility
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
-            tokenizationDetails: {
-                tokenize: false
-            },
             customer: {
-                name: customerDetails.name,
+                name: customerDetails.name || "Guest",
                 email: customerDetails.email || "passenger@example.com",
                 mobile: formattedPhone,
-                billingEmail: customerDetails.email || "passenger@example.com"
             }
         };
 
@@ -107,8 +111,8 @@ export const genieNotify = async (req, res) => {
         
         // TODO: Verify signature from Genie to ensure authenticity
         
-        // Handle order_id if it's passed as a string or contains extra info
-        const cleanOrderId = order_id.toString().split("_")[0];
+        // Handle order_id if it's passed as a string or contains extra info (e.g., bookingId-timestamp)
+        const cleanOrderId = order_id.toString().split("-")[0];
         const booking = await Booking.findOne({ bookingId: Number(cleanOrderId) });
         if (!booking) {
             return res.status(404).send("Booking not found");

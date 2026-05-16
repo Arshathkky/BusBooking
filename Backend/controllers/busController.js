@@ -199,7 +199,17 @@ export const updateBus = async (req, res) => {
         }
       }
 
-    Object.assign(bus, req.body);
+    // Selective update to avoid overwriting complex arrays like 'seats' or 'customSchedule' 
+    // unless they are explicitly provided and validated.
+    const { seats, ...updateData } = req.body;
+    
+    Object.assign(bus, updateData);
+    
+    // Only update seats if explicitly provided (usually via updateSeatLayout)
+    if (seats && Array.isArray(seats)) {
+        bus.seats = seats;
+    }
+    
     await bus.save();
 
     res.status(200).json({

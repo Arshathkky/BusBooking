@@ -59,52 +59,9 @@ const BookingConfirmation: React.FC = () => {
   }, [booking, orderId]);
 
   /* -------------------- DOWNLOAD TICKET -------------------- */
-  const handleDownloadPDF = () => {
-    if (!booking) return;
-
-    const ticketContent = `
-TouchMe+ Bus Ticket
-==================
-
-Booking No: ${booking.bookingId}
-Reference ID: ${booking.referenceId}
-
-Journey Details
----------------
-Bus: ${booking.bus.name}
-Bus Number: ${booking.bus.busNumber}
-Type: ${booking.bus.type}
-Route: ${booking.searchData.from} → ${booking.searchData.to}
-Date: ${new Date(booking.searchData.date).toLocaleDateString("en-GB")}
-Seats: ${booking.selectedSeats.join(", ")}
-
-Passenger Details
------------------
-Name: ${booking.passengerDetails.name}
-Phone: ${booking.passengerDetails.phone}
-Address: ${booking.passengerDetails.address}
-NIC: ${booking.passengerDetails.nic}
-
-Total Amount: LKR ${booking.totalAmount.toLocaleString()}
-
-Important Instructions
-----------------------
-• Arrive 15 minutes before departure
-• Keep this ticket for verification
-
-Support: support@touchmeplus.com
-Phone: +94 11 250 8888
-`;
-
-    const blob = new Blob([ticketContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `TouchMe-Ticket-${booking.bookingId}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  /* -------------------- PRINT TICKET -------------------- */
+  const handlePrint = () => {
+    window.print();
   };
 
   /* -------------------- LOADING -------------------- */
@@ -163,9 +120,22 @@ Phone: +94 11 250 8888
 
   /* -------------------- UI -------------------- */
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <style>
+        {`
+          @media print {
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .shadow-2xl { shadow: none !important; border: 1px solid #eee; }
+            .bg-gradient-to-r { background: #fdc106 !important; -webkit-print-color-adjust: exact; }
+          }
+          .print-only { display: none; }
+        `}
+      </style>
+
       {/* Success Header */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 no-print">
         <div className="flex justify-center mb-4">
           <div className="bg-green-100 p-4 rounded-full">
             <CheckCircle className="w-16 h-16 text-green-600" />
@@ -242,17 +212,17 @@ Phone: +94 11 250 8888
         </div>
 
         {/* Actions */}
-        <div className="flex justify-center gap-4 pb-8">
+        <div className="flex justify-center gap-4 pb-8 no-print">
           <button
-            onClick={handleDownloadPDF}
-            className="bg-[#fdc106] px-8 py-3 rounded-lg font-semibold flex items-center gap-2"
+            onClick={handlePrint}
+            className="bg-[#fdc106] px-8 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-[#e6ad05] transition-colors"
           >
-            <Download className="w-5 h-5" /> Download Ticket
+            <Download className="w-5 h-5" /> Print Ticket (PDF)
           </button>
 
           <button
             onClick={() => navigate("/search")}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2"
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors"
           >
             <RotateCcw className="w-5 h-5" /> Book Another Trip
           </button>

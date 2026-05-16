@@ -13,15 +13,18 @@ export const searchBuses = async (req, res) => {
     // 1️⃣ Find matching routes
     const routes = await Route.find({ status: "active" });
 
+    const fromSearch = from.trim().toLowerCase();
+    const toSearch = to.trim().toLowerCase();
+
     const matchingRoutes = routes.filter(route => {
       const stops = [
         route.startPoint,
         ...(route.stops || []),
         route.endPoint,
-      ].map(s => s.toLowerCase());
+      ].map(s => s.trim().toLowerCase());
 
-      const fromIndex = stops.indexOf(from.toLowerCase());
-      const toIndex = stops.indexOf(to.toLowerCase());
+      const fromIndex = stops.indexOf(fromSearch);
+      const toIndex = stops.indexOf(toSearch);
 
       return fromIndex !== -1 && toIndex !== -1 && fromIndex < toIndex;
     });

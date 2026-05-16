@@ -1,18 +1,62 @@
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle,
   Download,
   RotateCcw,
   MapPin,
   Users,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
+import axios from "axios";
 
 const BookingConfirmation: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  const [booking, setBooking] = useState<any>(location.state?.booking);
+  const [loading, setLoading] = useState(!location.state?.booking);
+  const [error, setError] = useState<string | null>(null);
 
-  const booking = location.state?.booking;
+  const status = searchParams.get("status");
+  const orderId = searchParams.get("order_id");
+
+  useEffect(() => {
+    const fetchBookingByNumericId = async (id: string) => {
+      try {
+        setLoading(true);
+        // Parse the booking ID (it might have a timestamp suffix)
+        const cleanId = id.split("_")[0];
+        const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+        
+        // We need a backend route to fetch by numeric bookingId or we search all and filter
+        // For now, let's assume we have a way to fetch it. 
+        // If not, we might need to add a route /api/bookings/numeric/:id
+        const { data } = await axios.get(`${baseUrl}/bookings`);
+        if (data.success) {
+          const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
+          if (found) {
+            setBooking(found);
+          } else {
+            setError("Booking not found.");
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching booking:", err);
+        setError("Failed to load booking details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!booking && orderId) {
+      fetchBookingByNumericId(orderId);
+    } else if (!booking && !orderId) {
+      setLoading(false);
+    }
+  }, [booking, orderId]);
 
   /* -------------------- DOWNLOAD TICKET -------------------- */
   const handleDownloadPDF = () => {
@@ -63,10 +107,49 @@ Phone: +94 11 250 8888
     URL.revokeObjectURL(url);
   };
 
+  /* -------------------- LOADING -------------------- */
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-12 h-12 text-[#fdc106] animate-spin mb-4" />
+        <p className="text-gray-600">Verifying your booking...</p>
+      </div>
+    );
+  }
+
+  /* -------------------- FAILURE -------------------- */
+  if (status === "FAILED" || error) {
+    return (
+      <div className="max-w-md mx-auto mt-20 text-center">
+        <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+          <AlertCircle className="w-12 h-12 text-red-600" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Payment Failed</h1>
+        <p className="text-gray-600 mb-8">
+          {error || "We could not process your payment. Please try again or contact support."}
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="bg-[#fdc106] px-6 py-3 rounded-lg font-bold"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => navigate("/search")}
+            className="text-gray-600 hover:underline"
+          >
+            Return to Search
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   /* -------------------- FALLBACK -------------------- */
   if (!booking) {
     return (
-      <div className="text-center">
+      <div className="text-center mt-20">
         <p className="text-gray-600">No booking data found.</p>
         <button
           onClick={() => navigate("/search")}

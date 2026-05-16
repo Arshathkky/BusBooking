@@ -37,17 +37,16 @@ export const initiateGeniePayment = async (req, res) => {
         const payload = {
             amount: Math.round(Number(amount) * 100), // Genie expects amount in cents (integer)
             currency: "LKR",
-            localId: bookingId.toString(),
+            localId: `${bookingId}_${Date.now()}`,
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
             tokenizationDetails: {
-                tokenize: false,
-                paymentType: "UNSCHEDULED",
-                recurringFrequency: "UNSCHEDULED"
+                tokenize: false
             },
             customer: {
                 name: customerDetails.name,
                 email: customerDetails.email || "passenger@example.com",
+                mobile: formattedPhone,
                 billingEmail: customerDetails.email || "passenger@example.com"
             }
         };
@@ -108,7 +107,9 @@ export const genieNotify = async (req, res) => {
         
         // TODO: Verify signature from Genie to ensure authenticity
         
-        const booking = await Booking.findOne({ bookingId: order_id });
+        // Handle order_id if it's passed as a string or contains extra info
+        const cleanOrderId = order_id.toString().split("_")[0];
+        const booking = await Booking.findOne({ bookingId: Number(cleanOrderId) });
         if (!booking) {
             return res.status(404).send("Booking not found");
         }

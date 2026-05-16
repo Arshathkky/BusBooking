@@ -45,15 +45,20 @@ export const initiateGeniePayment = async (req, res) => {
         const payload = {
             amount: Math.round(Number(amount) * 100), // Genie expects amount in cents (integer)
             currency: "LKR",
-            localId: `${bookingId}-${Date.now()}`, // Using hyphen for better compatibility
+            localId: `B${bookingId}-${Date.now().toString().slice(-6)}`, // Shorter and unique
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation`,
             webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
-            customer: {
-                name: customerDetails.name || "Guest",
-                email: customerDetails.email || "passenger@example.com",
-                mobile: formattedPhone,
+            metadata: {
+                customerName: customerDetails?.name || "Guest",
+                customerEmail: customerDetails?.email || "passenger@example.com",
+                customerPhone: formattedPhone
             }
         };
+
+        // If direct card is requested, restrict providers to 'card'
+        if (req.body.paymentMethod === "card") {
+            payload.providerRestrictions = ["card"];
+        }
 
         const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions`;
 

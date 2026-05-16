@@ -27,7 +27,7 @@ const Payment: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [existingBookingId, setExistingBookingId] = useState<string | null>(null);
 
-  const handlePayment = async () => {
+  const handlePayment = async (method: string = "genie") => {
     setProcessing(true);
 
     try {
@@ -65,7 +65,8 @@ const Payment: React.FC = () => {
             name: passengerDetails.name,
             phone: passengerDetails.phone,
             email: passengerDetails.email || "passenger@example.com"
-          }
+          },
+          paymentMethod: method
         }),
       });
 
@@ -214,7 +215,19 @@ const Payment: React.FC = () => {
           </div>
 
           <button
-            onClick={handlePayment}
+            onClick={() => handlePayment("card")}
+            disabled={processing}
+            className={`w-full py-4 rounded-lg font-bold transition-colors mb-4 border-2 ${
+              !processing
+                ? "border-blue-600 text-blue-600 hover:bg-blue-50"
+                : "border-gray-300 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {processing ? "Redirecting..." : "Pay with Credit/Debit Card"}
+          </button>
+
+          <button
+            onClick={() => handlePayment("genie")}
             disabled={processing}
             className={`w-full py-4 rounded-lg font-bold transition-colors ${
               !processing
@@ -222,19 +235,15 @@ const Payment: React.FC = () => {
                 : "bg-gray-300 cursor-not-allowed"
             }`}
           >
-            {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
+            {processing ? "Redirecting..." : "Pay with Genie Wallet"}
           </button>
 
           <button
             onClick={handleTestPayment}
             disabled={processing}
-            className={`w-full mt-4 py-4 rounded-lg font-bold transition-colors border-2 ${
-              !processing
-                ? "border-gray-800 text-gray-800 hover:bg-gray-100"
-                : "border-gray-300 text-gray-400 cursor-not-allowed"
-            }`}
+            className={`w-full mt-4 py-4 rounded-lg font-medium transition-colors text-gray-500 hover:text-gray-700 text-xs`}
           >
-            Simulate Test Payment
+            Simulate Test Payment (Internal)
           </button>
         </div>
       </div>

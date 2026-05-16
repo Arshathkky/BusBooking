@@ -55,9 +55,9 @@ export const initiateGeniePayment = async (req, res) => {
             }
         };
 
-        // If direct card is requested, restrict providers to 'card'
+        // If direct card is requested, restrict providers to 'card_payments'
         if (req.body.paymentMethod === "card") {
-            payload.providerRestrictions = ["card"];
+            payload.providerRestrictions = ["card_payments"];
         }
 
         const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions`;

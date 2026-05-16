@@ -215,18 +215,6 @@ const Payment: React.FC = () => {
           </div>
 
           <button
-            onClick={() => handlePayment("card")}
-            disabled={processing}
-            className={`w-full py-4 rounded-lg font-bold transition-colors mb-4 border-2 ${
-              !processing
-                ? "border-blue-600 text-blue-600 hover:bg-blue-50"
-                : "border-gray-300 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {processing ? "Redirecting..." : "Pay with Credit/Debit Card"}
-          </button>
-
-          <button
             onClick={() => handlePayment("genie")}
             disabled={processing}
             className={`w-full py-4 rounded-lg font-bold transition-colors ${
@@ -235,7 +223,7 @@ const Payment: React.FC = () => {
                 : "bg-gray-300 cursor-not-allowed"
             }`}
           >
-            {processing ? "Redirecting..." : "Pay with Genie Wallet"}
+            {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
           </button>
 
           <button

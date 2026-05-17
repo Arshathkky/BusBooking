@@ -77,8 +77,8 @@ export const SearchProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       const buses = response.data.buses || [];
 
-      // ✅ Filter buses by available seats
-      const filteredBuses = buses.filter(bus => bus.seatsAvailable >= query.passengers);
+      // ✅ Keep all matching buses visible (even if fully manual/booked) so passengers can view schedules
+      const filteredBuses = buses;
 
       // ✅ Group buses by company
       const grouped = filteredBuses.reduce<Record<string, BusInfo[]>>((acc, bus) => {

@@ -80,7 +80,12 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
   // ------------------------------
   useEffect(() => {
     if (editingBus) {
-      const routeObj = routes?.find((r) => r.id === editingBus.routeId);
+      // routeId can be populated as an object or represented as a string ID
+      const editingRouteId = typeof editingBus.routeId === "object" && editingBus.routeId !== null
+        ? (editingBus.routeId as any)._id || (editingBus.routeId as any).id
+        : editingBus.routeId;
+
+      const routeObj = routes?.find((r) => r.id === editingRouteId);
       setFormData({
         busName: editingBus.name,
         busNumber: editingBus.busNumber,
@@ -99,7 +104,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         seatLayout: editingBus.seatLayout || "2x2",
         seatNumberingType: editingBus.seatNumberingType || "driver_side",
         lastRowSeats: editingBus.lastRowSeats || 6,
-        useCustomLayout: editingBus.useCustomLayout || false, // 👈 NEW
+        useCustomLayout: editingBus.useCustomLayout || false,
         notifyOwnerOnBooking: editingBus.notifyOwnerOnBooking || false,
         ownerPhoneForSMS: editingBus.ownerPhoneForSMS || "",
       });

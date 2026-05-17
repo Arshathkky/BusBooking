@@ -208,6 +208,14 @@ export const updateBus = async (req, res) => {
     const { seats, ...updateData } = req.body;
     
     Object.assign(bus, updateData);
+
+    // Explicitly set notification fields to ensure they persist reliably
+    if (req.body.notifyOwnerOnBooking !== undefined) {
+        bus.notifyOwnerOnBooking = req.body.notifyOwnerOnBooking;
+    }
+    if (req.body.ownerPhoneForSMS !== undefined) {
+        bus.ownerPhoneForSMS = req.body.ownerPhoneForSMS;
+    }
     
     // Only update seats if explicitly provided (usually via updateSeatLayout)
     if (seats && Array.isArray(seats)) {
@@ -215,6 +223,7 @@ export const updateBus = async (req, res) => {
     }
     
     await bus.save();
+    await bus.populate("routeId");
 
     res.status(200).json({
       success: true,

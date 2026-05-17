@@ -183,23 +183,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     const selectedRoute = routes?.find((r) => r.name === formData.route);
     if (!selectedRoute) return alert("Please select a valid route.");
 
-    let seats = customSeats;
-
-    if (!formData.useCustomLayout || seats.length === 0) {
-      // Fallback to auto-generated seats if not using custom layout
-      seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
-        seatNumber: i + 1,
-        isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
-        isOccupied: false,
-        isOnline: false,
-        isBlocked: false,
-        conductorAssigned: false,
-        conductorCode: null,
-        conductorId: null,
-      }));
-    }
-
-    const busPayload: Omit<BusType, "id"> = {
+    const busPayload: any = {
       name: formData.busName,
       busNumber: formData.busNumber,
       companyName: formData.companyName,
@@ -216,14 +200,36 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       isSpecial: formData.isSpecialBus,
       specialTime: formData.specialTime,
       ownerId: user.id,
-      seats,
       seatLayout: formData.seatLayout,
       seatNumberingType: formData.seatNumberingType,
       lastRowSeats: formData.lastRowSeats,
-      useCustomLayout: formData.useCustomLayout, // 👈 NEW
+      useCustomLayout: formData.useCustomLayout,
       notifyOwnerOnBooking: formData.notifyOwnerOnBooking,
       ownerPhoneForSMS: formData.ownerPhoneForSMS,
     };
+
+    // Only update/include seats if creating a new bus or structurally changing layouts
+    const isTotalSeatsChanged = editingBus && editingBus.totalSeats !== formData.totalSeats;
+    const isCustomLayoutSwitched = editingBus && editingBus.useCustomLayout !== formData.useCustomLayout;
+
+    if (!editingBus || isTotalSeatsChanged || isCustomLayoutSwitched) {
+      let seats = customSeats;
+
+      if (!formData.useCustomLayout || seats.length === 0) {
+        // Fallback to auto-generated seats if not using custom layout
+        seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
+          seatNumber: i + 1,
+          isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
+          isOccupied: false,
+          isOnline: true, // Default to true so newly added buses are immediately searchable
+          isBlocked: false,
+          conductorAssigned: false,
+          conductorCode: null,
+          conductorId: null,
+        }));
+      }
+      busPayload.seats = seats;
+    }
 
     try {
       if (editingBus) {

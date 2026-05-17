@@ -111,10 +111,12 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       if (editingBus.seats) {
         setCustomSeats(editingBus.seats);
       }
+      setIsSeatsModified(false);
     }
   }, [editingBus, routes]);
 
   const [customSeats, setCustomSeats] = useState<SeatType[]>([]);
+  const [isSeatsModified, setIsSeatsModified] = useState(false);
 
   // ------------------------------
   // Options
@@ -169,6 +171,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
 
   const handleLayoutSave = (seats: SeatType[]) => {
     setCustomSeats(seats);
+    setIsSeatsModified(true);
     setFormData(prev => ({
       ...prev,
       totalSeats: seats.length,
@@ -214,10 +217,11 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     };
 
     // Only update/include seats if creating a new bus or structurally changing layouts
+    // Only update/include seats if creating a new bus or structurally changing layouts or modifying seats
     const isTotalSeatsChanged = editingBus && editingBus.totalSeats !== formData.totalSeats;
     const isCustomLayoutSwitched = editingBus && editingBus.useCustomLayout !== formData.useCustomLayout;
 
-    if (!editingBus || isTotalSeatsChanged || isCustomLayoutSwitched) {
+    if (!editingBus || isTotalSeatsChanged || isCustomLayoutSwitched || isSeatsModified) {
       let seats = customSeats;
 
       if (!formData.useCustomLayout || seats.length === 0) {

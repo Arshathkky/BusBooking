@@ -21,6 +21,7 @@ const BookingConfirmation: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const status = searchParams.get("status");
+  const stateParam = searchParams.get("state");
   const orderId = searchParams.get("order_id");
 
   useEffect(() => {
@@ -32,13 +33,30 @@ const BookingConfirmation: React.FC = () => {
         const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
         // We need a backend route to fetch by numeric bookingId or we search all and filter
-        // For now, let's assume we have a way to fetch it. 
-        // If not, we might need to add a route /api/bookings/numeric/:id
         const { data } = await axios.get(`${baseUrl}/bookings`);
         if (data.success) {
           const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
           if (found) {
-            setBooking(found);
+            // Check if redirect parameters confirm payment but database is still PENDING
+            const isConfirmed = stateParam === "CONFIRMED" || status === "SUCCESS";
+            
+            if (isConfirmed && found.paymentStatus === "PENDING") {
+              try {
+                const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
+                  paymentStatus: "PAID"
+                });
+                if (updateRes.success) {
+                  setBooking(updateRes.booking);
+                } else {
+                  setBooking(found);
+                }
+              } catch (updateErr) {
+                console.error("Auto-updating payment status failed:", updateErr);
+                setBooking(found);
+              }
+            } else {
+              setBooking(found);
+            }
           } else {
             setError("Booking not found.");
           }
@@ -56,7 +74,7 @@ const BookingConfirmation: React.FC = () => {
     } else if (!booking && !orderId) {
       setLoading(false);
     }
-  }, [booking, orderId]);
+  }, [booking, orderId, stateParam, status]);
 
   /* -------------------- DOWNLOAD TICKET -------------------- */
   /* -------------------- PRINT TICKET -------------------- */
@@ -75,7 +93,7 @@ const BookingConfirmation: React.FC = () => {
   }
 
   /* -------------------- FAILURE -------------------- */
-  if (status === "FAILED" || error) {
+  if (status === "FAILED" || stateParam === "FAILED" || error) {
     return (
       <div className="max-w-md mx-auto mt-20 text-center">
         <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">

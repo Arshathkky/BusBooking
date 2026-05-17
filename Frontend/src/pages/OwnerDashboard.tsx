@@ -1551,7 +1551,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             {/* Action Modal */}
             {actionModal.show && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl border border-white/10 overflow-y-auto max-h-[90vh] animate-in zoom-in-95 duration-300">
                         <div className={`p-8 text-white relative ${actionModal.type === 'BLOCK' ? 'bg-red-500' : actionModal.type === 'OFFLINE' ? 'bg-gray-600' : actionModal.type === 'ONLINE' ? 'bg-green-600' : 'bg-gray-900'}`}>
                             <h4 className="text-2xl font-black italic uppercase tracking-tighter">
                                 {actionModal.type === 'BLOCK' ? 'Daily Block' : 

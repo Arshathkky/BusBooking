@@ -89,49 +89,7 @@ const Payment: React.FC = () => {
     }
   };
 
-  const handleTestPayment = async () => {
-    setProcessing(true);
-    try {
-      // 1. Create Booking First
-      const newBooking = await addBooking({
-        bus: { id: bus._id || bus.id, name: bus.name, type: bus.type || "Standard", busNumber: bus.busNumber },
-        searchData,
-        selectedSeats: selectedSeats.map(String),
-        totalAmount,
-        passengerDetails,
-        pickupLocation,
-        paymentStatus: "PENDING",
-      });
 
-      if (!newBooking) throw new Error("Failed to create booking.");
-
-      if (newBooking._id) {
-        await updatePaymentStatus(newBooking._id, "PAID");
-      }
-      
-      navigate("/booking-confirmation", {
-        state: {
-          booking: {
-            bookingMongoId: newBooking._id,
-            bookingId: newBooking.bookingId,
-            referenceId: newBooking.referenceId,
-            bus,
-            selectedSeats,
-            searchData,
-            totalAmount,
-            busNumber: newBooking.bus.busNumber,
-            passengerDetails,
-            paymentStatus: "PAID",
-            bookingDate: new Date().toISOString(),
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Test payment failed:", error);
-      alert("Test payment failed. Please try again.");
-      setProcessing(false);
-    }
-  };
 
   // -------------------- Fallback --------------------
   if (!bus || !selectedSeats || !searchData || !passengerDetails) {
@@ -226,13 +184,7 @@ const Payment: React.FC = () => {
             {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
           </button>
 
-          <button
-            onClick={handleTestPayment}
-            disabled={processing}
-            className={`w-full mt-4 py-4 rounded-lg font-medium transition-colors text-gray-500 hover:text-gray-700 text-xs`}
-          >
-            Simulate Test Payment (Internal)
-          </button>
+
         </div>
       </div>
     </div>

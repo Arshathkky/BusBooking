@@ -13,7 +13,7 @@ export const sendSMS = async (phone, message) => {
     try {
         const username = process.env.DIALOG_ESMS_USERNAME;
         const password = process.env.DIALOG_ESMS_PASSWORD;
-        const sourceAddress = process.env.DIALOG_ESMS_SOURCE_ADDRESS;
+        const sourceAddress = process.env.DIALOG_ESMS_SOURCE_ADDRESS || "";
 
         if (!username || !password) {
             console.error("SMS Error: Dialog ESMS credentials missing in environment variables.");
@@ -22,6 +22,12 @@ export const sendSMS = async (phone, message) => {
 
         // Normalize phone number to Dialog format: 947XXXXXXXX
         let normalizedPhone = phone.replace(/\D/g, ""); // Remove non-digits
+        if (normalizedPhone.startsWith("0094")) {
+            normalizedPhone = normalizedPhone.substring(2);
+        }
+        if (normalizedPhone.startsWith("9407")) {
+            normalizedPhone = "94" + normalizedPhone.substring(3);
+        }
         if (normalizedPhone.startsWith("07")) {
             normalizedPhone = "94" + normalizedPhone.substring(1);
         } else if (normalizedPhone.startsWith("7")) {

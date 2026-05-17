@@ -126,20 +126,23 @@ export const genieNotify = async (req, res) => {
             await booking.save();
 
             // Send SMS
-            if (booking.passengerDetails?.phone) {
-                const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
-                sendSMS(booking.passengerDetails.phone, msg);
+            const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+            
+            // 1. Send to Passenger
+            const passengerPhone = booking.passengerDetails?.phone;
+            if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
+                sendSMS(passengerPhone, msg);
+            }
 
-                // ✅ Also notify owner if enabled
-                try {
-                    const bus = await Bus.findById(booking.bus.id);
-                    if (bus && bus.notifyOwnerOnBooking && bus.ownerPhoneForSMS) {
-                        const ownerMsg = `[OWNER COPY] ${msg}`;
-                        sendSMS(bus.ownerPhoneForSMS, ownerMsg);
-                    }
-                } catch (err) {
-                    console.error("Owner SMS failed:", err);
+            // 2. ✅ Also notify owner if enabled
+            try {
+                const bus = await Bus.findById(booking.bus.id);
+                if (bus && bus.notifyOwnerOnBooking && bus.ownerPhoneForSMS) {
+                    const ownerMsg = `[OWNER COPY] ${msg}`;
+                    sendSMS(bus.ownerPhoneForSMS, ownerMsg);
                 }
+            } catch (err) {
+                console.error("Owner SMS failed:", err);
             }
             
             console.log(`✅ Genie Payment Success for Order: ${order_id}`);

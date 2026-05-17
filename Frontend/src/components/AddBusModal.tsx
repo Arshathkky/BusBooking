@@ -104,7 +104,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         ownerPhoneForSMS: editingBus.ownerPhoneForSMS || "",
       });
       if (editingBus.seats) {
-          setCustomSeats(editingBus.seats);
+        setCustomSeats(editingBus.seats);
       }
     }
   }, [editingBus, routes]);
@@ -143,10 +143,10 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
           updated.lastRowSeats = lastRow;
         }
       }
-      
+
       // If switching to auto-layout, clear custom seats
       if (field === "useCustomLayout" && value === false) {
-          setCustomSeats([]);
+        setCustomSeats([]);
       }
 
       return updated;
@@ -164,10 +164,10 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
 
   const handleLayoutSave = (seats: SeatType[]) => {
     setCustomSeats(seats);
-    setFormData(prev => ({ 
-        ...prev, 
-        totalSeats: seats.length,
-        ladiesOnlySeats: seats.filter(s => s.isLadiesOnly).map(s => s.seatNumber)
+    setFormData(prev => ({
+      ...prev,
+      totalSeats: seats.length,
+      ladiesOnlySeats: seats.filter(s => s.isLadiesOnly).map(s => s.seatNumber)
     }));
   };
 
@@ -186,17 +186,17 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
     let seats = customSeats;
 
     if (!formData.useCustomLayout || seats.length === 0) {
-        // Fallback to auto-generated seats if not using custom layout
-        seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
-            seatNumber: i + 1,
-            isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
-            isOccupied: false,
-            isOnline: false,
-            isBlocked: false,
-            conductorAssigned: false,
-            conductorCode: null,
-            conductorId: null,
-        }));
+      // Fallback to auto-generated seats if not using custom layout
+      seats = Array.from({ length: formData.totalSeats }, (_, i) => ({
+        seatNumber: i + 1,
+        isLadiesOnly: formData.ladiesOnlySeats.includes(i + 1),
+        isOccupied: false,
+        isOnline: false,
+        isBlocked: false,
+        conductorAssigned: false,
+        conductorCode: null,
+        conductorId: null,
+      }));
     }
 
     const busPayload: Omit<BusType, "id"> = {
@@ -350,66 +350,66 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
               </div>
 
               {/* Layout Designer */}
-                <div className="flex items-center space-x-4 mb-4">
-                  <label className="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 transition-colors hover:border-[#fdc106]">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.useCustomLayout} 
-                      onChange={(e) => handleInputChange("useCustomLayout", e.target.checked)} 
-                      className="rounded border-gray-300 text-[#fdc106] w-5 h-5" 
-                    />
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Use Custom Drag-and-Drop Layout</span>
-                  </label>
-                  
-                  {formData.useCustomLayout && (
-                    <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center space-x-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
-                      <Layout className="w-5 h-5" /><span>Design Bus Floor Plan</span>
-                    </button>
-                  )}
-                </div>
+              <div className="flex items-center space-x-4 mb-4">
+                <label className="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600 transition-colors hover:border-[#fdc106]">
+                  <input
+                    type="checkbox"
+                    checked={formData.useCustomLayout}
+                    onChange={(e) => handleInputChange("useCustomLayout", e.target.checked)}
+                    className="rounded border-gray-300 text-[#fdc106] w-5 h-5"
+                  />
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Use Custom Drag-and-Drop Layout</span>
+                </label>
 
-                {!formData.useCustomLayout && (
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-semibold">
-                      Layout Setup ({formData.ladiesOnlySeats.length} ladies-only seats)
-                    </label>
-                    <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2">
-                       <Layout className="w-4 h-4" /><span>Quick Setup</span>
-                    </button>
+                {formData.useCustomLayout && (
+                  <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center space-x-2 shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                    <Layout className="w-5 h-5" /><span>Design Bus Floor Plan</span>
+                  </button>
+                )}
+              </div>
+
+              {!formData.useCustomLayout && (
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-semibold">
+                    Layout Setup ({formData.ladiesOnlySeats.length} ladies-only seats)
+                  </label>
+                  <button type="button" onClick={() => setShowLayoutDesigner(true)} className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2">
+                    <Layout className="w-4 h-4" /><span>Quick Setup</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="p-5 bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-inner">
+                {formData.useCustomLayout ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Source of Truth</p>
+                      <p className="font-bold text-gray-700 dark:text-gray-200">
+                        {customSeats.length > 0 ? `Custom floor plan with ${customSeats.length} seats` : "Manual Floor Plan Required"}
+                      </p>
+                    </div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-gray-400">
+                      <span>Auto Configuration</span>
+                      <span className="text-[#fdc106]">Standard Algorithm</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="px-3 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600 font-black text-lg italic">
+                        {formData.seatLayout}
+                      </div>
+                      <div className="flex-1 text-sm font-bold text-gray-600 dark:text-gray-300">
+                        {Math.ceil((formData.totalSeats - formData.lastRowSeats) / (formData.seatLayout === "2x2" ? 4 : 5))} Rows × {formData.seatLayout === "2x2" ? 4 : 5} Seats + Last Row {formData.lastRowSeats} Seats
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] font-medium text-gray-400">
+                      {formData.ladiesOnlySeats.length > 0 ? `Ladies-Only blocked: ${formData.ladiesOnlySeats.join(", ")}` : "No special gender-based blocking"}
+                    </div>
                   </div>
                 )}
-
-                <div className="p-5 bg-gray-50 dark:bg-gray-800/80 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-inner">
-                  {formData.useCustomLayout ? (
-                    <div className="flex items-center justify-between">
-                         <div>
-                            <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Source of Truth</p>
-                            <p className="font-bold text-gray-700 dark:text-gray-200">
-                                {customSeats.length > 0 ? `Custom floor plan with ${customSeats.length} seats` : "Manual Floor Plan Required"}
-                            </p>
-                         </div>
-                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs font-bold uppercase tracking-tighter text-gray-400">
-                            <span>Auto Configuration</span>
-                            <span className="text-[#fdc106]">Standard Algorithm</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <div className="px-3 py-1 bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600 font-black text-lg italic">
-                                {formData.seatLayout}
-                            </div>
-                            <div className="flex-1 text-sm font-bold text-gray-600 dark:text-gray-300">
-                                {Math.ceil((formData.totalSeats - formData.lastRowSeats) / (formData.seatLayout === "2x2" ? 4 : 5))} Rows × {formData.seatLayout === "2x2" ? 4 : 5} Seats + Last Row {formData.lastRowSeats} Seats
-                            </div>
-                        </div>
-                        <div className="pt-2 border-t border-gray-100 dark:border-gray-700 text-[11px] font-medium text-gray-400">
-                             {formData.ladiesOnlySeats.length > 0 ? `Ladies-Only blocked: ${formData.ladiesOnlySeats.join(", ")}` : "No special gender-based blocking"}
-                        </div>
-                    </div>
-                  )}
-                </div>
+              </div>
 
               {/* Special Bus */}
               <div>
@@ -439,38 +439,38 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
 
               {/* Notification Settings */}
               <div className="p-6 bg-[#fdc106]/5 rounded-2xl border-2 border-[#fdc106]/20 space-y-4">
-                  <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center">
-                              <Bus className="w-5 h-5 text-gray-900" />
-                          </div>
-                          <div>
-                              <h4 className="text-sm font-black uppercase tracking-tight">Owner Copy Notifications</h4>
-                              <p className="text-[10px] text-gray-500 font-bold">Receive a duplicate SMS for every booking</p>
-                          </div>
-                      </div>
-                      <button 
-                          type="button"
-                          onClick={() => handleInputChange("notifyOwnerOnBooking", !formData.notifyOwnerOnBooking)}
-                          className={`w-12 h-6 rounded-full transition-all relative ${formData.notifyOwnerOnBooking ? 'bg-[#fdc106]' : 'bg-gray-300'}`}
-                      >
-                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.notifyOwnerOnBooking ? 'left-7' : 'left-1'}`} />
-                      </button>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center">
+                      <Bus className="w-5 h-5 text-gray-900" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-tight">Owner Copy Notifications</h4>
+                      <p className="text-[10px] text-gray-500 font-bold">Receive a duplicate SMS for every booking</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("notifyOwnerOnBooking", !formData.notifyOwnerOnBooking)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${formData.notifyOwnerOnBooking ? 'bg-[#fdc106]' : 'bg-gray-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.notifyOwnerOnBooking ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
 
-                  {formData.notifyOwnerOnBooking && (
-                      <div className="animate-in slide-in-from-top-2 duration-300">
-                          <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 ml-1">Owner Mobile Number (to receive alerts)</label>
-                          <input 
-                              type="text" 
-                              placeholder="07X XXX XXXX" 
-                              value={formData.ownerPhoneForSMS} 
-                              onChange={(e) => handleInputChange("ownerPhoneForSMS", e.target.value)} 
-                              className="w-full px-4 py-3 bg-white dark:bg-gray-900 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#fdc106]" 
-                              required={formData.notifyOwnerOnBooking}
-                          />
-                      </div>
-                  )}
+                {formData.notifyOwnerOnBooking && (
+                  <div className="animate-in slide-in-from-top-2 duration-300">
+                    <label className="block text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2 ml-1">Owner Mobile Number (to receive alerts)</label>
+                    <input
+                      type="text"
+                      placeholder="07X XXX XXXX"
+                      value={formData.ownerPhoneForSMS}
+                      onChange={(e) => handleInputChange("ownerPhoneForSMS", e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-900 border-none rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#fdc106]"
+                      required={formData.notifyOwnerOnBooking}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Buttons */}
@@ -488,36 +488,36 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
         <BusLayoutDesigner
           totalSeats={formData.totalSeats}
           currentSeats={customSeats.length > 0 ? customSeats : (() => {
-              // Generate initial seats from auto-layout if empty
-              const seatsPerRow = formData.seatLayout === "2x2" ? 4 : 5;
-              const normalSeats = formData.totalSeats - formData.lastRowSeats;
-              const normalRows = Math.ceil(normalSeats / seatsPerRow);
-              
-              const generated: SeatType[] = [];
-              for(let i=0; i<formData.totalSeats; i++) {
-                  const num = i + 1;
-                  const isLastRow = i >= normalSeats;
-                  let x, y;
-                  
-                  if (!isLastRow) {
-                      const row = Math.floor(i / seatsPerRow);
-                      const colInRow = i % seatsPerRow;
-                      x = colInRow < 2 ? colInRow : colInRow + 2; // path in middle
-                      y = row + 1;
-                  } else {
-                      x = i - normalSeats;
-                      y = normalRows + 1;
-                  }
-                  
-                  generated.push({
-                      seatNumber: num,
-                      x, y,
-                      isLadiesOnly: formData.ladiesOnlySeats.some(l => String(l) === String(num)),
-                      isOccupied: false,
-                      isWindow: x === 0 || x === 5 // based on 6 cols (0-5)
-                  });
+            // Generate initial seats from auto-layout if empty
+            const seatsPerRow = formData.seatLayout === "2x2" ? 4 : 5;
+            const normalSeats = formData.totalSeats - formData.lastRowSeats;
+            const normalRows = Math.ceil(normalSeats / seatsPerRow);
+
+            const generated: SeatType[] = [];
+            for (let i = 0; i < formData.totalSeats; i++) {
+              const num = i + 1;
+              const isLastRow = i >= normalSeats;
+              let x, y;
+
+              if (!isLastRow) {
+                const row = Math.floor(i / seatsPerRow);
+                const colInRow = i % seatsPerRow;
+                x = colInRow < 2 ? colInRow : colInRow + 2; // path in middle
+                y = row + 1;
+              } else {
+                x = i - normalSeats;
+                y = normalRows + 1;
               }
-              return generated;
+
+              generated.push({
+                seatNumber: num,
+                x, y,
+                isLadiesOnly: formData.ladiesOnlySeats.some(l => String(l) === String(num)),
+                isOccupied: false,
+                isWindow: x === 0 || x === 5 // based on 6 cols (0-5)
+              });
+            }
+            return generated;
           })()}
           onSave={handleLayoutSave}
           onClose={() => setShowLayoutDesigner(false)}

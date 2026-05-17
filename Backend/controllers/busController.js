@@ -33,6 +33,8 @@ export const addBus = async (req, res) => {
       lastRowSeats= 4,
       useCustomLayout = false,
       seats = [], // 👈 Expecting full seat objects from designer
+      notifyOwnerOnBooking = false,
+      ownerPhoneForSMS = "",
     } = req.body;
 
     // ✅ Validate required fields
@@ -127,6 +129,8 @@ export const addBus = async (req, res) => {
       lastRowSeats,
       useCustomLayout,
       seats: finalSeats,
+      notifyOwnerOnBooking,
+      ownerPhoneForSMS,
     });
 
     res.status(201).json({

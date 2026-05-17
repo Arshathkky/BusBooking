@@ -89,9 +89,9 @@ export const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, booking });
 
-    // 📩 Send SMS if requested and phone is present
+    // 📩 Send SMS if requested
     const shouldSendSMS = req.body.sendSMS !== false; // Default to true if not provided
-    if (booking.passengerDetails?.phone && shouldSendSMS && (booking.paymentStatus === "PAID" || booking.paymentStatus === "BLOCKED" || isOwnerOverride)) {
+    if (shouldSendSMS && (booking.paymentStatus === "PAID" || booking.paymentStatus === "BLOCKED" || isOwnerOverride)) {
         let msg = "";
         if (booking.paymentStatus === "PAID") {
             msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
@@ -100,10 +100,13 @@ export const createBooking = async (req, res) => {
             msg = `Reservation Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nPlease pay at the counter.`;
         }
         
-        // Send to Passenger
-        sendSMS(booking.passengerDetails.phone, msg);
+        // 1. Send to Passenger
+        const passengerPhone = booking.passengerDetails?.phone;
+        if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
+            sendSMS(passengerPhone, msg);
+        }
 
-        // ✅ Also send to Owner if enabled
+        // 2. ✅ Also send to Owner if enabled
         try {
             const busDetails = await Bus.findById(booking.bus.id);
             if (busDetails && busDetails.notifyOwnerOnBooking && busDetails.ownerPhoneForSMS) {
@@ -182,9 +185,25 @@ export const updatePaymentStatus = async (req, res) => {
     await booking.save();
 
     // 📩 Send SMS if Paid
-    if (booking.paymentStatus === "PAID" && booking.passengerDetails?.phone) {
+    if (booking.paymentStatus === "PAID") {
         const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
-        sendSMS(booking.passengerDetails.phone, msg);
+        
+        // 1. Send to Passenger
+        const passengerPhone = booking.passengerDetails?.phone;
+        if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
+            sendSMS(passengerPhone, msg);
+        }
+
+        // 2. ✅ Also send to Owner if enabled
+        try {
+            const busDetails = await Bus.findById(booking.bus.id);
+            if (busDetails && busDetails.notifyOwnerOnBooking && busDetails.ownerPhoneForSMS) {
+                const ownerMsg = `[OWNER COPY] ${msg}`;
+                sendSMS(busDetails.ownerPhoneForSMS, ownerMsg);
+            }
+        } catch (err) {
+            console.error("Owner SMS failed:", err);
+        }
     }
 
     res.status(200).json({ success: true, booking });

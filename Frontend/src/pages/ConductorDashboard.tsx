@@ -57,7 +57,7 @@ const ConductorDashboard: React.FC = () => {
   const selectedBusId = assignedConductor?.assignedBusId ?? null;
 
   const [localSeats, setLocalSeats] = useState<any[]>([]);
-  const [schedule, setSchedule] = useState<string[]>([]);
+  const [weeklySchedule, setWeeklySchedule] = useState<string[]>([]);
   const [updating, setUpdating] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ id: string; remark: string } | null>(null);
 
@@ -69,7 +69,7 @@ const ConductorDashboard: React.FC = () => {
         .then(res => {
           if (res.data.success) {
             setLocalSeats(res.data.data.seats || []);
-            setSchedule(res.data.data.schedule || []);
+            setWeeklySchedule(res.data.data.weeklySchedule || res.data.data.schedule || []);
           }
         });
     }
@@ -84,12 +84,12 @@ const ConductorDashboard: React.FC = () => {
     try {
       // 1. Update backend
       await axios.patch(`${BASE_URL}/buses/${selectedBusId}/seats`, { seats: localSeats });
-      await axios.put(`${BASE_URL}/buses/${selectedBusId}/schedule`, { schedule });
+      await axios.put(`${BASE_URL}/buses/${selectedBusId}/schedule`, { weeklySchedule });
       
       // 2. Sync with Global Context so other pages/filters see the change
       await updateBus(selectedBusId, { 
         seats: localSeats,
-        schedule: schedule
+        weeklySchedule: weeklySchedule
       });
       
       alert("✅ Configuration applied successfully for this bus!");
@@ -104,24 +104,24 @@ const ConductorDashboard: React.FC = () => {
   const toggleDay = async (day: string) => {
     if (!selectedBusId) return;
     
-    const newSchedule = schedule.includes(day) 
-      ? schedule.filter(d => d !== day) 
-      : [...schedule, day];
+    const newSchedule = weeklySchedule.includes(day) 
+      ? weeklySchedule.filter(d => d !== day) 
+      : [...weeklySchedule, day];
     
     // Update local state first for speed
-    setSchedule(newSchedule);
+    setWeeklySchedule(newSchedule);
 
     try {
       // 1. Update backend
-      await axios.put(`${BASE_URL}/buses/${selectedBusId}/schedule`, { schedule: newSchedule });
+      await axios.put(`${BASE_URL}/buses/${selectedBusId}/schedule`, { weeklySchedule: newSchedule });
       
       // 2. Update Global Context
-      await updateBus(selectedBusId, { schedule: newSchedule });
+      await updateBus(selectedBusId, { weeklySchedule: newSchedule });
       
     } catch (err) {
       console.error(err);
       alert("❌ Failed to update schedule.");
-      setSchedule(schedule); // Rollback
+      setWeeklySchedule(weeklySchedule); // Rollback
     }
   };
 
@@ -393,11 +393,11 @@ const ConductorDashboard: React.FC = () => {
                                     const y = Math.floor(i / 6);
                                     const seat = gridMap.get(`${x},${y}`);
 
-                                    if (!seat) return <div key={i} className="w-[45px] h-[45px]" />;
+                                    if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
 
                                     return (
                                         <div 
-                                            key={seat.seatNumber}
+                                            key={`seat-${seat.seatNumber}`}
                                             className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all relative group shadow-sm ${
                                                 seat.isPermanent ? 'bg-red-500 border-red-600 text-white' :
                                                 seat.isBlocked ? 'bg-indigo-500 border-indigo-600 text-white' :
@@ -442,7 +442,7 @@ const ConductorDashboard: React.FC = () => {
                       key={day}
                       onClick={() => toggleDay(day)}
                       className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border-2 ${
-                        schedule.includes(day) 
+                        weeklySchedule.includes(day) 
                         ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300" 
                         : "bg-white border-gray-100 text-gray-400 dark:bg-gray-800 dark:border-gray-700"
                       }`}

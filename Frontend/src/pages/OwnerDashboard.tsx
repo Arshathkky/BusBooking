@@ -1291,7 +1291,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             b.paymentStatus === "PAID" ? "PAID" : "RESERVED"
         ]);
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: 48,
@@ -1310,7 +1310,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     }
                 }
             }
-        });
+        } as any);
 
         if (pdfBookings.length === 0) {
             doc.setFontSize(11);

@@ -137,7 +137,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
 
     return (
       <button
-        key={String(seatId)}
+        key={`seat-${seatId}`}
         onClick={() => !isPermanent && !isActuallyOccupied && !isReserved && !isConductor && !isOwnerBlocked && !isBlockedForOnline && onSeatClick(seatId)}
         disabled={
           isPermanent ||
@@ -226,7 +226,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                 const y = Math.floor(i / 6);
                 const seat = gridMap.get(`${x},${y}`);
 
-                if (!seat) return <div key={i} className="w-[50px] h-[50px]" />;
+                if (!seat) return <div key={`empty-${i}`} className="w-[50px] h-[50px]" />;
 
                 const sid = String(seat.seatNumber);
                 const isOccupied = occupiedSeats.has(sid);

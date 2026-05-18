@@ -377,56 +377,63 @@ const ConductorDashboard: React.FC = () => {
                             <Steering className="w-6 h-6" />
                         </div>
 
-                        <div
-                            className="grid gap-2"
-                            style={{
-                                gridTemplateColumns: `repeat(6, 45px)`,
-                                gridTemplateRows: `repeat(15, 45px)`
-                            }}
-                        >
-                            {(() => {
-                                const gridMap = new Map();
-                                localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+                        {(() => {
+                            const maxY = localSeats.reduce((max, s) => (s.y !== undefined && s.y > max) ? s.y : max, 0);
+                            const totalRows = maxY + 1;
 
-                                return Array.from({ length: 15 * 6 }).map((_, i) => {
-                                    const x = i % 6;
-                                    const y = Math.floor(i / 6);
-                                    const seat = gridMap.get(`${x},${y}`);
+                            return (
+                                <div
+                                    className="grid gap-2"
+                                    style={{
+                                        gridTemplateColumns: `repeat(6, 45px)`,
+                                        gridTemplateRows: `repeat(${totalRows}, 45px)`
+                                    }}
+                                >
+                                    {(() => {
+                                        const gridMap = new Map();
+                                        localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
 
-                                    if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
+                                        return Array.from({ length: totalRows * 6 }).map((_, i) => {
+                                            const x = i % 6;
+                                            const y = Math.floor(i / 6);
+                                            const seat = gridMap.get(`${x},${y}`);
 
-                                    return (
-                                        <div 
-                                            key={`seat-${seat.seatNumber}`}
-                                            className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all relative group shadow-sm ${
-                                                seat.isPermanent ? 'bg-red-500 border-red-600 text-white' :
-                                                seat.isBlocked ? 'bg-indigo-500 border-indigo-600 text-white' :
-                                                seat.isOnline !== false ? 'bg-green-500 border-green-600 text-white' : 
-                                                'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400'
-                                            }`}
-                                        >
-                                            <span className="text-[11px] font-black italic">{seat.seatNumber}</span>
-                                            
-                                            {/* Action Menu on Hover */}
-                                            <div className="absolute inset-0 bg-black/80 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 p-1 z-20">
-                                                <button
-                                                    onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isOnline: s.isOnline === false } : s))}
-                                                    className="flex-1 bg-green-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
-                                                >WEB</button>
-                                                <button
-                                                    onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isPermanent: !s.isPermanent } : s))}
-                                                    className="flex-1 bg-red-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
-                                                >PERM</button>
-                                                <button
-                                                    onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isBlocked: !s.isBlocked } : s))}
-                                                    className="flex-1 bg-indigo-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
-                                                >RES</button>
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
+                                            if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
+
+                                            return (
+                                                <div 
+                                                    key={`seat-${seat.seatNumber}`}
+                                                    className={`w-[45px] h-[45px] rounded-xl border-2 flex flex-col items-center justify-center transition-all relative group shadow-sm ${
+                                                        seat.isPermanent ? 'bg-red-500 border-red-600 text-white' :
+                                                        seat.isBlocked ? 'bg-indigo-500 border-indigo-600 text-white' :
+                                                        seat.isOnline !== false ? 'bg-green-500 border-green-600 text-white' : 
+                                                        'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-400'
+                                                    }`}
+                                                >
+                                                    <span className="text-[11px] font-black italic">{seat.seatNumber}</span>
+                                                    
+                                                    {/* Action Menu on Hover */}
+                                                    <div className="absolute inset-0 bg-black/80 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 p-1 z-20">
+                                                        <button
+                                                            onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isOnline: s.isOnline === false } : s))}
+                                                            className="flex-1 bg-green-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
+                                                        >WEB</button>
+                                                        <button
+                                                            onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isPermanent: !s.isPermanent } : s))}
+                                                            className="flex-1 bg-red-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
+                                                        >PERM</button>
+                                                        <button
+                                                            onClick={() => setLocalSeats(prev => prev.map(s => s.seatNumber === seat.seatNumber ? { ...s, isBlocked: !s.isBlocked } : s))}
+                                                            className="flex-1 bg-indigo-500 text-[7px] font-black uppercase rounded hover:scale-105 transition-transform"
+                                                        >RES</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
               </div>

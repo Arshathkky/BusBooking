@@ -1472,78 +1472,84 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                             <Steering className="w-6 h-6" />
                         </div>
 
-                        <div
-                            className={localSeats.some(s => s.x !== undefined && s.y !== undefined) ? "grid gap-2" : "flex flex-wrap gap-2 justify-center"}
-                            style={localSeats.some(s => s.x !== undefined && s.y !== undefined) ? {
-                                gridTemplateColumns: `repeat(6, 45px)`,
-                                gridTemplateRows: `repeat(15, 45px)`
-                            } : { maxWidth: '300px' }}
-                        >
-                            {(() => {
-                                const renderSeat = (seat: any) => {
-                                    const isSelected = selectedManualSeats.map(String).includes(String(seat.seatNumber));
-                                    
-                                    // Smart lookup: find all bookings for this seat and pick the most relevant one
-                                    const seatBookings = bookings.filter(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
-                                    const bookingForSeat = seatBookings.sort((a, b) => {
-                                        const priority: any = { "PAID": 0, "BLOCKED": 1, "OFFLINE": 2, "PENDING": 3, "ONLINE": 4 };
-                                        return (priority[a.paymentStatus] ?? 99) - (priority[b.paymentStatus] ?? 99);
-                                    })[0];
-                                    
-                                    const bookingStatus = bookingForSeat?.paymentStatus;
-                                    
-                                    // Debugging log as requested by user
-                                    if (isSelected || seat.seatNumber === selectedManualSeats[0]) {
-                                        console.log(`[DEBUG] Seat: ${seat.seatNumber}, Status: ${bookingStatus || 'None'}, isOnline: ${seat.isOnline}`);
-                                    }
+                        {(() => {
+                            const hasCoords = localSeats.some(s => s.x !== undefined && s.y !== undefined);
+                            const maxY = hasCoords ? localSeats.reduce((max, s) => (s.y !== undefined && s.y > max) ? s.y : max, 0) : 14;
+                            const totalRows = maxY + 1;
 
-                                    return (
-                                        <div 
-                                            key={`seat-${seat.seatNumber}`}
-                                            onClick={() => {
-                                                toggleManualSeat(seat.seatNumber);
-                                            }}
-                                            className={`w-[45px] h-[45px] rounded-full border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-white/50 relative group ${
-                                                isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10 shadow-[0_0_20px_rgba(253,193,6,0.4)]' :
-                                                bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
-                                                bookingStatus === "BLOCKED" ? 'bg-orange-500 border-orange-600 text-white' :
-                                                bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
-                                                bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : 
-                                                seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
-                                                'bg-green-500 border-green-600 text-white'
-                                            }`}
-                                        >
-                                            <div className="flex flex-col items-center justify-center">
-                                                <span className={`text-[12px] font-black italic leading-none ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
-                                            </div>
-                                            {bookingForSeat && (
-                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-white text-gray-900 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl">
-                                                    {bookingForSeat.passengerDetails?.name || bookingStatus}
+                            return (
+                                <div
+                                    className={hasCoords ? "grid gap-2" : "flex flex-wrap gap-2 justify-center"}
+                                    style={hasCoords ? {
+                                        gridTemplateColumns: `repeat(6, 45px)`,
+                                        gridTemplateRows: `repeat(${totalRows}, 45px)`
+                                    } : { maxWidth: '300px' }}
+                                >
+                                    {(() => {
+                                        const renderSeat = (seat: any) => {
+                                            const isSelected = selectedManualSeats.map(String).includes(String(seat.seatNumber));
+                                            
+                                            // Smart lookup: find all bookings for this seat and pick the most relevant one
+                                            const seatBookings = bookings.filter(b => b.selectedSeats.map(String).includes(String(seat.seatNumber)));
+                                            const bookingForSeat = seatBookings.sort((a, b) => {
+                                                const priority: any = { "PAID": 0, "BLOCKED": 1, "OFFLINE": 2, "PENDING": 3, "ONLINE": 4 };
+                                                return (priority[a.paymentStatus] ?? 99) - (priority[b.paymentStatus] ?? 99);
+                                            })[0];
+                                            
+                                            const bookingStatus = bookingForSeat?.paymentStatus;
+                                            
+                                            // Debugging log as requested by user
+                                            if (isSelected || seat.seatNumber === selectedManualSeats[0]) {
+                                                console.log(`[DEBUG] Seat: ${seat.seatNumber}, Status: ${bookingStatus || 'None'}, isOnline: ${seat.isOnline}`);
+                                            }
+
+                                            return (
+                                                <div 
+                                                    key={`seat-${seat.seatNumber}`}
+                                                    onClick={() => {
+                                                        toggleManualSeat(seat.seatNumber);
+                                                    }}
+                                                    className={`w-[45px] h-[45px] rounded-full border-2 flex flex-col items-center justify-center transition-all cursor-pointer hover:border-white/50 relative group ${
+                                                        isSelected ? 'bg-[#fdc106] border-[#fdc106] scale-110 z-10 shadow-[0_0_20px_rgba(253,193,6,0.4)]' :
+                                                        bookingStatus === "PAID" ? 'bg-cyan-600 border-cyan-700 text-white' :
+                                                        bookingStatus === "BLOCKED" ? 'bg-orange-500 border-orange-600 text-white' :
+                                                        bookingStatus === "PENDING" ? 'bg-blue-600 border-blue-700 text-white' :
+                                                        bookingStatus === "ONLINE" ? 'bg-green-500 border-green-600 text-white' : 
+                                                        seat.isOnline === false ? 'bg-orange-500 border-orange-600 text-white' : 
+                                                        'bg-green-500 border-green-600 text-white'
+                                                    }`}
+                                                >
+                                                    <div className="flex flex-col items-center justify-center">
+                                                        <span className={`text-[12px] font-black italic leading-none ${isSelected ? 'text-gray-900' : 'text-white'}`}>{seat.seatNumber}</span>
+                                                    </div>
+                                                    {bookingForSeat && (
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-white text-gray-900 text-[10px] font-bold rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 shadow-xl">
+                                                            {bookingForSeat.passengerDetails?.name || bookingStatus}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    );
-                                };
+                                            );
+                                        };
 
-                                const hasCoords = localSeats.some(s => s.x > 0 || s.y > 0);
+                                        if (hasCoords) {
+                                            const gridMap = new Map();
+                                            localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
 
-                                if (hasCoords) {
-                                    const gridMap = new Map();
-                                    localSeats.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+                                            return Array.from({ length: totalRows * 6 }).map((_, i) => {
+                                                const x = i % 6;
+                                                const y = Math.floor(i / 6);
+                                                const seat = gridMap.get(`${x},${y}`);
 
-                                    return Array.from({ length: 15 * 6 }).map((_, i) => {
-                                        const x = i % 6;
-                                        const y = Math.floor(i / 6);
-                                        const seat = gridMap.get(`${x},${y}`);
-
-                                        if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
-                                        return renderSeat(seat);
-                                    });
-                                } else {
-                                    return localSeats.map(seat => renderSeat(seat));
-                                }
-                            })()}
-                        </div>
+                                                if (!seat) return <div key={`empty-${i}`} className="w-[45px] h-[45px]" />;
+                                                return renderSeat(seat);
+                                            });
+                                        } else {
+                                            return localSeats.map(seat => renderSeat(seat));
+                                        }
+                                    })()}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

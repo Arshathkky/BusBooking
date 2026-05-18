@@ -203,45 +203,50 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
       </div>
 
       {/* Main Layout Area */}
-      {useCustomLayout ? (
-        <div className="relative mx-auto border-[12px] border-gray-100 rounded-[60px] bg-white p-12 pt-20 shadow-inner" style={{ width: 'fit-content' }}>
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] mt-2">Passenger Entry</div>
-            <Steering className="w-8 h-8" />
+      {useCustomLayout ? (() => {
+        const maxY = seatsData.reduce((max, s) => (s.y !== undefined && s.y > max) ? s.y : max, 0);
+        const totalRows = maxY + 1;
+
+        return (
+          <div className="relative mx-auto border-[12px] border-gray-100 rounded-[60px] bg-white p-12 pt-20 shadow-inner" style={{ width: 'fit-content' }}>
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] mt-2">Passenger Entry</div>
+              <Steering className="w-8 h-8" />
+            </div>
+
+            <div
+              className="grid gap-2.5"
+              style={{
+                gridTemplateColumns: `repeat(6, 50px)`,
+                gridTemplateRows: `repeat(${totalRows}, 50px)`
+              }}
+            >
+              {(() => {
+                const gridMap = new Map();
+                seatsData.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
+
+                return Array.from({ length: totalRows * 6 }).map((_, i) => {
+                  const x = i % 6;
+                  const y = Math.floor(i / 6);
+                  const seat = gridMap.get(`${x},${y}`);
+
+                  if (!seat) return <div key={`empty-${i}`} className="w-[50px] h-[50px]" />;
+
+                  const sid = String(seat.seatNumber);
+                  const isOccupied = occupiedSeats.has(sid);
+                  const isReserved = reservedSeats.has(sid);
+                  const isSelected = selectedSeats.map(String).includes(String(seat.seatNumber));
+                  const isLadies = seat.isLadiesOnly;
+                  const conductorId = conductorSeatMap.get(String(seat.seatNumber));
+                  const isConductor = Boolean(conductorId);
+
+                  return renderSeat(seat.seatNumber, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
+                });
+              })()}
+            </div>
           </div>
-
-          <div
-            className="grid gap-2.5"
-            style={{
-              gridTemplateColumns: `repeat(6, 50px)`,
-              gridTemplateRows: `repeat(15, 50px)`
-            }}
-          >
-            {(() => {
-              const gridMap = new Map();
-              seatsData.forEach(s => gridMap.set(`${s.x},${s.y}`, s));
-
-              return Array.from({ length: 15 * 6 }).map((_, i) => {
-                const x = i % 6;
-                const y = Math.floor(i / 6);
-                const seat = gridMap.get(`${x},${y}`);
-
-                if (!seat) return <div key={`empty-${i}`} className="w-[50px] h-[50px]" />;
-
-                const sid = String(seat.seatNumber);
-                const isOccupied = occupiedSeats.has(sid);
-                const isReserved = reservedSeats.has(sid);
-                const isSelected = selectedSeats.map(String).includes(String(seat.seatNumber));
-                const isLadies = seat.isLadiesOnly;
-                const conductorId = conductorSeatMap.get(String(seat.seatNumber));
-                const isConductor = Boolean(conductorId);
-
-                return renderSeat(seat.seatNumber, isOccupied, isReserved, isSelected, isLadies, isConductor, conductorId);
-              });
-            })()}
-          </div>
-        </div>
-      ) : (
+        );
+      })() : (
         <>
           {/* Standard Auto Layout */}
           <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 px-10">

@@ -167,25 +167,18 @@ const BusSearch: React.FC = () => {
               </label>
               <div className="relative">
                 <Users className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                <select
+                <input
+                  type="number"
+                  min="1"
                   value={searchData.passengers}
                   onChange={(e) =>
                     setSearchData((prev) => ({
                       ...prev,
-                      passengers: parseInt(e.target.value),
+                      passengers: Math.max(1, parseInt(e.target.value) || 1),
                     }))
                   }
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                >
-                  {[...Array(4)].map((_, i) => {
-                    const num = i + 1;
-                    return (
-                      <option key={num} value={num}>
-                        {num} {num === 1 ? "Passenger" : "Passengers"}
-                      </option>
-                    );
-                  })}
-                </select>
+                />
               </div>
             </div>
           </div>

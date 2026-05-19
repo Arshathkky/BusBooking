@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
 import { useOwner, Owner } from "../../contexts/OwnerContext";
 import OwnerModal from "./AddOwnerModal";
 
 const OwnerTab: React.FC = () => {
+  const navigate = useNavigate();
   const { owners, deleteOwner, updateOwner, fetchOwners } = useOwner();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);
@@ -81,6 +83,13 @@ const OwnerTab: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => navigate(`/owner?ownerId=${owner._id}`)}
+                className="mr-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Manage Fleet
+              </button>
+
               <span
                 onClick={() => handleStatusChange(owner)}
                 title="Click to change status"

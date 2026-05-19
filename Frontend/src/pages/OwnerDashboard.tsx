@@ -30,6 +30,8 @@ import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
+import { useSearchParams } from "react-router-dom";
+import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
@@ -40,7 +42,29 @@ type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConducto
 
 const OwnerDashboard: React.FC = () => {
   const { user } = useAuth();
-  const ownerData = (user as any)?.ownerData;
+  const [searchParams] = useSearchParams();
+  const queryOwnerId = searchParams.get("ownerId");
+  const { owners, fetchOwners } = useOwner();
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>(queryOwnerId || "");
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchOwners();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.role === "admin" && owners.length > 0 && !selectedOwnerId) {
+      setSelectedOwnerId(owners[0]._id);
+    }
+  }, [owners, user, selectedOwnerId]);
+
+  const effectiveOwnerId = user?.role === "admin" ? selectedOwnerId : user?.id;
+  const effectiveOwner = user?.role === "admin"
+    ? owners.find(o => o._id === selectedOwnerId)
+    : null;
+
+  const ownerData = user?.role === "admin" ? effectiveOwner : (user as any)?.ownerData;
   const canViewBuses = ownerData?.canViewBuses !== false;
   const canAddBuses = ownerData?.canAddBuses !== false;
   const canAssignConductors = ownerData?.canAssignConductors !== false;
@@ -76,9 +100,9 @@ const OwnerDashboard: React.FC = () => {
   const { routes, deleteRoute, toggleRouteStatus } = useRouteData();
   const { conductors, deleteConductor, toggleConductorStatus } = useConductor();
 
-  const ownerBuses = buses.filter((bus) => String(bus.ownerId) === String(user?.id));
-  const ownerConductors = conductors.filter((c) => String(c.ownerId) === String(user?.id));
-  const ownerRoutes = routes.filter((r) => String(r.ownerId) === String(user?.id));
+  const ownerBuses = buses.filter((bus) => String(bus.ownerId) === String(effectiveOwnerId));
+  const ownerConductors = conductors.filter((c) => String(c.ownerId) === String(effectiveOwnerId));
+  const ownerRoutes = routes.filter((r) => String(r.ownerId) === String(effectiveOwnerId));
 
 
   const today = new Date();
@@ -93,10 +117,10 @@ const OwnerDashboard: React.FC = () => {
   const [selectedBusForManifest, setSelectedBusForManifest] = useState<BusType | null>(null);
 
   useEffect(() => {
-    if (user?.id) {
+    if (effectiveOwnerId) {
         fetchOverview(selectedMonth, selectedDate, selectedBus);
     }
-  }, [user, selectedMonth, selectedDate, selectedBus]);
+  }, [effectiveOwnerId, selectedMonth, selectedDate, selectedBus]);
 
   useEffect(() => {
     if (ownerBuses.length > 0) {
@@ -107,19 +131,19 @@ const OwnerDashboard: React.FC = () => {
   // Real-time polling
   useEffect(() => {
     const interval = setInterval(() => {
-        if (user?.id && activeTab === "overview") {
+        if (effectiveOwnerId && activeTab === "overview") {
             fetchOverview(selectedMonth, selectedDate, selectedBus);
             fetchRecentBookings();
         }
     }, 15000); // 15 seconds
     return () => clearInterval(interval);
-  }, [user, activeTab, selectedMonth, selectedDate, selectedBus]);
+  }, [effectiveOwnerId, activeTab, selectedMonth, selectedDate, selectedBus]);
 
   const fetchOverview = async (month?: string, date?: string, bus?: string) => {
-  if (!user?.id) return;
+  if (!effectiveOwnerId) return;
   setLoadingOverview(true);
   try {
-    let url = `${API_URL}/${user.id}/overview?`;
+    let url = `${API_URL}/${effectiveOwnerId}/overview?`;
 
     // ✅ If month is selected, use month and ignore date
     if (month) {
@@ -217,6 +241,22 @@ const fetchRecentBookings = async () => {
         <div>
           <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-1 uppercase italic tracking-tighter">Owner Dashboard</h1>
           <p className="text-gray-500 font-bold text-sm tracking-tight">Intelligence & Operational Management • Surena Travels</p>
+          {user?.role === "admin" && (
+            <div className="mt-4 flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Managing Owner:</span>
+              <select
+                value={selectedOwnerId}
+                onChange={(e) => setSelectedOwnerId(e.target.value)}
+                className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106]"
+              >
+                {owners.map((owner) => (
+                  <option key={owner._id} value={owner._id}>
+                    {owner.name} ({owner.companyName})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-4 bg-gray-50 dark:bg-gray-800/50 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm animate-in slide-in-from-right-4 duration-500">
@@ -504,6 +544,7 @@ const fetchRecentBookings = async () => {
                 setEditingBus(null);
               }}
               editingBus={editingBus}
+              ownerId={effectiveOwnerId}
             />
           )}
         </div>
@@ -568,13 +609,14 @@ const fetchRecentBookings = async () => {
                 setEditingConductor(null);
               }}
               editingConductor={editingConductor}
+              ownerId={effectiveOwnerId}
             />
           )}
         </div>
       )}
 
       {/* ---------------- Reports ---------------- */}
-      {activeTab === "reports" && canViewReports && user && <ReportsTab ownerId={user.id} />}
+      {activeTab === "reports" && canViewReports && effectiveOwnerId && <ReportsTab ownerId={effectiveOwnerId} />}
 
       {/* ---------------- Routes ---------------- */}
       {activeTab === "routes" && canViewRoutes && (
@@ -659,6 +701,7 @@ const fetchRecentBookings = async () => {
                 setEditingRoute(null);
               }}
               editingRoute={editingRoute}
+              ownerId={effectiveOwnerId}
             />
           )}
         </div>
@@ -666,12 +709,12 @@ const fetchRecentBookings = async () => {
 
       {/* ---------------- Assign Conductor Tab ---------------- */}
       {activeTab === "assignConductor" && canAssignConductors && (
-        <AssignConductorTab />
+        <AssignConductorTab ownerId={effectiveOwnerId} />
       )}
 
       {/* ---------------- Schedule Tab ---------------- */}
       {activeTab === "schedule" && canViewSchedule && (
-        <ScheduleTab />
+        <ScheduleTab ownerId={effectiveOwnerId} />
       )}
 
       {/* ---------------- Portal Tab (Manifest View) ---------------- */}

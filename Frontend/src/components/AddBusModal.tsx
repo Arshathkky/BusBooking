@@ -17,6 +17,7 @@ type LastRowType = number;
 interface AddBusModalProps {
   onClose: () => void;
   editingBus?: BusType | null;
+  ownerId?: string;
 }
 
 interface FormData {
@@ -45,7 +46,7 @@ interface FormData {
 // ------------------------------
 // Component
 // ------------------------------
-const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
+const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus, ownerId }) => {
   const { addBus, updateBus } = useBus();
   const { routes } = useRouteData();
   const { user } = useAuth();
@@ -207,7 +208,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus }) => {
       amenities: formData.amenities,
       isSpecial: formData.isSpecialBus,
       specialTime: formData.specialTime,
-      ownerId: user.id,
+      ownerId: ownerId || user.id,
       seatLayout: formData.seatLayout,
       seatNumberingType: formData.seatNumberingType,
       lastRowSeats: formData.lastRowSeats,

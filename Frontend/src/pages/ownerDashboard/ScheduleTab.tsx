@@ -21,13 +21,18 @@ import {
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-const ScheduleTab: React.FC = () => {
+interface ScheduleTabProps {
+  ownerId?: string;
+}
+
+const ScheduleTab: React.FC<ScheduleTabProps> = ({ ownerId }) => {
   const { user } = useAuth();
   const { buses, fetchBuses } = useBus();
   const { routes = [] } = useRouteData() || {};
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const ownerBuses = buses.filter((b) => b.ownerId === user?.id);
+  const effectiveOwnerId = ownerId || user?.id;
+  const ownerBuses = buses.filter((b) => b.ownerId === effectiveOwnerId);
 
   const updateSchedule = async (bus: BusType, updates: Partial<BusType>) => {
     setUpdating(bus.id);
@@ -391,7 +396,7 @@ const ScheduleTab: React.FC = () => {
                                   onChange={(e) => updateCustomSchedule(bus, index, { routeId: e.target.value })}
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fdc106]"
                                 >
-                                  {routes.filter(r => r.ownerId === user?.id).map(route => (
+                                  {routes.filter(r => r.ownerId === effectiveOwnerId).map(route => (
                                     <option key={route._id} value={route._id}>
                                       {route.startPoint} → {route.endPoint}
                                     </option>

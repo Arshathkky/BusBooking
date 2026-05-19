@@ -7,11 +7,13 @@ import { useAuth } from "../contexts/AuthContext";
 interface AddConductorModalProps {
   onClose: () => void;
   editingConductor?: ConductorType | null;
+  ownerId?: string;
 }
 
 const AddConductorModal: React.FC<AddConductorModalProps> = ({
   onClose,
   editingConductor = null,
+  ownerId,
 }) => {
   const { buses } = useBus();
   const { addConductor, updateConductor } = useConductor();
@@ -31,7 +33,8 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  const ownerBuses = buses.filter((bus) => bus.ownerId === user?.id);
+  const effectiveOwnerId = ownerId || user?.id;
+  const ownerBuses = buses.filter((bus) => bus.ownerId === effectiveOwnerId);
 
   // Prefill data when editing
   useEffect(() => {
@@ -85,6 +88,11 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
     }
 
     try {
+      if (!effectiveOwnerId) {
+        setError("Owner ID is required.");
+        return;
+      }
+
       if (editingConductor) {
         await updateConductor(editingConductor.id, {
           name: formData.name,
@@ -104,7 +112,7 @@ const AddConductorModal: React.FC<AddConductorModalProps> = ({
           email: formData.email,
           password: formData.password,
           assignedBusId: formData.assignedBusId || undefined,
-          ownerId: user.id,
+          ownerId: effectiveOwnerId,
           status: formData.status,
           role: formData.role,
           conductorCode: formData.conductorCode || undefined,

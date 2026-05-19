@@ -4,7 +4,11 @@ import { useConductor } from "../../contexts/conductorDataContext";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 
-const AssignConductorTab: React.FC = () => {
+interface AssignConductorTabProps {
+  ownerId?: string;
+}
+
+const AssignConductorTab: React.FC<AssignConductorTabProps> = ({ ownerId }) => {
   const { user } = useAuth();
   const { buses, fetchBuses, loading } = useBus();
   const { conductors } = useConductor();
@@ -16,13 +20,14 @@ const AssignConductorTab: React.FC = () => {
   const [removing, setRemoving] = useState(false);
 
   // Filter buses and conductors for this owner
+  const effectiveOwnerId = ownerId || user?.id;
   const ownerBuses = useMemo(
-    () => buses.filter((b) => b.ownerId === user?.id),
-    [buses, user]
+    () => buses.filter((b) => b.ownerId === effectiveOwnerId),
+    [buses, effectiveOwnerId]
   );
   const ownerConductors = useMemo(
-    () => conductors.filter((c) => c.role === "conductor" && c.ownerId === user?.id),
-    [conductors, user]
+    () => conductors.filter((c) => c.role === "conductor" && c.ownerId === effectiveOwnerId),
+    [conductors, effectiveOwnerId]
   );
 
   const selectedBus = ownerBuses.find((b) => b.id === selectedBusId);

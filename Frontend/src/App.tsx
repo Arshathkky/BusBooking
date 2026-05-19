@@ -81,7 +81,7 @@ const AppContent: React.FC = () => {
             }
           /> */}
           <Route path="/conductor-place" element={<ConductorLogin />} />
-          <Route path="/owner" element={user?.role === 'owner' ? <OwnerDashboard /> : <Navigate to="/login" />} />
+          <Route path="/owner" element={(user?.role === 'owner' || user?.role === 'admin') ? <OwnerDashboard /> : <Navigate to="/login" />} />
           <Route path="/conductor" element={user?.role === 'conductor' ? <ConductorDashboard /> : <Navigate to="/login" />} />
           <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
 

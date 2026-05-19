@@ -21,6 +21,7 @@ export interface RouteType {
 interface AddRouteModalProps {
   onClose: () => void;
   editingRoute?: RouteType | null; // ✅ no any
+  ownerId?: string;
 }
 
 interface StopType {
@@ -34,7 +35,7 @@ interface NewStopType {
   arrivalTime: string;
 }
 
-const AddRouteModal: React.FC<AddRouteModalProps> = ({ onClose, editingRoute }) => {
+const AddRouteModal: React.FC<AddRouteModalProps> = ({ onClose, editingRoute, ownerId }) => {
   const { addRoute, updateRoute } = useRouteData();
   const { user } = useAuth(); // logged-in owner
 
@@ -103,7 +104,8 @@ const AddRouteModal: React.FC<AddRouteModalProps> = ({ onClose, editingRoute }) 
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user?.id) return;
+    const effectiveOwnerId = ownerId || user?.id;
+    if (!effectiveOwnerId) return;
 
     const routeData: Omit<RouteType, "id" | "createdAt" | "updatedAt"> = {
       name: formData.name.trim(),
@@ -113,7 +115,7 @@ const AddRouteModal: React.FC<AddRouteModalProps> = ({ onClose, editingRoute }) 
       duration: formData.duration.trim(),
       status: formData.status,
       stops: stops.sort((a, b) => a.order - b.order).map((s) => s.name),
-      ownerId: user.id, // ✅ now always string
+      ownerId: effectiveOwnerId, // ✅ now always string
     };
 
     if (isEditing && editingRoute?.id) {

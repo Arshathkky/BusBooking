@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   ): Promise<User | null> => {
     try {
       /* ===== 1️⃣ ADMIN (Hardcoded) ===== */
-      if (email === "admin@touchmeplus.com" && password === "admin123") {
+      if (email === "admin@touchmeplus.com" && password === "ArshathHaseen@1654381") {
         const adminUser: User = {
           id: "1",
           name: "Admin",

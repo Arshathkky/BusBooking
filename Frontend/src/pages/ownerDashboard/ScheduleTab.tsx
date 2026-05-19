@@ -106,13 +106,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ ownerId }) => {
   };
 
   const getRouteName = (routeId: string) => {
-    const route = routes.find(r => r._id === routeId);
+    const route = routes.find(r => r.id === routeId);
     return route ? `${route.startPoint} → ${route.endPoint}` : 'Unknown Route';
   };
 
   const getRouteColor = (routeId: string) => {
     const colors = ['bg-blue-100 text-blue-800', 'bg-green-100 text-green-800', 'bg-purple-100 text-purple-800', 'bg-red-100 text-red-800', 'bg-yellow-100 text-yellow-800'];
-    const index = routes.findIndex(r => r._id === routeId) % colors.length;
+    const index = routes.findIndex(r => r.id === routeId) % colors.length;
     return colors[index];
   };
 
@@ -397,7 +397,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ ownerId }) => {
                                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#fdc106]"
                                 >
                                   {routes.filter(r => r.ownerId === effectiveOwnerId).map(route => (
-                                    <option key={route._id} value={route._id}>
+                                    <option key={route.id} value={route.id}>
                                       {route.startPoint} → {route.endPoint}
                                     </option>
                                   ))}

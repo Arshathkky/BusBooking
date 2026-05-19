@@ -18,9 +18,9 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
-    "jspdf": "^3.0.4",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
-    "node-cron": "^4.2.1",
-    "xlsx": "^0.18.5"
+    "node-cron": "^4.2.1"
   }
 }

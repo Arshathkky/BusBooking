@@ -904,6 +904,7 @@ const Checkpoint: React.FC<{ label: string; time: string; status: "completed" | 
 const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId, travelDate }) => {
     const [bookings, setBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [busInfo, setBusInfo] = useState<any>(null);
     const [localSeats, setLocalSeats] = useState<any[]>([]);
     const [hasPending, setHasPending] = useState(false);
     const [updating, setUpdating] = useState(false);
@@ -933,6 +934,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 const resBus = await fetch(`${BASE_URL}/buses/${busId}`);
                 const busData = await resBus.json();
                 if (busData.success) {
+                    setBusInfo(busData.data);
                     setLocalSeats(busData.data.seats || []);
                     setHasPending(busData.data.hasPendingChanges);
                 }
@@ -1320,7 +1322,10 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         doc.text("PASSENGER MANIFEST", 14, 18);
         doc.setFontSize(9);
         doc.setTextColor(200, 200, 200);
-        doc.text(`DATE: ${travelDate}   |   BUS ID: ${busId}`, 14, 27);
+        const busNumStr = busInfo?.busNumber ? `BUS NO: ${busInfo.busNumber}` : `BUS ID: ${busId}`;
+        const routeStr = busInfo?.routeId ? `ROUTE: ${busInfo.routeId.name || `${busInfo.routeId.startPoint} - ${busInfo.routeId.endPoint}`}` : '';
+        const metaLine = `DATE: ${travelDate}   |   ${busNumStr}${routeStr ? `   |   ${routeStr}` : ''}`;
+        doc.text(metaLine, 14, 27);
         doc.text(`PAID: ${paidCount}   |   RESERVED: ${reservedCount}   |   TOTAL: ${pdfBookings.length}`, 14, 34);
 
         // Table

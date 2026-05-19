@@ -149,6 +149,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
           (!isSelected && selectedSeats.length >= maxSeats)
         }
         className={style}
+        style={{ width: 'var(--seat-box-size, 3rem)', height: 'var(--seat-box-size, 3rem)' }}
         title={tooltipText}
       >
         {tooltipText && (
@@ -162,20 +163,20 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
             <svg className="w-3 h-3 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
           </div>
         ) : isActuallyOccupied ? (
-          <UserX className="w-4 h-4" />
+          <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         ) : isSelected ? (
-          <User className="w-4 h-4" />
+          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         ) : isReserved ? (
-          <span className="text-[10px]">R</span>
+          <span className="text-[9px] sm:text-[10px]">R</span>
         ) : isConductor ? (
-          <span className="text-[10px] uppercase font-bold">{conductorId?.slice(0, 2)}</span>
+          <span className="text-[9px] sm:text-[10px] uppercase font-bold">{conductorId?.slice(0, 2)}</span>
         ) : (isOwnerBlocked || isBlockedForOnline) ? (
-          <span className="text-[10px] uppercase font-black text-red-500 opacity-50">M</span>
+          <span className="text-[9px] sm:text-[10px] uppercase font-black text-red-500 opacity-50">M</span>
         ) : isLadies ? (
-          <span className="text-[10px]">L</span>
+          <span className="text-[9px] sm:text-[10px]">L</span>
         ) : null}
 
-        <div className="text-[11px] font-bold">{seatId}</div>
+        <div className="text-[9px] sm:text-[11px] font-bold">{seatId}</div>
       </button>
     );
   };
@@ -208,17 +209,17 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
         const totalRows = maxY + 1;
 
         return (
-          <div className="relative mx-auto border-[12px] border-gray-100 rounded-[60px] bg-white p-12 pt-20 shadow-inner" style={{ width: 'fit-content' }}>
-            <div className="absolute top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-16 text-gray-300">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] mt-2">Passenger Entry</div>
-              <Steering className="w-8 h-8" />
+          <div className="relative mx-auto border-4 sm:border-[12px] border-gray-100 rounded-[32px] sm:rounded-[60px] bg-white p-4 sm:p-12 pt-16 sm:pt-20 shadow-inner [--seat-box-size:42px] sm:[--seat-box-size:50px]" style={{ width: 'fit-content' }}>
+            <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 flex justify-between w-full px-6 sm:px-16 text-gray-300">
+              <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] mt-1 sm:mt-2">Passenger Entry</div>
+              <Steering className="w-6 h-6 sm:w-8 sm:h-8" />
             </div>
 
             <div
-              className="grid gap-2.5"
+              className="grid gap-1.5 sm:gap-2.5"
               style={{
-                gridTemplateColumns: `repeat(6, 50px)`,
-                gridTemplateRows: `repeat(${totalRows}, 50px)`
+                gridTemplateColumns: `repeat(6, var(--seat-box-size, 42px))`,
+                gridTemplateRows: `repeat(${totalRows}, var(--seat-box-size, 42px))`
               }}
             >
               {(() => {
@@ -230,7 +231,7 @@ const SeatLayout: React.FC<SeatLayoutProps> = ({
                   const y = Math.floor(i / 6);
                   const seat = gridMap.get(`${x},${y}`);
 
-                  if (!seat) return <div key={`empty-${i}`} className="w-[50px] h-[50px]" />;
+                  if (!seat) return <div key={`empty-${i}`} style={{ width: 'var(--seat-box-size, 42px)', height: 'var(--seat-box-size, 42px)' }} />;
 
                   const sid = String(seat.seatNumber);
                   const isOccupied = occupiedSeats.has(sid);
@@ -483,7 +484,7 @@ const SeatSelection: React.FC = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 overflow-x-auto w-full max-w-full pb-4 lg:pb-0">
           <SeatLayout
             totalSeats={busSeats.totalSeats}
             occupiedSeats={occupiedSeats}

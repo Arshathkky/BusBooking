@@ -109,17 +109,18 @@ const Payment: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto mt-10">
       {/* Header */}
-      <div className="flex items-center space-x-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center space-x-2 text-[#fdc106] hover:text-[#e6ad05] transition"
+          className="flex items-center space-x-2 text-[#fdc106] hover:text-[#e6ad05] transition self-start"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Back to Details</span>
         </button>
+        <div className="hidden sm:block text-gray-400">|</div>
         <div>
-          <h2 className="text-2xl font-bold">Secure Checkout</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Secure Checkout</h2>
+          <p className="text-gray-600 dark:text-gray-400">
             Please complete the payment to finalize your booking
           </p>
         </div>

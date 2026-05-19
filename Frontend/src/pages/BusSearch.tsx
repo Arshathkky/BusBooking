@@ -56,7 +56,7 @@ const BusSearch: React.FC = () => {
         </div>
 
         <form onSubmit={handleSearch} className="space-y-6 relative">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* From */}
             <div className="relative">
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
@@ -154,7 +154,7 @@ const BusSearch: React.FC = () => {
                     }))
                   }
                   min={today}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-0"
                   required
                 />
               </div>
@@ -170,14 +170,20 @@ const BusSearch: React.FC = () => {
                 <input
                   type="number"
                   min="1"
-                  value={searchData.passengers}
-                  onChange={(e) =>
+                  value={searchData.passengers || ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
                     setSearchData((prev) => ({
                       ...prev,
-                      passengers: Math.max(1, parseInt(e.target.value) || 1),
-                    }))
-                  }
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      passengers: val === "" ? "" as any : Math.max(1, parseInt(val) || 1),
+                    }));
+                  }}
+                  onBlur={() => {
+                    if (!searchData.passengers) {
+                      setSearchData((prev) => ({ ...prev, passengers: 1 }));
+                    }
+                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#fdc106] bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-0"
                 />
               </div>
             </div>

@@ -37,22 +37,48 @@ const BookingConfirmation: React.FC = () => {
         if (data.success) {
           const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
           if (found) {
-            // Check if redirect parameters confirm payment but database is still PENDING
+            // Check if redirect parameters confirm payment
             const isConfirmed = stateParam === "CONFIRMED" || status === "SUCCESS";
             
             if (isConfirmed && found.paymentStatus === "PENDING") {
               try {
-                const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
-                  paymentStatus: "PAID"
-                });
-                if (updateRes.success && updateRes.booking.paymentStatus === "PAID") {
-                  setBooking(updateRes.booking);
+                console.log("Payment confirmed - waiting for webhook or updating status...");
+                
+                // Wait a bit for webhook to process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Check current status again
+                const { data: refetchData } = await axios.get(`${baseUrl}/bookings`);
+                const refetched = refetchData.bookings.find((b: any) => String(b.bookingId) === cleanId);
+                
+                if (refetched?.paymentStatus === "PAID") {
+                  setBooking(refetched);
+                  console.log("✅ Payment confirmed by webhook");
                 } else {
-                  setError("Payment verification failed. Your booking is still pending.");
+                  // Try to update status if webhook didn't process yet
+                  const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
+                    paymentStatus: "PAID"
+                  });
+                  
+                  if (updateRes.success && updateRes.booking.paymentStatus === "PAID") {
+                    setBooking(updateRes.booking);
+                    console.log("✅ Payment status updated successfully");
+                  } else {
+                    setError("Payment verification in progress. Please refresh in a moment.");
+                  }
                 }
               } catch (updateErr: any) {
-                console.error("Auto-updating payment status failed:", updateErr);
-                setError(updateErr.response?.data?.message || "Payment verification failed. If you paid, please contact support.");
+                console.error("Auto-updating payment status failed:", updateErr.response?.data || updateErr);
+                
+                // ✅ Better error message
+                const errorMsg = updateErr.response?.data?.message || "Payment verification failed";
+                
+                // If it's a Genie gateway verification error, provide helpful message
+                if (errorMsg.includes("Genie gateway")) {
+                  setError("Payment gateway verification in progress. Please refresh the page in 10 seconds.");
+                } else {
+                  setError(errorMsg || "Payment verification failed. If you paid, please contact support.");
+                }
               }
             } else if (["PAID", "OFFLINE", "BLOCKED"].includes(found.paymentStatus)) {
               setBooking(found);

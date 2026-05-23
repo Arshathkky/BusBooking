@@ -124,11 +124,12 @@ export const genieNotify = async (req, res) => {
         const cleanOrderId = order_id.toString().replace(/[^\d-].*/, "").split("-")[0];
         const booking = await Booking.findOne({ bookingId: Number(cleanOrderId) });
         if (!booking) {
+            console.warn(`Booking not found for order_id: ${order_id}, cleanOrderId: ${cleanOrderId}`);
             return res.status(404).send("Booking not found");
         }
 
         if (status === "SUCCESS") {
-            // Verify status via Genie V2 GET API directly to prevent signature/webhook spoofing
+            // ✅ Verify status via Genie V2 GET API directly to prevent signature/webhook spoofing
             const tokenToVerify = transactionId || booking.paymentToken;
             if (tokenToVerify) {
                 try {
@@ -142,55 +143,68 @@ export const genieNotify = async (req, res) => {
 
                     console.log("--- Genie Webhook Verification Response ---", verifyResponse.data);
 
+                    // ✅ Check multiple possible status fields for robustness
                     const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
                                       verifyResponse.data?.data?.status === "SUCCESS" || 
                                       verifyResponse.data?.transactionStatus === "SUCCESS" || 
-                                      verifyResponse.data?.paymentStatus === "SUCCESS";
+                                      verifyResponse.data?.paymentStatus === "SUCCESS" ||
+                                      verifyResponse.data?.response?.status === "SUCCESS";
 
                     if (!isSuccess) {
                         console.warn("Genie API reported transaction was not successful. Rejecting webhook status change.");
+                        booking.paymentStatus = "FAILED";
+                        await booking.save();
                         return res.status(400).send("Transaction not verified on Genie gateway");
                     }
+
+                    // ✅ Mark as PAID
+                    booking.paymentStatus = "PAID";
+                    booking.paymentToken = tokenToVerify;
+                    await booking.save();
+
+                    // Send SMS
+                    const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+                    
+                    // 1. Send to Passenger
+                    const passengerPhone = booking.passengerDetails?.phone;
+                    if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
+                        sendSMS(passengerPhone, msg);
+                    }
+
+                    // 2. ✅ Also notify owner if enabled
+                    try {
+                        const bus = await Bus.findById(booking.bus.id);
+                        if (bus && bus.notifyOwnerOnBooking && bus.ownerPhoneForSMS) {
+                            const ownerMsg = `[OWNER COPY] ${msg}`;
+                            sendSMS(bus.ownerPhoneForSMS, ownerMsg);
+                        }
+                    } catch (err) {
+                        console.error("Owner SMS failed:", err);
+                    }
+                    
+                    console.log(`✅ Genie Payment Success for Order: ${order_id}`);
+                    return res.status(200).send("OK");
+
                 } catch (error) {
                     console.error("Genie Webhook direct verification failed:", error.response?.data || error.message);
+                    booking.paymentStatus = "FAILED";
+                    await booking.save();
                     return res.status(400).send("Could not verify transaction with Genie API");
                 }
             } else {
                 console.warn("No transaction token available to verify webhook payment.");
+                booking.paymentStatus = "FAILED";
+                await booking.save();
                 return res.status(400).send("Verification token missing");
             }
-
-            booking.paymentStatus = "PAID";
-            await booking.save();
-
-            // Send SMS
-            const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
-            
-            // 1. Send to Passenger
-            const passengerPhone = booking.passengerDetails?.phone;
-            if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
-                sendSMS(passengerPhone, msg);
-            }
-
-            // 2. ✅ Also notify owner if enabled
-            try {
-                const bus = await Bus.findById(booking.bus.id);
-                if (bus && bus.notifyOwnerOnBooking && bus.ownerPhoneForSMS) {
-                    const ownerMsg = `[OWNER COPY] ${msg}`;
-                    sendSMS(bus.ownerPhoneForSMS, ownerMsg);
-                }
-            } catch (err) {
-                console.error("Owner SMS failed:", err);
-            }
-            
-            console.log(`✅ Genie Payment Success for Order: ${order_id}`);
         } else {
+            // Payment was not successful
             booking.paymentStatus = "CANCELLED";
             await booking.save();
             console.log(`❌ Genie Payment Failed/Cancelled for Order: ${order_id}`);
+            return res.status(200).send("OK");
         }
 
-        res.status(200).send("OK");
     } catch (error) {
         console.error("Genie Notify Error:", error);
         res.status(500).send("Internal Server Error");

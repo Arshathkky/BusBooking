@@ -190,10 +190,10 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
 
     // Already processed
-    if (booking.paymentStatus !== "PENDING") {
+    if (booking.paymentStatus !== "PENDING" && booking.paymentStatus !== "ONLINE") {
       return res.status(400).json({
         success: false,
-        message: "Booking already paid or cancelled",
+        message: `Booking is already ${booking.paymentStatus}. Cannot change status.`,
       });
     }
 
@@ -204,9 +204,10 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-    // ✅ Mark booking PAID (NO BUS UPDATE) with Genie payment validation
+    // ✅ Mark booking PAID - with enhanced Genie payment validation
     const targetStatus = paymentStatus.toUpperCase();
     if (targetStatus === "PAID") {
+      // Only verify if this is an online booking with a paymentToken
       if (booking.paymentToken) {
         try {
           const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${booking.paymentToken}`;
@@ -217,28 +218,44 @@ export const updatePaymentStatus = async (req, res) => {
             }
           });
 
-          console.log("--- Genie Status Check Response ---", verifyResponse.data);
+          console.log("--- Payment Status Check Response ---", verifyResponse.data);
 
+          // ✅ Check all possible status fields
           const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
                             verifyResponse.data?.data?.status === "SUCCESS" || 
                             verifyResponse.data?.transactionStatus === "SUCCESS" || 
-                            verifyResponse.data?.paymentStatus === "SUCCESS";
+                            verifyResponse.data?.paymentStatus === "SUCCESS" ||
+                            verifyResponse.data?.response?.status === "SUCCESS";
 
           if (!isSuccess) {
             return res.status(400).json({
               success: false,
-              message: "Payment verification failed: Transaction not successful on Genie gateway."
+              message: "Payment verification failed: Transaction not successful on Genie gateway.",
+              details: {
+                bookingId: booking.bookingId,
+                status: verifyResponse.data?.status,
+                paymentStatus: verifyResponse.data?.paymentStatus
+              }
             });
           }
         } catch (error) {
           console.error("Genie API verification error:", error.response?.data || error.message);
-          // If the status API fails, check if the webhook already set it to PAID in the database
-          if (booking.paymentStatus !== "PAID") {
-            return res.status(400).json({
-              success: false,
-              message: "Failed to verify payment with Genie gateway."
+          
+          // ✅ Check if webhook already set it to PAID in the database
+          if (booking.paymentStatus === "PAID") {
+            console.log("Booking already marked as PAID by webhook");
+            return res.status(200).json({
+              success: true,
+              message: "Booking already confirmed by webhook",
+              booking
             });
           }
+          
+          return res.status(400).json({
+            success: false,
+            message: "Could not verify payment with Genie gateway. Please try again.",
+            details: error.response?.data?.message || error.message
+          });
         }
       } else {
         // If it has NO paymentToken, and it was a customer online booking (status PENDING),

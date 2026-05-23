@@ -4,6 +4,21 @@ import Conductor from "../models/conductorModel.js";
 import Route from "../models/routeModel.js";
 import Booking from "../models/bookingModel.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+// ✅ Generate JWT Token
+const generateToken = (owner) => {
+  return jwt.sign(
+    { 
+      id: owner._id.toString(), 
+      email: owner.email, 
+      role: "owner",
+      name: owner.name 
+    },
+    process.env.JWT_SECRET || "your-secret-key",
+    { expiresIn: "7d" }
+  );
+};
 
 // ------------------------------
 // Get all owners
@@ -122,24 +137,32 @@ export const getOwnerDetails = async (req, res) => {
   }
 };
 
-// ------------------------------
-// Owner login
-// ------------------------------
+// ✅ Owner login - Issue JWT Token
 export const loginOwner = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const owner = await Owner.findOne({ email });
-    if (!owner) return res.status(400).json({ message: "Invalid email or password" });
+    if (!owner) return res.status(400).json({ success: false, message: "Invalid email or password" });
 
     const isMatch = await bcrypt.compare(password, owner.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
+    if (!isMatch) return res.status(400).json({ success: false, message: "Invalid email or password" });
 
-    const { password: _, ...ownerData } = owner.toObject(); // remove password
-    res.status(200).json(ownerData);
+    // ✅ Generate JWT Token
+    const token = generateToken(owner);
+
+    const { password: _, ...ownerData } = owner.toObject();
+    res.status(200).json({ 
+      success: true,
+      token,
+      user: {
+        ...ownerData,
+        role: "owner"
+      }
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

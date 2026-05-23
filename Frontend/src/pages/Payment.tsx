@@ -12,7 +12,7 @@ declare global {
 const Payment: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addBooking, updatePaymentStatus } = useBooking();
+  const { addBooking } = useBooking();
 
   const {
     bus,

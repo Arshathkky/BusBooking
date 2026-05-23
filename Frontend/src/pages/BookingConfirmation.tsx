@@ -28,71 +28,78 @@ const BookingConfirmation: React.FC = () => {
     const fetchBookingByNumericId = async (id: string) => {
       try {
         setLoading(true);
-        // Parse the booking ID (it might have a timestamp suffix)
         const cleanId = id.split("_")[0];
         const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
-        // We need a backend route to fetch by numeric bookingId or we search all and filter
+        // First fetch to get initial booking status
         const { data } = await axios.get(`${baseUrl}/bookings`);
         if (data.success) {
           const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
-          if (found) {
-            // Check if redirect parameters confirm payment
-            const isConfirmed = stateParam === "CONFIRMED" || status === "SUCCESS";
+          if (!found) {
+            setError("Booking not found.");
+            setLoading(false);
+            return;
+          }
+
+          // If payment status is already confirmed, show it
+          if (["PAID", "OFFLINE"].includes(found.paymentStatus)) {
+            setBooking(found);
+            setLoading(false);
+            return;
+          }
+
+          // If status is PENDING and user was redirected (suggesting payment attempt)
+          // Wait for webhook to process and poll backend
+          if (found.paymentStatus === "PENDING" && (stateParam === "CONFIRMED" || status === "SUCCESS")) {
+            console.log("⏳ Payment processing - waiting for webhook confirmation...");
             
-            if (isConfirmed && found.paymentStatus === "PENDING") {
-              try {
-                console.log("Payment confirmed - waiting for webhook or updating status...");
+            // Poll backend up to 10 times (30 seconds total)
+            let attempts = 0;
+            const maxAttempts = 10;
+            const pollInterval = 3000; // 3 seconds between polls
+
+            const pollBookingStatus = async () => {
+              while (attempts < maxAttempts) {
+                attempts++;
                 
-                // Wait a bit for webhook to process
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Wait before polling
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
-                // Check current status again
-                const { data: refetchData } = await axios.get(`${baseUrl}/bookings`);
-                const refetched = refetchData.bookings.find((b: any) => String(b.bookingId) === cleanId);
-                
-                if (refetched?.paymentStatus === "PAID") {
-                  setBooking(refetched);
-                  console.log("✅ Payment confirmed by webhook");
-                } else {
-                  // Try to update status if webhook didn't process yet
-                  const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
-                    paymentStatus: "PAID"
-                  });
+                try {
+                  const { data: pollData } = await axios.get(`${baseUrl}/bookings`);
+                  const polledBooking = pollData.bookings.find((b: any) => String(b.bookingId) === cleanId);
                   
-                  if (updateRes.success && updateRes.booking.paymentStatus === "PAID") {
-                    setBooking(updateRes.booking);
-                    console.log("✅ Payment status updated successfully");
-                  } else {
-                    setError("Payment verification in progress. Please refresh in a moment.");
+                  if (polledBooking?.paymentStatus === "PAID") {
+                    setBooking(polledBooking);
+                    console.log("✅ Payment confirmed by webhook");
+                    return;
                   }
-                }
-              } catch (updateErr: any) {
-                console.error("Auto-updating payment status failed:", updateErr.response?.data || updateErr);
-                
-                // ✅ Better error message
-                const errorMsg = updateErr.response?.data?.message || "Payment verification failed";
-                
-                // If it's a Genie gateway verification error, provide helpful message
-                if (errorMsg.includes("Genie gateway")) {
-                  setError("Payment gateway verification in progress. Please refresh the page in 10 seconds.");
-                } else {
-                  setError(errorMsg || "Payment verification failed. If you paid, please contact support.");
+                  
+                  if (polledBooking?.paymentStatus === "FAILED" || polledBooking?.paymentStatus === "CANCELLED") {
+                    setError("Payment was not processed. Please try again.");
+                    return;
+                  }
+                } catch (pollErr) {
+                  console.error("Poll attempt failed:", pollErr);
                 }
               }
-            } else if (["PAID", "OFFLINE", "BLOCKED"].includes(found.paymentStatus)) {
-              setBooking(found);
-            } else {
-              setError(`Booking status is ${found.paymentStatus}. A confirmed ticket cannot be generated.`);
-            }
+              
+              // After max polls, show pending message
+              setError("Payment processing taking longer than expected. Your confirmation email will be sent once verified. Check your email or refresh this page.");
+            };
+
+            pollBookingStatus();
+          } else if (found.paymentStatus === "CANCELLED" || found.paymentStatus === "FAILED") {
+            setError(`Payment was ${found.paymentStatus.toLowerCase()}. Please try booking again.`);
+            setLoading(false);
           } else {
-            setError("Booking not found.");
+            setError(`Booking status is ${found.paymentStatus}. A confirmed ticket cannot be generated.`);
+            setLoading(false);
           }
         }
       } catch (err) {
         console.error("Error fetching booking:", err);
         setError("Failed to load booking details.");
-      } finally {
         setLoading(false);
       }
     };

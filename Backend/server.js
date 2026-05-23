@@ -49,9 +49,37 @@ import { startExpireCron } from "./expireBooking.js";
 // Initialize express app
 const app = express();
 
-// Middleware
-app.use(cors());
+// Secure CORS configuration
+const allowedOrigins = [
+  "https://mseat.touchmeplus.com",
+  "https://bus-booking-nt91.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:5000",
+  "http://localhost:3000"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS Policy Violation"), false);
+  },
+  credentials: true
+}));
+
 app.use(express.json());
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+});
 
 // Request Logging
 app.use((req, res, next) => {

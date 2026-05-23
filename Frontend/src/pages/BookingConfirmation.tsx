@@ -45,17 +45,19 @@ const BookingConfirmation: React.FC = () => {
                 const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
                   paymentStatus: "PAID"
                 });
-                if (updateRes.success) {
+                if (updateRes.success && updateRes.booking.paymentStatus === "PAID") {
                   setBooking(updateRes.booking);
                 } else {
-                  setBooking(found);
+                  setError("Payment verification failed. Your booking is still pending.");
                 }
-              } catch (updateErr) {
+              } catch (updateErr: any) {
                 console.error("Auto-updating payment status failed:", updateErr);
-                setBooking(found);
+                setError(updateErr.response?.data?.message || "Payment verification failed. If you paid, please contact support.");
               }
-            } else {
+            } else if (["PAID", "OFFLINE", "BLOCKED"].includes(found.paymentStatus)) {
               setBooking(found);
+            } else {
+              setError(`Booking status is ${found.paymentStatus}. A confirmed ticket cannot be generated.`);
             }
           } else {
             setError("Booking not found.");

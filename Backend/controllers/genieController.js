@@ -4,7 +4,7 @@ import Bus from "../models/busModel.js";
 import { sendSMS } from "../utils/smsService.js";
 
 const sanitizeUrl = (url) => url?.toString().trim().replace(/\/+$/, "");
-const getGenieBaseUrl = () => {
+export const getGenieBaseUrl = () => {
     const override = sanitizeUrl(process.env.GENIE_BASE_URL);
     if (override && override.toLowerCase().includes("genie")) {
         return override;
@@ -19,7 +19,7 @@ const getGenieBaseUrl = () => {
  */
 export const initiateGeniePayment = async (req, res) => {
     try {
-        const { bookingId, amount, customerDetails, selectedSeats } = req.body;
+        const { bookingId, customerDetails, selectedSeats } = req.body;
 
         if (!bookingId) {
             return res.status(400).json({ success: false, message: "Booking ID is required" });
@@ -30,8 +30,10 @@ export const initiateGeniePayment = async (req, res) => {
             return res.status(404).json({ success: false, message: "Booking not found" });
         }
 
-        if (!amount || isNaN(Number(amount))) {
-            return res.status(400).json({ success: false, message: "Invalid amount provided" });
+        // Use booking.totalAmount directly from database to prevent parameter tampering
+        const secureAmount = booking.totalAmount;
+        if (!secureAmount || isNaN(Number(secureAmount)) || secureAmount <= 0) {
+            return res.status(400).json({ success: false, message: "Invalid booking amount in database" });
         }
 
         // Format phone number to 94XXXXXXXXX format
@@ -43,7 +45,7 @@ export const initiateGeniePayment = async (req, res) => {
         }
 
         const payload = {
-            amount: Math.round(Number(amount) * 100), // Genie expects amount in cents (integer)
+            amount: Math.round(Number(secureAmount) * 100), // Genie expects amount in cents (integer)
             currency: "LKR",
             localId: `${bookingId}-${Date.now()}`, 
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation?order_id=${bookingId}`,
@@ -76,10 +78,16 @@ export const initiateGeniePayment = async (req, res) => {
 
         if (response.data && (response.data.url || response.data.paymentUrl)) {
             const paymentUrl = response.data.url || response.data.paymentUrl;
+            const token = response.data.token || response.data.id;
+
+            // Save transaction token to booking for verification
+            booking.paymentToken = token;
+            await booking.save();
+
             res.status(200).json({ 
                 success: true, 
                 payment_url: paymentUrl,
-                token: response.data.token || response.data.id 
+                token: token 
             });
         } else {
             throw new Error(response.data.message || "Failed to get payment URL from Genie");
@@ -109,9 +117,7 @@ export const genieNotify = async (req, res) => {
         console.log("--- Genie Webhook Received ---");
         console.log("Body:", JSON.stringify(req.body, null, 2));
 
-        const { order_id, status, signature } = req.body;
-        
-        // TODO: Verify signature from Genie to ensure authenticity
+        const { order_id, status, signature, id: transactionId } = req.body;
         
         // Handle order_id if it's passed as a string or contains extra info (e.g., bookingId-timestamp)
         // Extract numeric bookingId (it might be bookingId-timestamp)
@@ -122,6 +128,38 @@ export const genieNotify = async (req, res) => {
         }
 
         if (status === "SUCCESS") {
+            // Verify status via Genie V2 GET API directly to prevent signature/webhook spoofing
+            const tokenToVerify = transactionId || booking.paymentToken;
+            if (tokenToVerify) {
+                try {
+                    const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${tokenToVerify}`;
+                    const verifyResponse = await axios.get(genieUrl, {
+                        headers: {
+                            "Authorization": process.env.GENIE_API_KEY,
+                            "Content-Type": "application/json"
+                        }
+                    });
+
+                    console.log("--- Genie Webhook Verification Response ---", verifyResponse.data);
+
+                    const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
+                                      verifyResponse.data?.data?.status === "SUCCESS" || 
+                                      verifyResponse.data?.transactionStatus === "SUCCESS" || 
+                                      verifyResponse.data?.paymentStatus === "SUCCESS";
+
+                    if (!isSuccess) {
+                        console.warn("Genie API reported transaction was not successful. Rejecting webhook status change.");
+                        return res.status(400).send("Transaction not verified on Genie gateway");
+                    }
+                } catch (error) {
+                    console.error("Genie Webhook direct verification failed:", error.response?.data || error.message);
+                    return res.status(400).send("Could not verify transaction with Genie API");
+                }
+            } else {
+                console.warn("No transaction token available to verify webhook payment.");
+                return res.status(400).send("Verification token missing");
+            }
+
             booking.paymentStatus = "PAID";
             await booking.save();
 

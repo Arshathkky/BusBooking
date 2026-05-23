@@ -5,6 +5,8 @@ import Conductor from "../models/conductorModel.js";
 import { Counter } from "../models/counterModal.js";
 import crypto from "crypto";
 import { sendSMS } from "../utils/smsService.js";
+import axios from "axios";
+import { getGenieBaseUrl } from "./genieController.js";
 
 const MUTEX = {};
 
@@ -77,11 +79,33 @@ export const createBooking = async (req, res) => {
     const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
     const farFuture = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
 
+    // Fetch the bus to get the official ticket price and compute secure amount
+    const busDb = await Bus.findById(bus.id);
+    if (!busDb) {
+      return res.status(404).json({ success: false, message: "Bus not found" });
+    }
+
+    let actualPrice = busDb.price;
+    if (busDb.scheduleMode === "custom") {
+      const customEntry = busDb.customSchedule.find(entry => entry.date === searchData.date);
+      if (customEntry) {
+        actualPrice = customEntry.price || busDb.price;
+      }
+    }
+
+    let computedTotalAmount = 0;
+    if (!isOwnerOverride) {
+      computedTotalAmount = actualPrice * selectedSeats.length;
+    } else if (req.body.totalAmount) {
+      computedTotalAmount = Number(req.body.totalAmount);
+    }
+
     // 6️⃣ Create booking (DATE-WISE)
     const booking = await Booking.create({
       ...req.body,
       bookingId,
       referenceId,
+      totalAmount: computedTotalAmount, // Overwrite client-provided totalAmount
       holdExpiresAt: isPermanentStatus ? farFuture : expiryTime,
       paymentExpiresAt: isPermanentStatus ? farFuture : expiryTime,
       paymentStatus: req.body.paymentStatus || "PENDING",
@@ -180,8 +204,55 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-    // ✅ Mark booking PAID (NO BUS UPDATE)
-    booking.paymentStatus = paymentStatus.toUpperCase();
+    // ✅ Mark booking PAID (NO BUS UPDATE) with Genie payment validation
+    const targetStatus = paymentStatus.toUpperCase();
+    if (targetStatus === "PAID") {
+      if (booking.paymentToken) {
+        try {
+          const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${booking.paymentToken}`;
+          const verifyResponse = await axios.get(genieUrl, {
+            headers: {
+              "Authorization": process.env.GENIE_API_KEY,
+              "Content-Type": "application/json"
+            }
+          });
+
+          console.log("--- Genie Status Check Response ---", verifyResponse.data);
+
+          const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
+                            verifyResponse.data?.data?.status === "SUCCESS" || 
+                            verifyResponse.data?.transactionStatus === "SUCCESS" || 
+                            verifyResponse.data?.paymentStatus === "SUCCESS";
+
+          if (!isSuccess) {
+            return res.status(400).json({
+              success: false,
+              message: "Payment verification failed: Transaction not successful on Genie gateway."
+            });
+          }
+        } catch (error) {
+          console.error("Genie API verification error:", error.response?.data || error.message);
+          // If the status API fails, check if the webhook already set it to PAID in the database
+          if (booking.paymentStatus !== "PAID") {
+            return res.status(400).json({
+              success: false,
+              message: "Failed to verify payment with Genie gateway."
+            });
+          }
+        }
+      } else {
+        // If it has NO paymentToken, and it was a customer online booking (status PENDING),
+        // we should NOT allow setting it to PAID directly!
+        if (booking.paymentStatus === "PENDING") {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot mark a pending online booking as paid without a valid payment transaction."
+          });
+        }
+      }
+    }
+
+    booking.paymentStatus = targetStatus;
     await booking.save();
 
     // 📩 Send SMS if Paid

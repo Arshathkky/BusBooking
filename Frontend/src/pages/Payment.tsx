@@ -22,6 +22,7 @@ const Payment: React.FC = () => {
     busNumber,
     passengerDetails,
     pickupLocation,
+    paymentStatus,
   } = location.state || {};
 
   const [processing, setProcessing] = useState(false);
@@ -173,18 +174,23 @@ const Payment: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => handlePayment("genie")}
-            disabled={processing}
-            className={`w-full py-4 rounded-lg font-bold transition-colors ${
-              !processing
-                ? "bg-[#fdc106] hover:bg-[#e6ad05]"
-                : "bg-gray-300 cursor-not-allowed"
-            }`}
-          >
-            {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
-          </button>
-
+            { (paymentStatus && (paymentStatus.toUpperCase() === "PAID" || paymentStatus.toUpperCase() === "CANCELLED")) ? (
+              <div className="text-center text-red-600 font-semibold">
+                {paymentStatus.toUpperCase() === "PAID" ? "Booking already paid." : "Booking has been cancelled; payment not allowed."}
+              </div>
+            ) : (
+              <button
+                onClick={() => handlePayment("genie")}
+                disabled={processing}
+                className={`w-full py-4 rounded-lg font-bold transition-colors ${
+                  !processing
+                    ? "bg-[#fdc106] hover:bg-[#e6ad05]"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
+              </button>
+            ) }
 
         </div>
       </div>

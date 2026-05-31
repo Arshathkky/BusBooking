@@ -90,8 +90,9 @@ export const createBooking = async (req, res) => {
     const referenceId = `${searchData.date}-${selectedSeats.join("")}-${busDb.busNumber || busDb.name}`;
 
     // 5️⃣ Hold & payment expiry (15 mins for customers, far future for owner actions)
+    // Only admins/owners can force a specific payment status; normal users always start as PENDING
     let targetPaymentStatus = "PENDING";
-    if (isOwnerOrAdmin && req.body.paymentStatus) {
+    if (req.user && ["admin", "owner"].includes(req.user.role) && req.body.paymentStatus) {
       targetPaymentStatus = req.body.paymentStatus.toUpperCase();
     }
 
@@ -227,6 +228,12 @@ export const updatePaymentStatus = async (req, res) => {
 
     // Already processed
     if (booking.paymentStatus !== "PENDING" && booking.paymentStatus !== "ONLINE") {
+      // If the booking is already cancelled, do not allow payment attempts
+      if (paymentStatus && paymentStatus.toUpperCase() === "CANCELLED") {
+        alert("This booking has been cancelled and cannot be paid.");
+        setProcessing(false);
+        return;
+      }
       return res.status(400).json({
         success: false,
         message: `Booking is already ${booking.paymentStatus}. Cannot change status.`,

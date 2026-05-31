@@ -5,19 +5,20 @@ const router = express.Router();
 import * as ownerController from "../controllers/ownerController.js";
 import * as overviewController from "../controllers/overviewController.js";
 
-// Owner login
+// Middleware
+import { verifyToken, checkOwnership, requireRole } from "../middleware/authMiddleware.js";
+
+// Owner login (public)
 router.post("/login", ownerController.loginOwner);
 
 // CRUD operations
-router.get("/", ownerController.getOwners);
-router.get("/:id", ownerController.getOwnerById);
-router.get("/:id/details", ownerController.getOwnerDetails);
-router.post("/", ownerController.addOwner);
-router.put("/:id", ownerController.updateOwner);
-router.delete("/:id", ownerController.deleteOwner);
+router.get("/", verifyToken, requireRole(["admin"]), ownerController.getOwners);
+router.get("/:id", verifyToken, checkOwnership("id"), ownerController.getOwnerById);
+router.get("/:id/details", verifyToken, checkOwnership("id"), ownerController.getOwnerDetails);
+router.post("/", verifyToken, requireRole(["admin"]), ownerController.addOwner);
+router.put("/:id", verifyToken, checkOwnership("id"), ownerController.updateOwner);
+router.delete("/:id", verifyToken, requireRole(["admin"]), ownerController.deleteOwner);
 
-
-router.get("/:id/overview", overviewController.getOwnerOverview);
-
+router.get("/:id/overview", verifyToken, checkOwnership("id"), overviewController.getOwnerOverview);
 
 export default router;

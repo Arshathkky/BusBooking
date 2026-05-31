@@ -97,6 +97,17 @@ app.use("/api/owner", ownerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/genie", genieRoutes);
 
+// Secure Logout Endpoint
+app.post("/api/logout", (req, res) => {
+  const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: isLocal ? "lax" : "none",
+  });
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
 // Health Check Endpoint
 app.get("/", (req, res) => {
   res.json({ message: "✅ API is running successfully" });

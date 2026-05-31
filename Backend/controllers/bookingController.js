@@ -17,7 +17,23 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 =========================== */
 export const createBooking = async (req, res) => {
   const { searchData, selectedSeats, bus } = req.body;
-  const lockKey = `${bus.id}-${searchData.date}`;
+
+  if (!bus || !bus.id) {
+    return res.status(400).json({ success: false, message: "Bus ID is required" });
+  }
+  if (!searchData || !searchData.date) {
+    return res.status(400).json({ success: false, message: "Search data with date is required" });
+  }
+  if (!selectedSeats || !Array.isArray(selectedSeats) || selectedSeats.length === 0) {
+    return res.status(400).json({ success: false, message: "Selected seats are required" });
+  }
+
+  const busDb = await Bus.findById(bus.id);
+  if (!busDb) {
+    return res.status(404).json({ success: false, message: "Bus not found" });
+  }
+
+  const lockKey = `${busDb._id.toString()}-${searchData.date}`;
 
   // Acquire Lock
   while (MUTEX[lockKey]) {
@@ -26,18 +42,17 @@ export const createBooking = async (req, res) => {
   MUTEX[lockKey] = true;
 
   try {
-    const isOwnerOverride = searchData.from === 'Owner Override';
+    const isOwnerOrAdmin = req.user && ["owner", "admin"].includes(req.user.role);
+    const isOwnerOverride = isOwnerOrAdmin && searchData.from === 'Owner Override';
 
     // 2️⃣ 🔥 CONCURRENCY CHECK — reject if any seat is already locked
     const seatNumbers = selectedSeats.map(String);
     const conflicting = await Booking.findOne({
-      "bus.id": bus.id,
+      "bus.id": busDb._id,
       "searchData.date": searchData.date,
       selectedSeats: { $in: seatNumbers },
       $or: [
         { paymentStatus: "PAID" },
-        // If it's a customer booking, block if any status exists. 
-        // If it's an owner booking (Override), we might want to allow it, but for now let's just add the statuses to the block list.
         { paymentStatus: "BLOCKED" },
         { paymentStatus: "OFFLINE" },
         { paymentStatus: "PENDING", holdExpiresAt: { $gt: new Date() } }
@@ -55,7 +70,7 @@ export const createBooking = async (req, res) => {
     // If owner override, delete all conflicting non-paid bookings for these seats
     if (isOwnerOverride) {
         await Booking.deleteMany({
-            "bus.id": new mongoose.Types.ObjectId(bus.id),
+            "bus.id": busDb._id,
             "searchData.date": searchData.date,
             selectedSeats: { $in: seatNumbers },
             paymentStatus: { $ne: "PAID" }
@@ -71,19 +86,18 @@ export const createBooking = async (req, res) => {
 
     const bookingId = counter.seq;
 
-    // 4️⃣ Reference ID
-    const referenceId = `${searchData.date}-${selectedSeats.join("")}-${bus.busNumber || bus.name}`;
+    // 4️⃣ Reference ID (using DB values)
+    const referenceId = `${searchData.date}-${selectedSeats.join("")}-${busDb.busNumber || busDb.name}`;
 
     // 5️⃣ Hold & payment expiry (15 mins for customers, far future for owner actions)
-    const isPermanentStatus = ["PAID", "BLOCKED", "OFFLINE"].includes(req.body.paymentStatus) || isOwnerOverride;
+    let targetPaymentStatus = "PENDING";
+    if (isOwnerOrAdmin && req.body.paymentStatus) {
+      targetPaymentStatus = req.body.paymentStatus.toUpperCase();
+    }
+
+    const isPermanentStatus = ["PAID", "BLOCKED", "OFFLINE"].includes(targetPaymentStatus) || isOwnerOverride;
     const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
     const farFuture = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
-
-    // Fetch the bus to get the official ticket price and compute secure amount
-    const busDb = await Bus.findById(bus.id);
-    if (!busDb) {
-      return res.status(404).json({ success: false, message: "Bus not found" });
-    }
 
     let actualPrice = busDb.price;
     if (busDb.scheduleMode === "custom") {
@@ -100,15 +114,38 @@ export const createBooking = async (req, res) => {
       computedTotalAmount = Number(req.body.totalAmount);
     }
 
+    // Reconstruct sanitized bus object using DB values to prevent tampering
+    const sanitizedBus = {
+      id: busDb._id,
+      name: busDb.name,
+      type: busDb.type,
+      busNumber: busDb.busNumber
+    };
+
     // 6️⃣ Create booking (DATE-WISE)
     const booking = await Booking.create({
-      ...req.body,
       bookingId,
       referenceId,
-      totalAmount: computedTotalAmount, // Overwrite client-provided totalAmount
+      bus: sanitizedBus,
+      searchData: {
+        from: searchData.from,
+        to: searchData.to,
+        date: searchData.date
+      },
+      selectedSeats: seatNumbers,
+      totalAmount: computedTotalAmount,
+      passengerDetails: {
+        name: req.body.passengerDetails?.name || "",
+        phone: req.body.passengerDetails?.phone || "",
+        email: req.body.passengerDetails?.email || "",
+        address: req.body.passengerDetails?.address || "",
+        nic: req.body.passengerDetails?.nic || "",
+      },
       holdExpiresAt: isPermanentStatus ? farFuture : expiryTime,
       paymentExpiresAt: isPermanentStatus ? farFuture : expiryTime,
-      paymentStatus: req.body.paymentStatus || "PENDING",
+      paymentStatus: targetPaymentStatus,
+      pickupLocation: req.body.pickupLocation || "",
+      isCheckedIn: false,
     });
 
     res.status(201).json({ success: true, booking });
@@ -132,10 +169,9 @@ export const createBooking = async (req, res) => {
 
         // 2. ✅ Also send to Owner if enabled
         try {
-            const busDetails = await Bus.findById(booking.bus.id);
-            if (busDetails && busDetails.notifyOwnerOnBooking && busDetails.ownerPhoneForSMS) {
+            if (busDb.notifyOwnerOnBooking && busDb.ownerPhoneForSMS) {
                 const ownerMsg = `[OWNER COPY] ${msg}`;
-                sendSMS(busDetails.ownerPhoneForSMS, ownerMsg);
+                sendSMS(busDb.ownerPhoneForSMS, ownerMsg);
             }
         } catch (err) {
             console.error("Owner SMS failed:", err);

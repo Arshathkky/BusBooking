@@ -151,13 +151,23 @@ export const loginOwner = async (req, res) => {
     // ✅ Generate JWT Token
     const token = generateToken(owner);
 
-    const { password: _, ...ownerData } = owner.toObject();
+    // Set JWT in HttpOnly cookie
+    const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: !isLocal,
+      sameSite: isLocal ? "lax" : "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.status(200).json({ 
       success: true,
-      token,
       user: {
-        ...ownerData,
-        role: "owner"
+        _id: owner._id.toString(),
+        name: owner.name,
+        email: owner.email,
+        role: "owner",
+        companyName: owner.companyName
       }
     });
   } catch (err) {

@@ -1,12 +1,26 @@
 import jwt from "jsonwebtoken";
 
+// Helper to manually parse cookies from the Cookie header
+const parseCookies = (cookieHeader) => {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(";").forEach(cookie => {
+    const parts = cookie.split("=");
+    if (parts.length >= 2) {
+      cookies[parts[0].trim()] = parts.slice(1).join("=").trim();
+    }
+  });
+  return cookies;
+};
+
 /**
- * ✅ Verify JWT token from request headers
+ * ✅ Verify JWT token from request headers or HttpOnly cookies
  * Returns user info from token
  */
 export const verifyToken = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.token || req.headers.authorization?.split(" ")[1];
     
     if (!token) {
       return res.status(401).json({
@@ -28,11 +42,11 @@ export const verifyToken = (req, res, next) => {
 
 /**
  * ✅ Check if user owns the resource (for owner data)
- * Use: checkOwnershipOrAdmin(req, res, next, paramName)
+ * Use: checkOwnership(paramName)
  */
 export const checkOwnership = (paramName = "id") => {
   return (req, res, next) => {
-    const resourceId = req.params[paramName];
+    const resourceId = req.params[paramName] || req.query[paramName] || req.body[paramName];
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
@@ -41,8 +55,18 @@ export const checkOwnership = (paramName = "id") => {
       return next();
     }
 
-    // For owner routes, userId should match the resource owner
-    if (userRole === "owner" && userId === resourceId) {
+    // If checking owner ownership, userId must match ownerId
+    if (userRole === "owner" && paramName === "ownerId" && userId === resourceId) {
+      return next();
+    }
+
+    // Owners are allowed to access conductor/bus/route/reports (non-ownerId params)
+    if (userRole === "owner" && paramName !== "ownerId") {
+      return next();
+    }
+
+    // For conductor routes, userId should match the conductor ID
+    if (userRole === "conductor" && userId === resourceId) {
       return next();
     }
 
@@ -110,5 +134,25 @@ export const checkBookingAccess = async (req, res, next) => {
       success: false,
       message: "Authorization check failed"
     });
+  }
+};
+
+/**
+ * ✅ Optional JWT token verification
+ * Allows request to pass but populates req.user if a valid token is provided
+ */
+export const optionalVerifyToken = (req, res, next) => {
+  try {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies.token || req.headers.authorization?.split(" ")[1];
+    
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+      req.user = decoded;
+    }
+    next();
+  } catch (error) {
+    // If token is invalid, we don't reject, just proceed as unauthenticated
+    next();
   }
 };

@@ -7,6 +7,9 @@ import React, {
 } from "react";
 import axios from "axios";
 
+// Enable sending cookies automatically with cross-origin requests
+axios.defaults.withCredentials = true;
+
 /* ===================== TYPES ===================== */
 
 export interface User {
@@ -89,13 +92,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         const data = ownerResponse.data;
 
-        if (data && data._id) {
+        if (data && data.success && data.user) {
           const ownerUser: User = {
-            id: data._id,
-            name: data.name,
-            email: data.email,
+            id: data.user._id,
+            name: data.user.name,
+            email: data.user.email,
             role: "owner",
-            area: data.area || "Unknown",
+            area: data.user.companyName || "Unknown",
           };
 
           setUser(ownerUser);
@@ -116,17 +119,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         const data = condResp.data;
 
-        if (data && data._id) {
+        if (data && data.success && data.user) {
           const condUser: User = {
-            id: data._id,
-            name: data.name,
-            email: data.email,
-            role: data.role as "conductor",
-            area: data.city || "Unknown",
+            id: data.user._id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role as "conductor",
+            area: data.user.city || "Unknown",
 
             // 🔥 Important for conductor dashboard
-            assignedBusId: data.assignedBusId || null,
-            conductorCode: data.conductorCode || null,
+            assignedBusId: data.user.assignedBusId || null,
+            conductorCode: data.user.conductorCode || null,
           };
 
           setUser(condUser);
@@ -145,7 +148,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   /* ===================== LOGOUT ===================== */
-  const logout = () => {
+  const logout = async () => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+      await axios.post(`${API_BASE}/logout`);
+    } catch (err) {
+      console.error("Failed to call logout on backend:", err);
+    }
     setUser(null);
     localStorage.removeItem("user");
   };

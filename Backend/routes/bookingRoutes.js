@@ -11,17 +11,21 @@ import {
   toggleCheckIn
 } from "../controllers/bookingController.js";
 
+// Middleware
+import { verifyToken, checkBookingAccess, requireRole, optionalVerifyToken } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
 
-router.post("/", createBooking); // Create new booking
-router.get("/occupied-seats", getOccupiedSeatsForDate); // Create new booking
-router.get("/", getAllBookings); // Get all bookings
-router.get("/:id", getBookingById); // Get one booking
-router.put("/:id", updateBooking); // Update booking details
+router.post("/", optionalVerifyToken, createBooking); // Create new booking (public with optional auth)
+router.get("/occupied-seats", getOccupiedSeatsForDate); // Get occupied seats (public)
+
+router.get("/", verifyToken, requireRole(["admin"]), getAllBookings); // Get all bookings (admin only)
+router.get("/:id", verifyToken, checkBookingAccess, getBookingById); // Get one booking (authenticated owner/admin/customer)
+router.put("/:id", verifyToken, checkBookingAccess, updateBooking); // Update booking details (authenticated owner/admin/customer)
 // ❌ REMOVED: router.put("/:id/payment", updatePaymentStatus) - Backend webhook is now single source of truth
-router.patch("/:id/cancel", cancelBooking); // Cancel booking with remark
-router.post("/owner-recent", getOwnerRecentBookings); // Recent bookings for owner/dashboard
-router.post("/unblock-all", unblockSeatsAllDays); // Global unblock
-router.patch("/:id/check-in", toggleCheckIn); // Toggle check-in status
+router.patch("/:id/cancel", verifyToken, checkBookingAccess, cancelBooking); // Cancel booking with remark (authenticated owner/admin/customer)
+router.post("/owner-recent", verifyToken, requireRole(["admin", "owner"]), getOwnerRecentBookings); // Recent bookings (owner/admin)
+router.post("/unblock-all", verifyToken, requireRole(["admin"]), unblockSeatsAllDays); // Global unblock (admin only)
+router.patch("/:id/check-in", verifyToken, requireRole(["admin", "owner", "conductor"]), toggleCheckIn); // Toggle check-in status (admin/owner/conductor)
 
 export default router;

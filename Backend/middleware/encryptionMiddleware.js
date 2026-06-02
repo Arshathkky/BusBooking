@@ -1,8 +1,9 @@
 import { encrypt, decrypt } from "../utils/cryptoUtils.js";
 
 export const encryptionMiddleware = (req, res, next) => {
-    // Bypass encryption/decryption for third-party webhooks (e.g. Genie)
-    if (req.path.includes("/genie/notify")) {
+    // Bypass encryption/decryption for third-party webhooks and payment endpoints
+    // Genie endpoints need immediate response without encryption overhead
+    if (req.path.includes("/genie")) {
         return next();
     }
 

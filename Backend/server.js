@@ -42,6 +42,9 @@ import ownerRoutes from "./routes/ownerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import genieRoutes from "./routes/genieRoutes.js";
 
+// Import encryption middleware
+import { encryptionMiddleware } from "./middleware/encryptionMiddleware.js";
+
 // Import Background Tasks
 import { startReleaseInterval } from "./utils/releasePendingBookings.js";
 import { startExpireCron } from "./expireBooking.js";
@@ -66,10 +69,12 @@ app.use(cors({
     }
     return callback(new Error("CORS Policy Violation"), false);
   },
-  credentials: true
+  credentials: true,
+  exposedHeaders: ["X-Payload-Encrypted"]
 }));
 
 app.use(express.json());
+app.use(encryptionMiddleware);
 
 // Security Headers Middleware
 app.use((req, res, next) => {

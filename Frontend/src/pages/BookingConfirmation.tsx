@@ -31,10 +31,10 @@ const BookingConfirmation: React.FC = () => {
         const cleanId = id.split("_")[0];
         const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
-        // First fetch to get initial booking status
-        const { data } = await axios.get(`${baseUrl}/bookings`);
+        // First fetch to get initial booking status from public endpoint
+        const { data } = await axios.get(`${baseUrl}/bookings/public/${cleanId}`);
         if (data.success) {
-          const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
+          const found = data.booking;
           if (!found) {
             setError("Booking not found.");
             setLoading(false);
@@ -66,8 +66,8 @@ const BookingConfirmation: React.FC = () => {
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 try {
-                  const { data: pollData } = await axios.get(`${baseUrl}/bookings`);
-                  const polledBooking = pollData.bookings.find((b: any) => String(b.bookingId) === cleanId);
+                  const { data: pollData } = await axios.get(`${baseUrl}/bookings/public/${cleanId}`);
+                  const polledBooking = pollData.booking;
                   
                   if (polledBooking?.paymentStatus === "PAID") {
                     setBooking(polledBooking);

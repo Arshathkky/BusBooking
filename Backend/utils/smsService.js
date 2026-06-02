@@ -13,7 +13,7 @@ export const sendSMS = async (phone, message) => {
     try {
         const username = process.env.DIALOG_ESMS_USERNAME;
         const password = process.env.DIALOG_ESMS_PASSWORD;
-        const sourceAddress = process.env.DIALOG_ESMS_SOURCE_ADDRESS || "";
+        const sourceAddress = process.env.DIALOG_ESMS_SOURCE_ADDRESS || "TouchMePlus";
 
         if (!username || !password) {
             console.error("SMS Error: Dialog ESMS credentials missing in environment variables.");

@@ -70,6 +70,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       /* ===== 1️⃣ ADMIN (Hardcoded) ===== */
       if (email === "admin@touchmeplus.com" && password === "ArshathHaseen@1654381") {
+        try {
+          const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+          const adminResponse = await axios.post(
+            `${API_BASE}/owner/login`,
+            { email, password }
+          );
+          const data = adminResponse.data;
+          if (data && data.success && data.user) {
+            const adminUser: User = {
+              id: "admin",
+              name: "Admin",
+              email,
+              role: "admin",
+            };
+            setUser(adminUser);
+            localStorage.setItem("user", JSON.stringify(adminUser));
+            return adminUser;
+          }
+        } catch (err) {
+          console.error("Admin login backend token request failed:", err);
+        }
+
+        // Fallback for offline/local testing
         const adminUser: User = {
           id: "1",
           name: "Admin",

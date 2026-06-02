@@ -67,7 +67,7 @@ export const initiateGeniePayment = async (req, res) => {
 
         const response = await axios.post(genieUrl, payload, {
             headers: {
-                "Authorization": process.env.GENIE_API_KEY,
+                "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
                 "Content-Type": "application/json"
             }
         });
@@ -136,7 +136,7 @@ export const genieNotify = async (req, res) => {
                     const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${tokenToVerify}`;
                     const verifyResponse = await axios.get(genieUrl, {
                         headers: {
-                            "Authorization": process.env.GENIE_API_KEY,
+                            "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
                             "Content-Type": "application/json"
                         }
                     });

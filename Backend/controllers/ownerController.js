@@ -142,6 +142,31 @@ export const loginOwner = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // ✅ Handle Admin login
+    if (email === "admin@touchmeplus.com" && password === "ArshathHaseen@1654381") {
+      const token = jwt.sign(
+        { id: "admin", email, role: "admin", name: "Admin" },
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: "7d" }
+      );
+      const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: !isLocal,
+        sameSite: isLocal ? "lax" : "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      return res.status(200).json({
+        success: true,
+        user: {
+          _id: "admin",
+          name: "Admin",
+          email,
+          role: "admin",
+        }
+      });
+    }
+
     const owner = await Owner.findOne({ email });
     if (!owner) return res.status(400).json({ success: false, message: "Invalid email or password" });
 

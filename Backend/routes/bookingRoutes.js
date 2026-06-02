@@ -3,6 +3,7 @@ import {
   createBooking,
   getAllBookings,
   getBookingById,
+  getPublicBookingByNumericId,
   getOccupiedSeatsForDate,
   updateBooking,
   cancelBooking,
@@ -18,6 +19,7 @@ const router = express.Router();
 
 router.post("/", optionalVerifyToken, createBooking); // Create new booking (public with optional auth)
 router.get("/occupied-seats", getOccupiedSeatsForDate); // Get occupied seats (public)
+router.get("/public/:bookingId", getPublicBookingByNumericId); // Public verification of single booking by numeric ID
 
 router.get("/", verifyToken, requireRole(["admin"]), getAllBookings); // Get all bookings (admin only)
 router.get("/:id", verifyToken, checkBookingAccess, getBookingById); // Get one booking (authenticated owner/admin/customer)

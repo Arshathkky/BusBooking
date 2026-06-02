@@ -215,6 +215,22 @@ export const getBookingById = async (req, res) => {
 };
 
 /* ===========================
+   GET PUBLIC BOOKING BY NUMERIC ID
+=========================== */
+export const getPublicBookingByNumericId = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId: Number(bookingId) });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ===========================
    UPDATE PAYMENT STATUS
 =========================== */
 export const updatePaymentStatus = async (req, res) => {
@@ -256,7 +272,7 @@ export const updatePaymentStatus = async (req, res) => {
           const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${booking.paymentToken}`;
           const verifyResponse = await axios.get(genieUrl, {
             headers: {
-              "Authorization": process.env.GENIE_API_KEY,
+              "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
               "Content-Type": "application/json"
             }
           });

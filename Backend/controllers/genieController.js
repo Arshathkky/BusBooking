@@ -159,7 +159,9 @@ export const genieNotify = async (req, res) => {
         console.log("--- Genie Webhook Received ---");
         console.log("Body:", JSON.stringify(req.body, null, 2));
 
-        const { order_id, status, signature, id: transactionId } = req.body;
+        // Genie sends either 'status' or 'state' - check both
+        const { order_id, status, state, signature, id: transactionId } = req.body;
+        const paymentStatus = status || state; // Use 'state' if 'status' not present
         
         // Handle order_id if it's passed as a string or contains extra info (e.g., bookingId-timestamp)
         // Extract numeric bookingId (it might be bookingId-timestamp)
@@ -170,7 +172,7 @@ export const genieNotify = async (req, res) => {
             return res.status(404).send("Booking not found");
         }
 
-        if (status === "SUCCESS") {
+        if (paymentStatus === "SUCCESS" || paymentStatus === "CONFIRMED") {
             // ✅ Verify status via Genie V2 GET API directly to prevent signature/webhook spoofing
             const tokenToVerify = transactionId || booking.paymentToken;
             if (tokenToVerify) {
@@ -186,10 +188,15 @@ export const genieNotify = async (req, res) => {
                     console.log("--- Genie Webhook Verification Response ---", verifyResponse.data);
 
                     // ✅ Check multiple possible status fields for robustness
-                    const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
+                    // Genie uses 'state' field in its API responses
+                    const isSuccess = verifyResponse.data?.state === "SUCCESS" || 
+                                      verifyResponse.data?.state === "CONFIRMED" ||
+                                      verifyResponse.data?.status === "SUCCESS" || 
+                                      verifyResponse.data?.data?.state === "SUCCESS" || 
                                       verifyResponse.data?.data?.status === "SUCCESS" || 
                                       verifyResponse.data?.transactionStatus === "SUCCESS" || 
                                       verifyResponse.data?.paymentStatus === "SUCCESS" ||
+                                      verifyResponse.data?.response?.state === "SUCCESS" ||
                                       verifyResponse.data?.response?.status === "SUCCESS";
 
                     if (!isSuccess) {

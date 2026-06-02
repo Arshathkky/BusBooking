@@ -1,11 +1,9 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
 import { useOwner, Owner } from "../../contexts/OwnerContext";
 import OwnerModal from "./AddOwnerModal";
 
 const OwnerTab: React.FC = () => {
-  const navigate = useNavigate();
   const { owners, deleteOwner, updateOwner, fetchOwners } = useOwner();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);

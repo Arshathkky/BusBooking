@@ -275,3 +275,91 @@ export const getGenieStatus = (req, res) => {
         res.status(500).json({ error: "Failed to read Genie config" });
     }
 };
+
+/**
+ * ✅ Manual verification endpoint to check payment status with Genie
+ * Useful when webhook is delayed or for admin verification
+ * GET /api/genie/verify/:bookingId
+ */
+export const verifyGeniePayment = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        
+        if (!bookingId) {
+            return res.status(400).json({ success: false, message: "Booking ID required" });
+        }
+
+        const booking = await Booking.findOne({ bookingId: Number(bookingId) });
+        if (!booking) {
+            return res.status(404).json({ success: false, message: "Booking not found" });
+        }
+
+        // If already paid, no need to verify
+        if (booking.paymentStatus === "PAID") {
+            return res.status(200).json({ 
+                success: true, 
+                message: "Payment already confirmed",
+                paymentStatus: "PAID",
+                booking
+            });
+        }
+
+        // Verify with Genie API
+        const tokenToVerify = booking.paymentToken;
+        if (!tokenToVerify) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "No payment token found for this booking" 
+            });
+        }
+
+        const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${tokenToVerify}`;
+        const verifyResponse = await axios.get(genieUrl, {
+            headers: {
+                "Authorization": process.env.GENIE_API_KEY,
+                "Content-Type": "application/json"
+            }
+        });
+
+        console.log("--- Manual Verification Response from Genie ---", verifyResponse.data);
+
+        // Check if payment is confirmed
+        const isSuccess = verifyResponse.data?.state === "SUCCESS" || 
+                          verifyResponse.data?.state === "CONFIRMED" ||
+                          verifyResponse.data?.state === "COMPLETED";
+
+        if (isSuccess) {
+            // Update booking to PAID
+            booking.paymentStatus = "PAID";
+            await booking.save();
+
+            // Send SMS confirmation
+            const msg = `Booking Confirmed!\nBus: ${booking.bus.name}\nSeats: ${booking.selectedSeats.join(", ")}\nDate: ${booking.searchData.date}\nRef: ${booking.referenceId}\nThank you!`;
+            const passengerPhone = booking.passengerDetails?.phone;
+            if (passengerPhone && passengerPhone !== "N/A" && passengerPhone !== "null" && passengerPhone !== "") {
+                sendSMS(passengerPhone, msg);
+            }
+
+            return res.status(200).json({ 
+                success: true, 
+                message: "✅ Payment verified and booking confirmed!",
+                paymentStatus: "PAID",
+                booking
+            });
+        } else {
+            return res.status(200).json({ 
+                success: false, 
+                message: `Payment not yet confirmed. Current state: ${verifyResponse.data?.state || "UNKNOWN"}`,
+                paymentStatus: booking.paymentStatus,
+                genieState: verifyResponse.data?.state
+            });
+        }
+    } catch (error) {
+        console.error("Verification error:", error.response?.data || error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to verify payment with Genie",
+            error: error.message 
+        });
+    }
+}

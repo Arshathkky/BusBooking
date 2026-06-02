@@ -154,7 +154,12 @@ const OwnerDashboard: React.FC = () => {
 
     if (bus && bus !== "all") url += `&busId=${bus}`;
 
-    const res = await fetch(url);
+    const token = localStorage.getItem("token");
+    const res = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
     const data = await res.json();
 
     if (data.success && data.data) {
@@ -190,9 +195,13 @@ const fetchRecentBookings = async () => {
     if (ownerBuses.length === 0) return;
     try {
         const busIds = ownerBuses.map(b => b.id);
+        const token = localStorage.getItem("token");
         const res = await fetch(`${BOOKING_API}/owner-recent`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({ busIds })
         });
         const data = await res.json();

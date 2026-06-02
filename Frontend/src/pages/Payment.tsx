@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useBooking } from "../contexts/BookingContext";
@@ -6,7 +6,7 @@ import api from "../api/axios";
 
 declare global {
   interface Window {
-    payhere: any;
+    payhere?: Record<string, unknown>;
   }
 }
 
@@ -20,7 +20,6 @@ const Payment: React.FC = () => {
     selectedSeats,
     searchData,
     totalAmount,
-    busNumber,
     passengerDetails,
     pickupLocation,
     paymentStatus,
@@ -75,13 +74,26 @@ const Payment: React.FC = () => {
         console.error("Response data:", data);
         throw new Error(data?.message || "Genie payment URL not found in response");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Genie Payment Error - Full Details:");
-      console.error("Status:", error.response?.status);
-      console.error("Data:", error.response?.data);
-      console.error("Message:", error.message);
+      if (error instanceof Error) {
+        console.error("Message:", error.message);
+      } else if (typeof error === "object" && error !== null) {
+        const err = error as { response?: { status?: number; data?: Record<string, unknown> } };
+        console.error("Status:", err.response?.status);
+        console.error("Data:", err.response?.data);
+      }
       
-      const errorMsg = error.response?.data?.message || error.message || "Could not start payment. Please try again.";
+      let errorMsg = "Could not start payment. Please try again.";
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === "object" && error !== null) {
+        const err = error as { response?: { data?: Record<string, unknown> } };
+        const data = err.response?.data;
+        if (data && typeof data === "object") {
+          errorMsg = (data.message as string) || errorMsg;
+        }
+      }
       alert(errorMsg);
       setProcessing(false);
     }

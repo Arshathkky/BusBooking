@@ -17,26 +17,21 @@ export const encryptionMiddleware = (req, res, next) => {
         }
     }
 
-    // 2. Encrypt Outgoing JSON Response Payload
+    // 2. Encrypt Outgoing JSON Response Payload only for successful responses (2xx)
     const originalSend = res.send;
     res.send = function (body) {
-        // Only encrypt JSON responses
+        // Only encrypt JSON responses with successful status codes
+        const status = res.statusCode;
+        const isSuccess = status >= 200 && status < 300;
         const contentType = res.get("Content-Type");
-        if (contentType && contentType.includes("application/json") && body) {
+        if (isSuccess && contentType && contentType.includes("application/json") && body) {
             try {
-                // If it's a string, verify if it's JSON
-                let stringBody = body;
-                if (typeof body !== "string") {
-                    stringBody = JSON.stringify(body);
-                }
-
+                let stringBody = typeof body === "string" ? body : JSON.stringify(body);
                 // Encrypt payload
                 const encryptedPayload = encrypt(stringBody);
-                
                 // Set Header to indicate encrypted payload
                 res.set("X-Payload-Encrypted", "true");
-                
-                // Call original send with encrypted payload JSON
+                // Ensure JSON content type
                 res.set("Content-Type", "application/json");
                 return originalSend.call(this, JSON.stringify(encryptedPayload));
             } catch (err) {

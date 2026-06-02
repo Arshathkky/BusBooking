@@ -20,12 +20,14 @@ const parseCookies = (cookieHeader) => {
 export const verifyToken = (req, res, next) => {
   try {
     const cookies = parseCookies(req.headers.cookie);
-    const token = cookies.token || req.headers.authorization?.split(" ")[1];
+    // Prefer HttpOnly cookie token, fallback to Bearer token in Authorization header
+    const token = cookies.token || (req.headers.authorization && req.headers.authorization.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : undefined);
     
     if (!token) {
+      console.warn('🔐 verifyToken: No token found (cookie or Authorization header)');
       return res.status(401).json({
         success: false,
-        message: "No authentication token provided"
+        message: 'No authentication token provided'
       });
     }
 

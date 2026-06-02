@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useBooking } from "../contexts/BookingContext";
+import api from "../api/axios";
 
 declare global {
   interface Window {
@@ -51,42 +52,28 @@ const Payment: React.FC = () => {
         setExistingBookingId(currentBookingId);
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
-
-      // 2. Initiate Genie Payment via Backend
-      const response = await fetch(`${baseUrl}/genie/pay`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // 2. Initiate Genie Payment via Backend (using axios for proper auth/encryption)
+      const { data } = await api.post("/genie/pay", {
+        bookingId: currentBookingId,
+        amount: totalAmount,
+        customerDetails: {
+          name: passengerDetails.name,
+          phone: passengerDetails.phone,
+          email: passengerDetails.email || "passenger@example.com"
         },
-        credentials: "include", // ✅ CRITICAL: Include cookies for authentication
-        body: JSON.stringify({
-          bookingId: currentBookingId,
-          amount: totalAmount,
-          customerDetails: {
-            name: passengerDetails.name,
-            phone: passengerDetails.phone,
-            email: passengerDetails.email || "passenger@example.com"
-          },
-          paymentMethod: method
-        }),
+        paymentMethod: method
       });
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to initiate Genie payment");
-      }
-
       // 3. Redirect to Genie Payment URL
-      if (data.payment_url) {
+      if (data.success && data.payment_url) {
         window.location.href = data.payment_url;
       } else {
-        throw new Error("Genie payment URL not found in response");
+        throw new Error(data.message || "Genie payment URL not found in response");
       }
     } catch (error: any) {
-      console.error("Genie Payment failed:", error);
-      alert(error.message || "Could not start payment. Please try again.");
+      console.error("Genie Payment failed:", error.response?.data || error.message);
+      const errorMsg = error.response?.data?.message || error.message || "Could not start payment. Please try again.";
+      alert(errorMsg);
       setProcessing(false);
     }
   };

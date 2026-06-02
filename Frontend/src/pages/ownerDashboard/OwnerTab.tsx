@@ -1,10 +1,12 @@
 import React, { useState } from "react";
-import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
+import { CreditCard as Edit, Trash2, Plus, LayoutDashboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useOwner, Owner } from "../../contexts/OwnerContext";
 import OwnerModal from "./AddOwnerModal";
 
 const OwnerTab: React.FC = () => {
   const { owners, deleteOwner, updateOwner, fetchOwners } = useOwner();
+  const navigate = useNavigate();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);
 
@@ -90,8 +92,27 @@ const OwnerTab: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right flex justify-end gap-2">
-                  <button onClick={() => handleEditOwner(owner)} className="text-blue-600 hover:text-blue-800"><Edit size={16} /></button>
-                  <button onClick={() => deleteOwner(owner._id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button>
+                  <button 
+                    onClick={() => navigate(`/owner?ownerId=${owner._id}`)} 
+                    title="View Owner Dashboard"
+                    className="text-green-600 hover:text-green-800 bg-green-50 p-1.5 rounded-lg"
+                  >
+                    <LayoutDashboard size={16} />
+                  </button>
+                  <button 
+                    onClick={() => handleEditOwner(owner)} 
+                    title="Edit Owner"
+                    className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-lg"
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button 
+                    onClick={() => deleteOwner(owner._id)} 
+                    title="Delete Owner"
+                    className="text-red-600 hover:text-red-800 bg-red-50 p-1.5 rounded-lg"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </td>
               </tr>
             ))}

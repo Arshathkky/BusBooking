@@ -1,6 +1,11 @@
 import dotenv from "dotenv";
 import path from "path";
-dotenv.config({ path: path.resolve("Backend/.env") });
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, ".env") });
 import axios from "axios";
 
 console.log("GENIE_ENV:", process.env.GENIE_ENV);
@@ -10,44 +15,38 @@ const getGenieBaseUrl = () => process.env.GENIE_ENV === "production"
 console.log("GENIE_BASE_URL:", getGenieBaseUrl());
 
 const testGenie = async () => {
+    // Test payload WITHOUT merchantId (API Key contains it)
     const payload = {
-        merchantId: process.env.GENIE_MERCHANT_ID,
-        amount: "100.00",
+        amount: 10000, // Amount in cents (100 LKR)
         currency: "LKR",
-        orderId: Date.now().toString().substring(0, 10),
-        customerName: "Test User",
-        customerEmail: "test@example.com",
-        customerMobile: "94771234567",
+        localId: `TEST-${Date.now()}`,
         redirectUrl: "https://mseat.touchmeplus.com/booking-confirmation",
-        callbackUrl: "https://bus-booking-nt91.onrender.com/api/genie/notify",
+        webhook: "https://bus-booking-nt91.onrender.com/api/genie/notify",
+        metadata: {
+            name: "Test User",
+            email: "test@example.com"
+        }
     };
 
     const headerVariations = [
-        { "API-Key": process.env.GENIE_API_KEY, "Authorization": `Bearer ${process.env.GENIE_API_SECRET}` },
-        { "X-API-Key": process.env.GENIE_API_KEY, "Authorization": `Bearer ${process.env.GENIE_API_SECRET}` },
-        { "X-API-Key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
-        { "API-Key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
-        { "api-key": process.env.GENIE_API_KEY, "Authorization": process.env.GENIE_API_SECRET },
-        { "apiKey": process.env.GENIE_API_KEY, "Authorization": `Bearer ${process.env.GENIE_API_SECRET}` },
-        { "Authorization": `Bearer ${process.env.GENIE_API_KEY}` },
-        { "Authorization": `Bearer ${process.env.GENIE_API_SECRET}`, "API-Key": process.env.GENIE_API_KEY },
+        { "Authorization": `Bearer ${process.env.GENIE_API_KEY}`, "Content-Type": "application/json" },
+        { "Authorization": `${process.env.GENIE_API_KEY}`, "Content-Type": "application/json" },
+        { "X-API-KEY": process.env.GENIE_API_KEY, "Content-Type": "application/json" },
+        { "apikey": process.env.GENIE_API_KEY, "Content-Type": "application/json" },
     ];
 
     for (let i = 0; i < headerVariations.length; i++) {
-        console.log(`\nTesting variation ${i + 1}:`, Object.keys(headerVariations[i]));
+        console.log(`\n✅ Testing variation ${i + 1}:`, Object.keys(headerVariations[i]));
         try {
-            const response = await axios.post(`${getGenieBaseUrl()}/payment/v2/checkout/initiate`, payload, {
-                headers: { ...headerVariations[i], "Content-Type": "application/json" }
+            const response = await axios.post(`${getGenieBaseUrl()}/public/v2/transactions`, payload, {
+                headers: headerVariations[i]
             });
-            console.log("Success! Data:", response.data);
-            return; // Stop if success
+            console.log("🎉 SUCCESS! Response:", JSON.stringify(response.data, null, 2));
+            return;
         } catch (error) {
-            console.log("Failed. Message:", error.message);
-            if (error.response) {
-                console.log("Status:", error.response.status);
-                console.log("Data:", error.response.data);
-            } else {
-                console.log("No response received. Error code:", error.code);
+            console.log("❌ Failed. Status:", error.response?.status || error.code);
+            if (error.response?.data) {
+                console.log("   Response:", JSON.stringify(error.response.data, null, 2));
             }
         }
     }

@@ -59,6 +59,7 @@ const Payment: React.FC = () => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // ✅ CRITICAL: Include cookies for authentication
         body: JSON.stringify({
           bookingId: currentBookingId,
           amount: totalAmount,

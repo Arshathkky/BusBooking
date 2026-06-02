@@ -25,9 +25,23 @@ export const initiateGeniePayment = async (req, res) => {
             return res.status(400).json({ success: false, message: "Booking ID is required" });
         }
 
+        // ✅ CRITICAL: Verify booking exists first
         const booking = await Booking.findOne({ bookingId });
         if (!booking) {
-            return res.status(404).json({ success: false, message: "Booking not found" });
+            console.error(`❌ Booking not found: bookingId=${bookingId}`);
+            return res.status(404).json({ 
+                success: false, 
+                message: `Booking #${bookingId} not found. Please ensure your booking was created successfully.` 
+            });
+        }
+
+        // ✅ Validate Genie API credentials are configured
+        if (!process.env.GENIE_API_KEY) {
+            console.error("⚠️ GENIE_API_KEY is missing in environment variables.");
+            return res.status(500).json({ 
+                success: false, 
+                message: "Server configuration error: Genie API key not configured. Please contact support." 
+            });
         }
 
         // Use booking.totalAmount directly from database to prevent parameter tampering
@@ -57,11 +71,9 @@ export const initiateGeniePayment = async (req, res) => {
             }
         };
 
-        // Note: providerRestrictions removed as it might be causing validation issues with real cards
-
         const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions`;
 
-        console.log("--- Genie Initiation Request (V2 - Final) ---");
+        console.log("--- Genie Initiation Request (V2) ---");
         console.log("URL:", genieUrl);
         console.log("Payload:", JSON.stringify(payload, null, 2));
 
@@ -72,9 +84,8 @@ export const initiateGeniePayment = async (req, res) => {
         }
         const response = await axios.post(genieUrl, payload, {
             headers: {
-                // Use both standard Authorization and a fallback X-API-KEY header for compatibility
-                "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
-                "X-API-KEY": process.env.GENIE_API_KEY,
+                // ✅ CRITICAL: Authorization header WITHOUT "Bearer" prefix
+                "Authorization": process.env.GENIE_API_KEY,
                 "Content-Type": "application/json"
             }
         });
@@ -103,12 +114,29 @@ export const initiateGeniePayment = async (req, res) => {
         console.error("Genie Initiation Error Details:", error.response?.data || error.message);
         
         const genieErrorData = error.response?.data;
-        const genieErrorMessage = genieErrorData?.message || genieErrorData?.error || error.message || "Failed to initiate Genie payment";
+        const statusCode = error.response?.status;
+        
+        // Handle specific Genie API errors
+        let userMessage = "Failed to initiate payment";
+        
+        if (statusCode === 401) {
+            userMessage = "❌ Genie API Authentication Failed - Please verify your Genie credentials are valid and properly configured.";
+            console.error("⚠️ Genie API returned 401 Unauthorized. Check GENIE_API_KEY and credentials.");
+        } else if (statusCode === 403) {
+            userMessage = "❌ Genie API Access Denied - Your account may not have payment processing enabled.";
+        } else if (statusCode === 400) {
+            userMessage = `❌ Invalid Payment Request: ${genieErrorData?.message || "Please verify all payment details are correct."}`;
+        } else if (error.code === 'ECONNREFUSED') {
+            userMessage = "❌ Cannot reach Genie Payment Service - Network connectivity issue. Please try again.";
+        } else {
+            userMessage = genieErrorData?.message || genieErrorData?.error || error.message || "Failed to initiate Genie payment";
+        }
+        
         const genieExtraInfo = genieErrorData?.extraInfo ? JSON.stringify(genieErrorData.extraInfo) : "";
         
         res.status(500).json({ 
             success: false, 
-            message: `Genie Payment Error: ${genieErrorMessage}`,
+            message: `Genie Payment Error: ${userMessage}`,
             details: genieErrorData,
             extraInfo: genieExtraInfo,
             originalError: error.message
@@ -143,7 +171,7 @@ export const genieNotify = async (req, res) => {
                     const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${tokenToVerify}`;
                     const verifyResponse = await axios.get(genieUrl, {
                         headers: {
-                            "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                            "Authorization": process.env.GENIE_API_KEY,
                             "Content-Type": "application/json"
                         }
                     });

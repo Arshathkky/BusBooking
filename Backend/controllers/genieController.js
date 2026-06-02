@@ -160,19 +160,28 @@ export const genieNotify = async (req, res) => {
         console.log("Body:", JSON.stringify(req.body, null, 2));
 
         // Genie sends either 'status' or 'state' - check both
-        const { order_id, status, state, signature, id: transactionId } = req.body;
-        const paymentStatus = status || state; // Use 'state' if 'status' not present
+        const { order_id, orderId, localId, status, state, signature, id: transactionId } = req.body;
+        const rawStatus = status || state || req.body.transactionStatus;
+        const paymentStatus = typeof rawStatus === 'string' ? rawStatus.toUpperCase() : rawStatus; 
         
         // Handle order_id if it's passed as a string or contains extra info (e.g., bookingId-timestamp)
+        const receivedOrderId = order_id || orderId || localId;
+        if (!receivedOrderId) {
+            console.error("Genie Webhook Missing order_id. Body:", req.body);
+            return res.status(400).send("Missing order_id");
+        }
+        
         // Extract numeric bookingId (it might be bookingId-timestamp)
-        const cleanOrderId = order_id.toString().replace(/[^\d-].*/, "").split("-")[0];
+        const cleanOrderId = receivedOrderId.toString().replace(/[^\d-].*/, "").split("-")[0];
         const booking = await Booking.findOne({ bookingId: Number(cleanOrderId) });
         if (!booking) {
-            console.warn(`Booking not found for order_id: ${order_id}, cleanOrderId: ${cleanOrderId}`);
+            console.warn(`Booking not found for order_id: ${receivedOrderId}, cleanOrderId: ${cleanOrderId}`);
             return res.status(404).send("Booking not found");
         }
 
-        if (paymentStatus === "SUCCESS" || paymentStatus === "CONFIRMED") {
+        const successStatuses = ["SUCCESS", "CONFIRMED", "COMPLETED", "PAID", "PAYMENT_SUCCESS"];
+        
+        if (successStatuses.includes(paymentStatus)) {
             // ✅ Verify status via Genie V2 GET API directly to prevent signature/webhook spoofing
             const tokenToVerify = transactionId || booking.paymentToken;
             if (tokenToVerify) {
@@ -189,20 +198,25 @@ export const genieNotify = async (req, res) => {
 
                     // ✅ Check multiple possible status fields for robustness
                     // Genie uses 'state' field in its API responses
-                    const isSuccess = verifyResponse.data?.state === "SUCCESS" || 
-                                      verifyResponse.data?.state === "CONFIRMED" ||
-                                      verifyResponse.data?.status === "SUCCESS" || 
-                                      verifyResponse.data?.data?.state === "SUCCESS" || 
-                                      verifyResponse.data?.data?.status === "SUCCESS" || 
-                                      verifyResponse.data?.transactionStatus === "SUCCESS" || 
-                                      verifyResponse.data?.paymentStatus === "SUCCESS" ||
-                                      verifyResponse.data?.response?.state === "SUCCESS" ||
-                                      verifyResponse.data?.response?.status === "SUCCESS";
+                    const verifyData = verifyResponse.data || {};
+                    const innerData = verifyData.data || {};
+                    const resData = verifyData.response || {};
+                    
+                    const stateValues = [
+                        verifyData.state, verifyData.status, verifyData.transactionStatus, verifyData.paymentStatus,
+                        innerData.state, innerData.status,
+                        resData.state, resData.status
+                    ].map(s => typeof s === 'string' ? s.toUpperCase() : null);
+
+                    const isSuccess = stateValues.some(s => s && ["SUCCESS", "CONFIRMED", "COMPLETED", "PAID"].includes(s));
 
                     if (!isSuccess) {
                         console.warn("Genie API reported transaction was not successful. Rejecting webhook status change.");
-                        booking.paymentStatus = "FAILED";
-                        await booking.save();
+                        // Only mark as failed if it's not already cancelled or paid
+                        if (booking.paymentStatus !== "CANCELLED" && booking.paymentStatus !== "PAID") {
+                            booking.paymentStatus = "FAILED";
+                            await booking.save();
+                        }
                         return res.status(400).send("Transaction not verified on Genie gateway");
                     }
 
@@ -242,15 +256,22 @@ export const genieNotify = async (req, res) => {
                 }
             } else {
                 console.warn("No transaction token available to verify webhook payment.");
+                // We should not cancel it here just because token is missing if we want to be safe, but let's leave it as FAILED
                 booking.paymentStatus = "FAILED";
                 await booking.save();
                 return res.status(400).send("Verification token missing");
             }
         } else {
             // Payment was not successful
+            // If the booking is already PAID, do NOT overwrite it with CANCELLED
+            if (booking.paymentStatus === "PAID") {
+                console.log(`⚠️ Ignored Genie non-success webhook because booking is already PAID for Order: ${receivedOrderId}`);
+                return res.status(200).send("OK");
+            }
+
             booking.paymentStatus = "CANCELLED";
             await booking.save();
-            console.log(`❌ Genie Payment Failed/Cancelled for Order: ${order_id}`);
+            console.log(`❌ Genie Payment Failed/Cancelled for Order: ${receivedOrderId} with status: ${paymentStatus}`);
             return res.status(200).send("OK");
         }
 
@@ -324,9 +345,17 @@ export const verifyGeniePayment = async (req, res) => {
         console.log("--- Manual Verification Response from Genie ---", verifyResponse.data);
 
         // Check if payment is confirmed
-        const isSuccess = verifyResponse.data?.state === "SUCCESS" || 
-                          verifyResponse.data?.state === "CONFIRMED" ||
-                          verifyResponse.data?.state === "COMPLETED";
+        const verifyData = verifyResponse.data || {};
+        const innerData = verifyData.data || {};
+        const resData = verifyData.response || {};
+        
+        const stateValues = [
+            verifyData.state, verifyData.status, verifyData.transactionStatus, verifyData.paymentStatus,
+            innerData.state, innerData.status,
+            resData.state, resData.status
+        ].map(s => typeof s === 'string' ? s.toUpperCase() : null);
+
+        const isSuccess = stateValues.some(s => s && ["SUCCESS", "CONFIRMED", "COMPLETED", "PAID"].includes(s));
 
         if (isSuccess) {
             // Update booking to PAID

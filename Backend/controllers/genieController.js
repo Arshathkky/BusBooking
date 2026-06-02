@@ -92,24 +92,31 @@ export const initiateGeniePayment = async (req, res) => {
 
         console.log("--- Genie Initiation Response ---");
         console.log("Status:", response.status);
-        console.log("Data:", JSON.stringify(response.data, null, 2));
+        console.log("Response Data Keys:", Object.keys(response.data || {}));
+        console.log("URL field:", response.data?.url);
 
-        if (response.data && (response.data.url || response.data.paymentUrl)) {
-            const paymentUrl = response.data.url || response.data.paymentUrl;
-            const token = response.data.token || response.data.id;
+        // Extract payment URL from Genie response
+        const paymentUrl = response.data?.url || response.data?.paymentUrl || response.data?.checkoutUrl;
+        const transactionId = response.data?.id || response.data?.transactionId || response.data?.token;
 
-            // Save transaction token to booking for verification
-            booking.paymentToken = token;
-            await booking.save();
-
-            res.status(200).json({ 
-                success: true, 
-                payment_url: paymentUrl,
-                token: token 
-            });
-        } else {
-            throw new Error(response.data.message || "Failed to get payment URL from Genie");
+        if (!paymentUrl) {
+            console.error("❌ No payment URL in Genie response. Full response:", JSON.stringify(response.data, null, 2));
+            throw new Error(response.data?.message || "Genie API did not return payment URL");
         }
+
+        // Save transaction token to booking for verification
+        if (transactionId) {
+            booking.paymentToken = transactionId;
+            await booking.save();
+        }
+
+        console.log("✅ Payment URL extracted:", paymentUrl);
+        res.status(200).json({ 
+            success: true, 
+            payment_url: paymentUrl,
+            token: transactionId,
+            transactionId: transactionId
+        });
     } catch (error) {
         console.error("Genie Initiation Error Details:", error.response?.data || error.message);
         

@@ -64,14 +64,23 @@ const Payment: React.FC = () => {
         paymentMethod: method
       });
 
+      console.log("Genie API Response:", data);
+
       // 3. Redirect to Genie Payment URL
-      if (data.success && data.payment_url) {
+      if (data?.success && data?.payment_url) {
         window.location.href = data.payment_url;
+      } else if (data?.success && data?.url) {
+        window.location.href = data.url;
       } else {
-        throw new Error(data.message || "Genie payment URL not found in response");
+        console.error("Response data:", data);
+        throw new Error(data?.message || "Genie payment URL not found in response");
       }
     } catch (error: any) {
-      console.error("Genie Payment failed:", error.response?.data || error.message);
+      console.error("Genie Payment Error - Full Details:");
+      console.error("Status:", error.response?.status);
+      console.error("Data:", error.response?.data);
+      console.error("Message:", error.message);
+      
       const errorMsg = error.response?.data?.message || error.message || "Could not start payment. Please try again.";
       alert(errorMsg);
       setProcessing(false);

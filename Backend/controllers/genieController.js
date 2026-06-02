@@ -65,9 +65,16 @@ export const initiateGeniePayment = async (req, res) => {
         console.log("URL:", genieUrl);
         console.log("Payload:", JSON.stringify(payload, null, 2));
 
+        // Verify that the Genie API key is present
+        if (!process.env.GENIE_API_KEY) {
+            console.error("⚠️ GENIE_API_KEY is missing in environment variables.");
+            return res.status(500).json({ success: false, message: "Server configuration error: Genie API key missing" });
+        }
         const response = await axios.post(genieUrl, payload, {
             headers: {
+                // Use both standard Authorization and a fallback X-API-KEY header for compatibility
                 "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+                "X-API-KEY": process.env.GENIE_API_KEY,
                 "Content-Type": "application/json"
             }
         });

@@ -158,6 +158,7 @@ export const loginOwner = async (req, res) => {
       });
       return res.status(200).json({
         success: true,
+        token,
         user: {
           _id: "admin",
           name: "Admin",
@@ -187,6 +188,7 @@ export const loginOwner = async (req, res) => {
 
     res.status(200).json({ 
       success: true,
+      token,
       user: {
         _id: owner._id.toString(),
         name: owner.name,

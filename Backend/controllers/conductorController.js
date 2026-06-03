@@ -285,6 +285,7 @@ export const loginConductor = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      token,
       user: {
         _id: conductor._id.toString(),
         name: conductor.name,

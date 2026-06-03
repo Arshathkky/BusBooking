@@ -7,6 +7,15 @@ axios.defaults.withCredentials = true;
 
 // Request Interceptor (Encrypt Request Payloads)
 axios.interceptors.request.use(async (config) => {
+    // Attach authorization token if present
+    const token = localStorage.getItem("token");
+    if (token) {
+        if (!config.headers) {
+            config.headers = {} as any;
+        }
+        config.headers["Authorization"] = `Bearer ${token}`;
+    }
+
     // Only encrypt if it's a JSON/Object body
     if (config.data && typeof config.data === "object") {
         try {

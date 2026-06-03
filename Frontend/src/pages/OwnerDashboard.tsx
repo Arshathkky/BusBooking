@@ -197,8 +197,8 @@ const OwnerDashboard: React.FC = () => {
         activeRoutes: data.data.activeRoutes ?? 0,
 
         // Show bookings/earnings depending on selection
-        todayBookings: date && !month ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
-        todayEarnings: date && !month ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
+        todayBookings: (date || month) ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
+        todayEarnings: (date || month) ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
 
         // Monthly earnings will always update based on selected month
         monthlyEarnings: data.data.filteredEarnings ?? 0,
@@ -349,7 +349,7 @@ const fetchRecentBookings = async () => {
                 <span className="text-xs font-black uppercase tracking-[0.2em]">Fleet Intelligence Hub</span>
               </div>
               <h2 className="text-4xl font-black tracking-tighter">FLEET OPERATIONS</h2>
-              <p className="text-blue-100 opacity-80 text-sm font-medium mt-1">Surena Travels Batticaloa • LIVE MONITORING ENABLED</p>
+              <p className="text-blue-100 opacity-80 text-sm font-medium mt-1">Bus Travels Batticaloa • LIVE MONITORING ENABLED</p>
             </div>
             <div className="relative z-10 flex bg-black/20 backdrop-blur-xl rounded-[2rem] p-4 border border-white/10 items-center space-x-1">
               <div className="text-center px-6 border-r border-white/10">

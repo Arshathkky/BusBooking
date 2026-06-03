@@ -78,6 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           );
           const data = adminResponse.data;
           if (data && data.success && data.user) {
+            if (data.token) localStorage.setItem("token", data.token);
             const adminUser: User = {
               id: "admin",
               name: "Admin",
@@ -116,6 +117,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const data = ownerResponse.data;
 
         if (data && data.success && data.user) {
+          if (data.token) localStorage.setItem("token", data.token);
           const ownerUser: User = {
             id: data.user._id,
             name: data.user.name,
@@ -128,7 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           localStorage.setItem("user", JSON.stringify(ownerUser));
           return ownerUser;
         }
-      } catch {
+      } catch (err) {
         // silent fail → try next login type
       }
 
@@ -143,6 +145,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const data = condResp.data;
 
         if (data && data.success && data.user) {
+          if (data.token) localStorage.setItem("token", data.token);
           const condUser: User = {
             id: data.user._id,
             name: data.user.name,
@@ -159,7 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           localStorage.setItem("user", JSON.stringify(condUser));
           return condUser;
         }
-      } catch {
+      } catch (err) {
         // silent fail
       }
 

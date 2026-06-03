@@ -128,12 +128,28 @@ const OwnerDashboard: React.FC = () => {
     }
   }, [ownerBuses.length]);
 
+  const ownerBusesRef = React.useRef(ownerBuses);
+  useEffect(() => {
+      ownerBusesRef.current = ownerBuses;
+  }, [ownerBuses]);
+
   // Real-time polling
   useEffect(() => {
     const interval = setInterval(() => {
         if (effectiveOwnerId && activeTab === "overview") {
             fetchOverview(selectedMonth, selectedDate, selectedBus);
-            fetchRecentBookings();
+            if (ownerBusesRef.current.length > 0) {
+                const busIds = ownerBusesRef.current.map(b => b.id);
+                const token = localStorage.getItem("token");
+                fetch(`${BOOKING_API}/owner-recent`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    body: JSON.stringify({ busIds })
+                })
+                .then(res => res.json())
+                .then(data => { if (data.success) setRecentBookings(data.bookings); })
+                .catch(err => console.error(err));
+            }
         }
     }, 15000); // 15 seconds
     return () => clearInterval(interval);

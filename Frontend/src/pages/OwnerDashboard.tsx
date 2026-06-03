@@ -106,9 +106,7 @@ const OwnerDashboard: React.FC = () => {
 
 
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(
-    `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}`
-  );
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`
   );
@@ -289,17 +287,23 @@ const fetchRecentBookings = async () => {
               <p className="text-[9px] font-black uppercase text-[#fdc106] tracking-widest mb-1">Global Operational Date</p>
               <div className="flex items-center gap-3">
                  <Calendar className="w-5 h-5 text-gray-400" />
-                 <input 
+               <input 
                     type="date" 
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setSelectedMonth("");
+                    }}
                     className="bg-transparent text-gray-900 dark:text-white font-black uppercase text-sm tracking-tighter outline-none cursor-pointer"
                  />
-              </div>
-           </div>
-           <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
-           <button 
-             onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+               </div>
+            </div>
+            <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+            <button 
+              onClick={() => {
+                fetchOverview(selectedMonth, selectedDate, selectedBus);
+                fetchRecentBookings();
+              }}
              className="bg-[#fdc106] text-gray-900 p-4 rounded-[1.5rem] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#fdc106]/20"
            >
              <RefreshCw className="w-5 h-5" />
@@ -384,7 +388,12 @@ const fetchRecentBookings = async () => {
               <Calendar className="w-4 h-4 text-gray-400" />
               <select 
                 value={selectedMonth} 
-                onChange={(e) => { setSelectedMonth(e.target.value); }} 
+                onChange={(e) => { 
+                  setSelectedMonth(e.target.value); 
+                  if (e.target.value) {
+                    setSelectedDate("");
+                  }
+                }} 
                 className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full uppercase"
               >
                 <option value="">Month-wise Trend</option>
@@ -414,7 +423,10 @@ const fetchRecentBookings = async () => {
             </div>
 
             <button 
-                onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+                onClick={() => {
+                  fetchOverview(selectedMonth, selectedDate, selectedBus);
+                  fetchRecentBookings();
+                }}
                 className="bg-[#fdc106] hover:bg-black hover:text-[#fdc106] px-8 py-3 rounded-2xl transition-all active:scale-95 shadow-lg shadow-[#fdc106]/20 font-black text-xs uppercase tracking-widest"
             >
                 Generate Report

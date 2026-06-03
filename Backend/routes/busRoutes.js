@@ -25,8 +25,8 @@ const router = express.Router();
  * ------------------------------
  */
 router.post("/", verifyToken, requireRole(["admin", "owner"]), addBus); // Add bus (with ladies + agent seats)
-router.get("/", verifyToken, getBuses); // Get all buses
-router.get("/:id", verifyToken, getBusById); // Get one bus
+router.get("/", getBuses); // Get all buses (Public)
+router.get("/:id", getBusById); // Get one bus (Public)
 router.put("/:id", verifyToken, requireRole(["admin", "owner"]), updateBus); // Update bus details
 router.delete("/:id", verifyToken, requireRole(["admin", "owner"]), deleteBus); // Delete bus
 router.patch("/:id/status", verifyToken, requireRole(["admin", "owner"]), toggleBusStatus); 

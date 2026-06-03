@@ -30,7 +30,7 @@ import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -42,8 +42,8 @@ type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConducto
 
 const OwnerDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const queryOwnerId = searchParams.get("ownerId");
+  const location = useLocation();
+  const queryOwnerId = location.state?.ownerId;
   const { owners, fetchOwners } = useOwner();
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>(queryOwnerId || "");
 

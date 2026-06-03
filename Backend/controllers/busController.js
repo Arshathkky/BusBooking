@@ -9,7 +9,7 @@ import Conductor from "../models/conductorModel.js";
 // --------------------
 export const addBus = async (req, res) => {
   try {
-    const {
+    let {
       name,
       companyName,
       type,
@@ -36,6 +36,11 @@ export const addBus = async (req, res) => {
       notifyOwnerOnBooking = false,
       ownerPhoneForSMS = "",
     } = req.body;
+
+    // If the user is an owner, force the ownerId to be their own ID
+    if (req.user && req.user.role === "owner") {
+      ownerId = req.user.id;
+    }
 
     // ✅ Validate required fields
     if (!name || !companyName || !type || !ownerId || !totalSeats || !price) {
@@ -152,7 +157,13 @@ export const addBus = async (req, res) => {
 // --------------------
 export const getBuses = async (req, res) => {
   try {
-    const { ownerId } = req.query;
+    let { ownerId } = req.query;
+    
+    // If the user is an owner, force the ownerId to be their own ID
+    if (req.user && req.user.role === "owner") {
+      ownerId = req.user.id;
+    }
+
     const filter = ownerId ? { ownerId } : {};
     const buses = await Bus.find(filter).populate("routeId");
 

@@ -93,7 +93,7 @@ const OwnerTab: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 text-right flex justify-end gap-2">
                   <button 
-                    onClick={() => navigate(`/owner?ownerId=${owner._id}`)} 
+                    onClick={() => navigate("/owner", { state: { ownerId: owner._id } })} 
                     title="View Owner Dashboard"
                     className="text-green-600 hover:text-green-800 bg-green-50 p-1.5 rounded-lg"
                   >

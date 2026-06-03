@@ -6,17 +6,17 @@ import {
   updateRoute,
   deleteRoute,
   toggleRouteStatus,
-  searchRoutes,
 } from "../controllers/routeController.js";
+import { verifyToken, requireRole } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/", getRoutes);
-router.get("/search", searchRoutes);
-router.get("/:id", getRouteById);
-router.post("/", createRoute);
-router.put("/:id", updateRoute);
-router.delete("/:id", deleteRoute);
-router.patch("/:id/toggle", toggleRouteStatus);
+router.get("/", verifyToken, getRoutes);
+router.get("/search", searchRoutes); // Public endpoint for searching routes
+router.get("/:id", verifyToken, getRouteById);
+router.post("/", verifyToken, requireRole(["admin", "owner"]), createRoute);
+router.put("/:id", verifyToken, requireRole(["admin", "owner"]), updateRoute);
+router.delete("/:id", verifyToken, requireRole(["admin", "owner"]), deleteRoute);
+router.patch("/:id/toggle", verifyToken, requireRole(["admin", "owner"]), toggleRouteStatus);
 
 export default router;

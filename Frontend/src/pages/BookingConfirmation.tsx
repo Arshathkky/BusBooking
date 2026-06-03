@@ -23,6 +23,7 @@ const BookingConfirmation: React.FC = () => {
   const status = searchParams.get("status");
   const stateParam = searchParams.get("state");
   const orderId = searchParams.get("order_id");
+  const transactionId = searchParams.get("transactionId");
 
   useEffect(() => {
     const fetchBookingByNumericId = async (id: string) => {
@@ -31,8 +32,8 @@ const BookingConfirmation: React.FC = () => {
         const cleanId = id.split("_")[0];
         const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
-        // First fetch to get initial booking status from public endpoint
-        const { data } = await axios.get(`${baseUrl}/bookings/public/${cleanId}`);
+        // First fetch to get initial booking status from public endpoint with transactionId verification
+        const { data } = await axios.get(`${baseUrl}/bookings/public/${cleanId}?transactionId=${transactionId || ""}`);
         if (data.success) {
           const found = data.booking;
           if (!found) {
@@ -66,7 +67,7 @@ const BookingConfirmation: React.FC = () => {
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 try {
-                  const { data: pollData } = await axios.get(`${baseUrl}/bookings/public/${cleanId}`);
+                  const { data: pollData } = await axios.get(`${baseUrl}/bookings/public/${cleanId}?transactionId=${transactionId || ""}`);
                   const polledBooking = pollData.booking;
                   
                   if (polledBooking?.paymentStatus === "PAID") {

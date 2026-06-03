@@ -192,7 +192,51 @@ export const createBooking = async (req, res) => {
 =========================== */
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
+    const { busId, date } = req.query;
+    const filter = {};
+
+    if (busId) {
+      filter["bus.id"] = busId;
+    }
+    if (date) {
+      filter["searchData.date"] = date;
+    }
+
+    // Role-based security checks
+    if (req.user) {
+      const userRole = req.user.role;
+      const userId = req.user.id;
+
+      if (userRole === "owner") {
+        if (busId) {
+          const bus = await Bus.findById(busId);
+          if (!bus || String(bus.ownerId) !== String(userId)) {
+            return res.status(403).json({ success: false, message: "You do not have permission to view bookings for this bus" });
+          }
+        } else {
+          const ownedBuses = await Bus.find({ ownerId: userId }).select("_id");
+          const ownedBusIds = ownedBuses.map(b => b._id.toString());
+          filter["bus.id"] = { $in: ownedBusIds };
+        }
+      } else if (userRole === "conductor") {
+        const conductor = await Conductor.findById(userId);
+        if (!conductor) {
+          return res.status(403).json({ success: false, message: "Conductor profile not found" });
+        }
+        const assignedBusId = conductor.assignedBusId;
+        if (!assignedBusId) {
+          return res.status(403).json({ success: false, message: "No bus assigned to this conductor" });
+        }
+        if (busId && String(busId) !== String(assignedBusId)) {
+          return res.status(403).json({ success: false, message: "You do not have permission to view bookings for this bus" });
+        }
+        filter["bus.id"] = assignedBusId;
+      } else if (userRole !== "admin") {
+        return res.status(403).json({ success: false, message: "Forbidden" });
+      }
+    }
+
+    const bookings = await Booking.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, bookings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -220,10 +264,23 @@ export const getBookingById = async (req, res) => {
 export const getPublicBookingByNumericId = async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const { transactionId } = req.query;
+
     const booking = await Booking.findOne({ bookingId: Number(bookingId) });
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
+
+    // Role-based verification or transaction ID verification
+    const userRole = req.user?.role;
+    const isAuthorized = userRole === "admin" || userRole === "owner";
+
+    if (!isAuthorized) {
+      if (!transactionId || booking.paymentToken !== transactionId) {
+        return res.status(403).json({ success: false, message: "Access denied. Invalid transaction details." });
+      }
+    }
+
     res.status(200).json({ success: true, booking });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

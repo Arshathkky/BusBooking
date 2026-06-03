@@ -87,7 +87,11 @@ export const createConductor = async (req, res) => {
 // ------------------------------------------------------
 export const getAllConductors = async (req, res) => {
   try {
-    const conductors = await Conductor.find().select("-password");
+    const filter = {};
+    if (req.user && req.user.role === "owner") {
+      filter.ownerId = req.user.id;
+    }
+    const conductors = await Conductor.find(filter).select("-password");
     res.status(200).json(conductors);
   } catch (err) {
     res.status(500).json({ message: err.message });

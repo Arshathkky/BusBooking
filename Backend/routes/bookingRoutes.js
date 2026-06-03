@@ -21,7 +21,7 @@ router.post("/", optionalVerifyToken, createBooking); // Create new booking (pub
 router.get("/occupied-seats", getOccupiedSeatsForDate); // Get occupied seats (public)
 router.get("/public/:bookingId", getPublicBookingByNumericId); // Public verification of single booking by numeric ID
 
-router.get("/", verifyToken, requireRole(["admin"]), getAllBookings); // Get all bookings (admin only)
+router.get("/", verifyToken, requireRole(["admin", "owner", "conductor"]), getAllBookings); // Get all bookings (admin, owner, conductor)
 router.get("/:id", verifyToken, checkBookingAccess, getBookingById); // Get one booking (authenticated owner/admin/customer)
 router.put("/:id", verifyToken, checkBookingAccess, updateBooking); // Update booking details (authenticated owner/admin/customer)
 // ❌ REMOVED: router.put("/:id/payment", updatePaymentStatus) - Backend webhook is now single source of truth

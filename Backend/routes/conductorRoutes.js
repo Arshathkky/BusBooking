@@ -20,7 +20,7 @@ import { verifyToken, checkOwnership, requireRole } from "../middleware/authMidd
 const router = express.Router();
 
 router.post("/", verifyToken, requireRole(["admin", "owner"]), createConductor);
-router.get("/", verifyToken, requireRole(["admin"]), getAllConductors);
+router.get("/", verifyToken, requireRole(["admin", "owner"]), getAllConductors);
 router.get("/owner/:ownerId", verifyToken, checkOwnership("ownerId"), getConductorsByOwner);
 router.get("/:id", verifyToken, checkOwnership("id"), getConductorById);
 router.put("/:id", verifyToken, checkOwnership("id"), updateConductor);

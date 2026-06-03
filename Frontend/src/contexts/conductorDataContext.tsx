@@ -48,12 +48,17 @@ export const ConductorProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/conductors`;
 
-  // -------------------- Fetch --------------------
   const fetchConductors = async (ownerId?: string): Promise<void> => {
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return;
+    const userObj = JSON.parse(userStr);
+    if (!["admin", "owner"].includes(userObj.role)) return;
+
     setLoading(true);
     setError(null);
     try {
-      const url = ownerId ? `${API_URL}/owner/${ownerId}` : API_URL;
+      const effectiveOwnerId = ownerId || (userObj.role === "owner" ? userObj.id : undefined);
+      const url = effectiveOwnerId ? `${API_URL}/owner/${effectiveOwnerId}` : API_URL;
       const response = await axios.get<ConductorFromDB[]>(url);
       const mapped = response.data.map((c) => ({ ...c, id: c._id }));
       setConductors(mapped);

@@ -111,6 +111,14 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
 
   const fetchBookings = async () => {
     try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) return;
+      
+      const userObj = JSON.parse(userStr);
+      if (!["admin", "owner", "conductor"].includes(userObj.role)) {
+        return;
+      }
+
       setLoading(true);
       const { data } = await axios.get<{
         success: boolean;

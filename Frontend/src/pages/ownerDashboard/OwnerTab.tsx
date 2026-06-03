@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CreditCard as Edit, Trash2, Plus, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOwner, Owner } from "../../contexts/OwnerContext";
@@ -9,6 +9,10 @@ const OwnerTab: React.FC = () => {
   const navigate = useNavigate();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);
+
+  useEffect(() => {
+    fetchOwners();
+  }, []);
 
   const handleEditOwner = (owner: Owner) => {
     setEditingOwner(owner);

@@ -34,6 +34,8 @@ import { useLocation } from "react-router-dom";
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import axios from "axios";
+
 const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
@@ -42,13 +44,30 @@ type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConducto
 
 
 const fetchWithAuth = async (url: string, options: any = {}) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    ...options.headers,
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  const method = (options.method || 'GET').toUpperCase();
+  let headers = options.headers || {};
+  let data = undefined;
+
+  if (options.body) {
+    try {
+      data = JSON.parse(options.body);
+    } catch {
+      data = options.body;
+    }
+  }
+
+  const response = await axios({
+    url,
+    method,
+    headers,
+    data
+  });
+
+  return {
+    ok: response.status >= 200 && response.status < 300,
+    status: response.status,
+    json: async () => response.data
   };
-  // Use window.fetch to avoid recursion
-  return window.fetch(url, { ...options, headers, credentials: 'include' });
 };
 
 const OwnerDashboard: React.FC = () => {

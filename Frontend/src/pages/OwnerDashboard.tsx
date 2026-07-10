@@ -31,6 +31,7 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
 import { useSearchParams } from "react-router-dom";
+import SeatRequestsTab from "../components/SeatRequestsTab";
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -38,7 +39,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onren
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
-type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal";
+type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal" | "requests";
 
 const OwnerDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -229,6 +230,7 @@ const fetchRecentBookings = async () => {
     ...(canViewSchedule ? ["schedule" as OwnerTab] : []),
     ...(canViewReports ? ["reports" as OwnerTab] : []),
     ...(canAccessConductorPortal ? ["portal" as OwnerTab] : []),
+    "requests" as OwnerTab,
   ];
 
 
@@ -802,6 +804,11 @@ const fetchRecentBookings = async () => {
                 </>
             )}
         </div>
+      )}
+
+      {/* ---------------- Seat Requests ---------------- */}
+      {activeTab === "requests" && (
+        <SeatRequestsTab ownerId={effectiveOwnerId} role="owner" />
       )}
     </div>
     );

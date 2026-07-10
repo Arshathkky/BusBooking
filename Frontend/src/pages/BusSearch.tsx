@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Calendar, Users, Bus, Building2 } from "lucide-react";
 import { useRouteData } from "../contexts/RouteDataContext";
 import { useSearch } from "../contexts/searchContext"; // ✅ NEW CONTEXT HOOK
+import api from "../api/axios";
 
 const BusSearch: React.FC = () => {
   const [focusField, setFocusField] = useState<"from" | "to" | null>(null);
@@ -14,6 +15,75 @@ const BusSearch: React.FC = () => {
 
   const today = new Date().toISOString().split("T")[0];
   const [selectedCompany, setSelectedCompany] = useState<string>("");
+
+  // --- Seat Request States ---
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestName, setRequestName] = useState("");
+  const [requestPhone, setRequestPhone] = useState("");
+  const [requestBusType, setRequestBusType] = useState("Luxury");
+  const [requestTime, setRequestTime] = useState("");
+  const [customTime, setCustomTime] = useState("");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const availableBuses = results.buses || [];
+  const companies = Object.keys(results.busesByCompany || {});
+
+  const departureTimes = Array.from(
+    new Set(availableBuses.map((b: any) => b.departureTime).filter(Boolean))
+  );
+
+  // Set default preferred time when departure times are loaded
+  useEffect(() => {
+    if (departureTimes.length > 0) {
+      setRequestTime(departureTimes[0]);
+    } else {
+      setRequestTime("08:00 AM");
+    }
+  }, [results]);
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRequestSuccess(null);
+    setRequestError(null);
+    setSubmittingRequest(true);
+
+    const finalTime = requestTime === "other" ? customTime : requestTime;
+
+    if (!finalTime) {
+      setRequestError("Please specify a departure time.");
+      setSubmittingRequest(false);
+      return;
+    }
+
+    try {
+      const response = await api.post("/seat-requests", {
+        name: requestName,
+        phone: requestPhone,
+        from: searchData.from,
+        to: searchData.to,
+        date: searchData.date,
+        seats: searchData.passengers || 1,
+        busType: requestBusType,
+        time: finalTime,
+      });
+
+      if (response.data.success) {
+        setRequestSuccess(response.data.message || "Request sent successfully!");
+        setRequestName("");
+        setRequestPhone("");
+        setCustomTime("");
+      } else {
+        setRequestError(response.data.message || "Failed to submit request.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setRequestError(err.response?.data?.message || "Something went wrong.");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   // ✅ Extract all stops for autosuggestion
   const allStops = Array.from(
@@ -38,9 +108,6 @@ const BusSearch: React.FC = () => {
   const handleBusSelect = (busId: string) => {
     navigate(`/seat-selection/${busId}`, { state: { searchData } });
   };
-
-  const availableBuses = results.buses || [];
-  const companies = Object.keys(results.busesByCompany || {});
 
   return (
     <div className="max-w-6xl mx-auto mt-[20px]">
@@ -214,6 +281,21 @@ const BusSearch: React.FC = () => {
               <p className="text-gray-600 dark:text-gray-400">
                 No buses available for the selected route and date
               </p>
+
+              {/* Option to request a seat */}
+              <div className="mt-8 max-w-md mx-auto bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 p-6 rounded-2xl transition-colors">
+                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Can't find your bus?</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Request a seat now and we will check with available bus operators and reply to you in 15 minutes!
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowRequestModal(true)}
+                  className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg"
+                >
+                  Request a Seat
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -301,8 +383,187 @@ const BusSearch: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Look for alternative timings/premium slots request seat banner */}
+              {availableBuses.length > 0 && (
+                <div className="bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-850 dark:to-gray-800 text-white p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl border border-gray-850">
+                  <div>
+                    <h4 className="text-lg font-bold text-[#fdc106]">Looking for alternative timings or premium slots?</h4>
+                    <p className="text-sm text-gray-300">Submit a seat request and we'll reply with options in 15 minutes!</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRequestModal(true)}
+                    className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold px-6 py-3 rounded-xl transition-all flex-shrink-0"
+                  >
+                    Request a Seat
+                  </button>
+                </div>
+              )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Request a Seat Modal */}
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all animate-in zoom-in-95 duration-200">
+            <form onSubmit={handleRequestSubmit}>
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <div>
+                  <h4 className="text-lg font-bold text-gray-900 dark:text-white">Request a Seat</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    We will review and reply within 15 minutes!
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestSuccess(null);
+                    setRequestError(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-650 dark:hover:text-gray-300 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                {requestSuccess && (
+                  <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-4 rounded-xl border border-green-200 dark:border-green-800 text-sm">
+                    {requestSuccess}
+                  </div>
+                )}
+                {requestError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-xl border border-red-200 dark:border-red-800 text-sm">
+                    {requestError}
+                  </div>
+                )}
+
+                {/* Pre-filled info for confirmation */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-1.5 text-xs text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-gray-500 dark:text-gray-450">Route:</span>
+                    <span className="font-bold text-gray-850 dark:text-gray-200">{searchData.from} → {searchData.to}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-gray-500 dark:text-gray-450">Date:</span>
+                    <span className="font-bold text-gray-855 dark:text-gray-200">{searchData.date}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-gray-500 dark:text-gray-450">Seats:</span>
+                    <span className="font-bold text-gray-855 dark:text-gray-200">{searchData.passengers || 1} seats</span>
+                  </div>
+                </div>
+
+                {!requestSuccess && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Passenger Name
+                      </label>
+                      <input
+                        type="text"
+                        value={requestName}
+                        onChange={(e) => setRequestName(e.target.value)}
+                        placeholder="Enter your name"
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={requestPhone}
+                        onChange={(e) => setRequestPhone(e.target.value)}
+                        placeholder="Enter your mobile number"
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Preferred Bus Type
+                      </label>
+                      <select
+                        value={requestBusType}
+                        onChange={(e) => setRequestBusType(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all font-semibold"
+                      >
+                        <option value="Luxury">Luxury</option>
+                        <option value="Semi-Luxury">Semi-Luxury</option>
+                        <option value="Super Luxury">Super Luxury</option>
+                        <option value="Sleeper">Sleeper</option>
+                        <option value="Standard">Standard</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-450 uppercase tracking-wider mb-2">
+                        Which Departure Time?
+                      </label>
+                      <select
+                        value={requestTime}
+                        onChange={(e) => setRequestTime(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all font-semibold"
+                      >
+                        {departureTimes.map((time: any) => (
+                          <option key={time} value={time}>{time}</option>
+                        ))}
+                        <option value="other">Other / Custom Time</option>
+                      </select>
+                    </div>
+
+                    {requestTime === "other" && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-205">
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                          Specify Custom Departure Time
+                        </label>
+                        <input
+                          type="text"
+                          value={customTime}
+                          onChange={(e) => setCustomTime(e.target.value)}
+                          placeholder="e.g., 08:30 PM"
+                          className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all"
+                          required
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setRequestSuccess(null);
+                    setRequestError(null);
+                  }}
+                  className="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+                >
+                  {requestSuccess ? "Close" : "Cancel"}
+                </button>
+                {!requestSuccess && (
+                  <button
+                    type="submit"
+                    disabled={submittingRequest}
+                    className="px-6 py-2 bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold rounded-xl text-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {submittingRequest ? "Sending..." : "Send Request"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

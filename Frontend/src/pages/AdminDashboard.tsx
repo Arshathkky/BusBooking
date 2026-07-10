@@ -9,8 +9,9 @@ import OwnerTab from "./ownerDashboard/OwnerTab";
 import AddRouteModal from "../components/AddRouteModal";
 import AddBusModal from "../components/AddBusModal";
 import Overview from "../contexts/OverView";
+import SeatRequestsTab from "../components/SeatRequestsTab";
 
-type TabKey = "overview" | "owners" | "buses" | "routes" | "users";
+type TabKey = "overview" | "owners" | "buses" | "routes" | "users" | "requests";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -64,6 +65,7 @@ const AdminDashboard: React.FC = () => {
             { key: "buses", label: "Buses" },
             { key: "routes", label: "Routes" },
             { key: "users", label: "Users" },
+            { key: "requests", label: "Seat Requests" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -212,6 +214,9 @@ const AdminDashboard: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* ---------------- Seat Requests ---------------- */}
+      {activeTab === "requests" && <SeatRequestsTab role="admin" />}
 
       {/* ---------------- Modals ---------------- */}
       {showAddRouteModal && (

@@ -68,47 +68,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     password: string
   ): Promise<User | null> => {
     try {
-      /* ===== 1️⃣ ADMIN (Hardcoded) ===== */
-      if (email === "admin@touchmeplus.com" && password === "ArshathHaseen@1654381") {
-        try {
-          const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
-          const adminResponse = await axios.post(
-            `${API_BASE}/owner/login`,
-            { email, password }
-          );
-          const data = adminResponse.data;
-          if (data && data.success && data.user) {
-            if (data.token) localStorage.setItem("token", data.token);
-            const adminUser: User = {
-              id: "admin",
-              name: "Admin",
-              email,
-              role: "admin",
-            };
-            setUser(adminUser);
-            localStorage.setItem("user", JSON.stringify(adminUser));
-            return adminUser;
-          }
-        } catch (err) {
-          console.error("Admin login backend token request failed:", err);
-        }
+      const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 
-        // Fallback for offline/local testing
-        const adminUser: User = {
-          id: "1",
-          name: "Admin",
-          email,
-          role: "admin",
-        };
-
-        setUser(adminUser);
-        localStorage.setItem("user", JSON.stringify(adminUser));
-        return adminUser;
-      }
-
-      /* ===== 2️⃣ OWNER LOGIN ===== */
+      /* ===== 1️⃣ OWNER / ADMIN LOGIN (same endpoint, role returned from backend) ===== */
       try {
-        const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         const ownerResponse = await axios.post(
           `${API_BASE}/owner/login`,
           { email, password }
@@ -117,26 +80,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const data = ownerResponse.data;
 
         if (data && data.success && data.user) {
-          if (data.token) localStorage.setItem("token", data.token);
-          const ownerUser: User = {
+          // Token is stored as HttpOnly cookie by backend — do NOT store in localStorage
+          const loggedUser: User = {
             id: data.user._id,
             name: data.user.name,
             email: data.user.email,
-            role: "owner",
-            area: data.user.companyName || "Unknown",
+            role: data.user.role as "admin" | "owner" | "conductor",
+            area: data.user.companyName || undefined,
           };
 
-          setUser(ownerUser);
-          localStorage.setItem("user", JSON.stringify(ownerUser));
-          return ownerUser;
+          setUser(loggedUser);
+          localStorage.setItem("user", JSON.stringify(loggedUser));
+          return loggedUser;
         }
       } catch (err) {
-        // silent fail → try next login type
+        // Not an owner/admin — try conductor login
       }
 
-      /* ===== 3️⃣ CONDUCTOR / AGENT LOGIN ===== */
+      /* ===== 2️⃣ CONDUCTOR LOGIN ===== */
       try {
-        const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         const condResp = await axios.post(
           `${API_BASE}/conductors/login`,
           { email, password }
@@ -145,7 +107,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const data = condResp.data;
 
         if (data && data.success && data.user) {
-          if (data.token) localStorage.setItem("token", data.token);
+          // Token is stored as HttpOnly cookie by backend — do NOT store in localStorage
           const condUser: User = {
             id: data.user._id,
             name: data.user.name,

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, User, UserX, CircleDot as Steering } from "lucide-react";
+import { ArrowLeft, User, UserX, CircleDot as Steering, CheckCircle2 } from "lucide-react";
 import { useSeat, Seat, SeatLayoutType, LastRowType } from "../contexts/seatSelectionContext";
 import { useBooking } from "../contexts/BookingContext";
 import axios from "axios";
@@ -351,6 +351,53 @@ const SeatSelection: React.FC = () => {
   const [continueError, setContinueError] = useState<string | null>(null);
   const [pickupLocation, setPickupLocation] = useState("");
 
+  // Request Bus Form State
+  const [requestName, setRequestName] = useState("");
+  const [requestPhone, setRequestPhone] = useState("");
+  const [requestPickup, setRequestPickup] = useState("");
+  const [requestComments, setRequestComments] = useState("");
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const handleRequestBusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!busSeats || !busId) return;
+    setIsSubmittingRequest(true);
+    setRequestError(null);
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bus-requests`, {
+        name: requestName,
+        phone: requestPhone,
+        pickupPlace: requestPickup,
+        comments: requestComments,
+        busId,
+        busName: busSeats.name,
+        ownerId: busSeats.ownerId,
+        searchData: {
+          from: searchData.from,
+          to: searchData.to,
+          date: searchData.date,
+        }
+      });
+      if (response.data.success) {
+        setRequestSuccess(true);
+        // Clear form fields
+        setRequestName("");
+        setRequestPhone("");
+        setRequestPickup("");
+        setRequestComments("");
+      } else {
+        setRequestError(response.data.message || "Failed to submit request.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setRequestError(err.response?.data?.message || "An error occurred. Please try again.");
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
   // ---------------- FETCH OCCUPIED ----------------
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
@@ -573,6 +620,82 @@ const SeatSelection: React.FC = () => {
                 >
                     {isContinuing ? "Processing..." : "Continue to Details"}
                 </button>
+            </div>
+
+            {/* Request Bus Card */}
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-4 text-[#fdc106]">Can't find a seat? Request a Bus</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                    Submit a quick request for this bus or timing. Our agent will verify availability and get back to you!
+                </p>
+
+                {requestSuccess ? (
+                    <div className="bg-green-500/10 border border-green-500 text-green-700 dark:text-green-400 p-6 rounded-2xl text-center space-y-3">
+                        <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+                        <p className="font-black uppercase tracking-wider text-sm">Request Submitted!</p>
+                        <p className="text-xs font-bold leading-normal">Your booking is in process. Our agent will contact you within 15 minutes.</p>
+                    </div>
+                ) : (
+                    <form onSubmit={handleRequestBusSubmit} className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Name</label>
+                            <input 
+                                type="text" 
+                                required
+                                placeholder="Your Name"
+                                value={requestName}
+                                onChange={(e) => setRequestName(e.target.value)}
+                                className="w-full p-4 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-[#fdc106] text-gray-900 dark:text-white"
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Phone Number</label>
+                            <input 
+                                type="tel" 
+                                required
+                                placeholder="Phone Number"
+                                value={requestPhone}
+                                onChange={(e) => setRequestPhone(e.target.value)}
+                                className="w-full p-4 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-[#fdc106] text-gray-900 dark:text-white"
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Pickup Place</label>
+                            <input 
+                                type="text" 
+                                required
+                                placeholder="Pickup Place"
+                                value={requestPickup}
+                                onChange={(e) => setRequestPickup(e.target.value)}
+                                className="w-full p-4 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-[#fdc106] text-gray-900 dark:text-white"
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest px-1">Comments</label>
+                            <textarea 
+                                placeholder="Any comments or requirements?"
+                                value={requestComments}
+                                onChange={(e) => setRequestComments(e.target.value)}
+                                className="w-full p-4 bg-gray-50 dark:bg-gray-900 border-none rounded-2xl font-bold focus:ring-2 focus:ring-[#fdc106] text-gray-900 dark:text-white min-h-[80px]"
+                            />
+                        </div>
+
+                        {requestError && (
+                            <p className="text-red-600 text-xs font-bold bg-red-50 dark:bg-red-900/20 p-3 rounded-xl border border-red-100 dark:border-red-900/35">{requestError}</p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={isSubmittingRequest}
+                            className="w-full py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl bg-gray-900 hover:bg-black text-white dark:bg-[#fdc106] dark:text-gray-900 dark:hover:bg-[#e6ad05] hover:shadow-black/10 active:scale-95 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                            {isSubmittingRequest ? "Submitting..." : "Submit Request"}
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
       </div>

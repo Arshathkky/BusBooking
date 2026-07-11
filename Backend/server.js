@@ -58,6 +58,7 @@ const app = express();
 const allowedOrigins = [
   "https://mseat.touchmeplus.com",
   "https://bus-booking-nt91.onrender.com",
+  "https://busbooking-development.onrender.com",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5000",

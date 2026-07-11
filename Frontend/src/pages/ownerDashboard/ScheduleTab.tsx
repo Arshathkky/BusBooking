@@ -36,7 +36,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ ownerId }) => {
 
   const updateSchedule = async (bus: BusType, updates: Partial<BusType>) => {
     setUpdating(bus.id);
-    const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
+    const API_URL = `${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/buses`;
     try {
       await axios.put(`${API_URL}/${bus.id}/schedule`, updates);
       await fetchBuses();

@@ -366,7 +366,7 @@ const SeatSelection: React.FC = () => {
     setIsSubmittingRequest(true);
     setRequestError(null);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bus-requests`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/bus-requests`, {
         name: requestName,
         phone: requestPhone,
         pickupPlace: requestPickup,
@@ -402,7 +402,7 @@ const SeatSelection: React.FC = () => {
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
-    const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+    const API_BASE = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
     const res = await axios.get<OccupiedSeatsResponse>(
       `${API_BASE}/bookings/occupied-seats`,
       { params: { busId, date: searchData.date } }

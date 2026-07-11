@@ -2,7 +2,7 @@ import axios from "axios";
 import { encryptPayload, decryptPayload } from "../utils/cryptoUtils";
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api",
+    baseURL: import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api",
     withCredentials: true
 });
 

@@ -63,7 +63,7 @@ export const initiateGeniePayment = async (req, res) => {
             currency: "LKR",
             localId: `${bookingId}-${Date.now()}`, 
             redirectUrl: `${req.headers.origin || "https://mseat.touchmeplus.com"}/booking-confirmation?order_id=${bookingId}`,
-            webhook: `${process.env.BACKEND_URL || "https://bus-booking-nt91.onrender.com"}/api/genie/notify`,
+            webhook: `${process.env.BACKEND_URL || "https://busbooking-backend-development.onrender.com"}/api/genie/notify`,
             metadata: {
                 bookingId: bookingId,
                 name: customerDetails?.name || "Guest",

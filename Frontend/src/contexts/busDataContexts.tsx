@@ -128,8 +128,13 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<{ success: boolean; data: BusFromDB[] }>(API_URL);
-      const mapped = res.data.data.map(mapBus);
+      const res = await axios.get<{ success: boolean; data: BusFromDB[] } | BusFromDB[]>(API_URL);
+      const busArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray((res.data as any).data)
+        ? (res.data as any).data
+        : [];
+      const mapped = busArray.map(mapBus);
       setBuses(mapped);
       localStorage.setItem("buses", JSON.stringify(mapped));
     } catch (err) {

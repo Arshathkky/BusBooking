@@ -110,9 +110,15 @@ export const RouteProvider: React.FC<{ children: ReactNode }> = ({
     setError(null);
     try {
       const url = ownerId ? `${API_URL}?ownerId=${ownerId}` : API_URL;
-      const response = await axios.get<RouteFromDB[]>(url);
+      const response = await axios.get<RouteFromDB[] | { data: RouteFromDB[] }>(url);
 
-      const mappedRoutes: RouteType[] = response.data.map((route) => ({
+      const routeArray = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray((response.data as any).data)
+        ? (response.data as any).data
+        : [];
+
+      const mappedRoutes: RouteType[] = routeArray.map((route) => ({
         ...route,
         id: route._id,
       }));
@@ -204,10 +210,14 @@ export const RouteProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
-      const response = await axios.get<BusType[]>(
+      const response = await axios.get<{ buses?: BusType[] } | BusType[]>(
         `${SEARCH_API_URL}?from=${from}&to=${to}`
       );
-      setSearchResults(response.data);
+      setSearchResults(
+        Array.isArray(response.data)
+          ? response.data
+          : response.data.buses || []
+      );
     } catch (err) {
       console.error("Search buses error:", err);
       setError("Failed to fetch buses");

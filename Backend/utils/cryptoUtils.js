@@ -3,10 +3,14 @@ import crypto from "crypto";
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
+// Guard: crash at startup if ENCRYPTION_KEY is not set
+if (!process.env.ENCRYPTION_KEY) {
+  throw new Error("FATAL: ENCRYPTION_KEY environment variable is not set. Set it in backend/.env");
+}
+
 // Convert the hex string encryption key into a Buffer
 const getEncryptionKey = () => {
-    const key = process.env.ENCRYPTION_KEY || "d6f83f21820b411982b68c92a6c1e31d8e137c8e92f15b6cd987e6a71e82a39a";
-    return Buffer.from(key, "hex");
+    return Buffer.from(process.env.ENCRYPTION_KEY, "hex");
 };
 
 /**

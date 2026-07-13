@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
 
 interface ReportsTabProps {
     ownerId: string;

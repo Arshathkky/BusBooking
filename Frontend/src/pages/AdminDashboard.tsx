@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
+import axios from "axios";
 
 import { useBus, BusType } from "../contexts/busDataContexts";
 import { useData } from "../contexts/DataContext";
@@ -10,7 +11,7 @@ import AddRouteModal from "../components/AddRouteModal";
 import AddBusModal from "../components/AddBusModal";
 import Overview from "../contexts/OverView";
 
-type TabKey = "overview" | "owners" | "buses" | "routes" | "users";
+type TabKey = "overview" | "owners" | "buses" | "routes" | "users" | "requests";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
@@ -64,6 +65,7 @@ const AdminDashboard: React.FC = () => {
             { key: "buses", label: "Buses" },
             { key: "routes", label: "Routes" },
             { key: "users", label: "Users" },
+            { key: "requests", label: "Bus Requests" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -213,6 +215,9 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* ---------------- Requests ---------------- */}
+      {activeTab === "requests" && <AdminRequestsTab />}
+
       {/* ---------------- Modals ---------------- */}
       {showAddRouteModal && (
         <AddRouteModal
@@ -232,6 +237,144 @@ const AdminDashboard: React.FC = () => {
             setEditingBus(null);
           }}
         />
+      )}
+    </div>
+  );
+};
+
+// --- ADMIN REQUESTS TAB ---
+const AdminRequestsTab: React.FC = () => {
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get("/bus-requests");
+      if (response.data.success) {
+        setRequests(response.data.data);
+      } else {
+        setError(response.data.message || "Failed to load requests.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.message || "An error occurred fetching requests.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "pending" ? "processed" : "pending";
+    try {
+      const response = await axios.patch(`/bus-requests/${id}/status`, { status: nextStatus });
+      if (response.data.success) {
+        setRequests(prev => prev.map(r => r._id === id ? { ...r, status: nextStatus } : r));
+      }
+    } catch (err: any) {
+      alert("Failed to update status: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this request?")) return;
+    try {
+      const response = await axios.delete(`/bus-requests/${id}`);
+      if (response.data.success) {
+        setRequests(prev => prev.filter(r => r._id !== id));
+      }
+    } catch (err: any) {
+      alert("Failed to delete request: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    return status === "processed"
+      ? "text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900"
+      : "text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900";
+  };
+
+  if (loading) {
+    return <div className="text-center py-10 font-bold text-gray-500">Loading requests...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-500 font-bold">{error}</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">All System Bus Requests</h3>
+        <button
+          onClick={fetchRequests}
+          className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 px-4 py-2 rounded-lg font-medium text-sm flex items-center space-x-2"
+        >
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      {requests.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400 text-center py-10">No bus requests in the system.</p>
+      ) : (
+        <div className="overflow-x-auto shadow-md rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4">
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+              <tr>
+                <th className="px-6 py-3">Passenger</th>
+                <th className="px-6 py-3">Bus Details</th>
+                <th className="px-6 py-3">Route Details</th>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Pickup</th>
+                <th className="px-6 py-3">Comments</th>
+                <th className="px-6 py-3">Owner ID</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => (
+                <tr key={request._id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                    {request.name}
+                    <br />
+                    <span className="text-xs text-gray-500">{request.phone}</span>
+                  </td>
+                  <td className="px-6 py-4">{request.busName}</td>
+                  <td className="px-6 py-4">
+                    {request.searchData.from} → {request.searchData.to}
+                  </td>
+                  <td className="px-6 py-4 font-bold">{request.searchData.date}</td>
+                  <td className="px-6 py-4">{request.pickupPlace}</td>
+                  <td className="px-6 py-4 italic text-xs max-w-xs truncate" title={request.comments}>{request.comments || "-"}</td>
+                  <td className="px-6 py-4 text-xs font-semibold">{request.ownerId || "System"}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      onClick={() => handleUpdateStatus(request._id, request.status)}
+                      className={`cursor-pointer px-2 py-1 rounded text-xs font-semibold uppercase ${getStatusColor(request.status)}`}
+                    >
+                      {request.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right flex justify-end gap-2">
+                    <button
+                      onClick={() => handleDelete(request._id)}
+                      className="text-red-500 hover:text-red-700 p-1.5"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

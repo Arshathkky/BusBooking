@@ -435,7 +435,10 @@ export const updateBooking = async (req, res) => {
     }
 
     if (passengerDetails) booking.passengerDetails = passengerDetails;
-    if (totalAmount) booking.totalAmount = totalAmount;
+    // Only admin or owner may change the booking price
+    if (totalAmount && ["admin", "owner"].includes(req.user?.role)) {
+      booking.totalAmount = totalAmount;
+    }
 
     await booking.save();
 
@@ -539,7 +542,9 @@ export const cancelBooking = async (req, res) => {
 
     booking.paymentStatus = "CANCELLED";
     booking.cancelRemark = remark || "No remark provided";
-    booking.cancelledBy = cancelledBy || "conductor";
+    // Derive cancelledBy from the authenticated user's role — never trust client input
+    const roleMap = { admin: "admin", conductor: "conductor", owner: "conductor" };
+    booking.cancelledBy = roleMap[req.user?.role] || "conductor";
     await booking.save();
 
     res.status(200).json({ success: true, message: "Booking cancelled", booking });
@@ -588,6 +593,16 @@ export const getOwnerRecentBookings = async (req, res) => {
   try {
     const { busIds } = req.body; 
     if (!busIds || !Array.isArray(busIds)) return res.status(400).json({ success: false, message: "Invalid busIds" });
+    
+    // Verify that all requested busIds actually belong to the requesting owner
+    if (req.user.role === "owner") {
+      const ownedBuses = await Bus.find({ ownerId: req.user.id, _id: { $in: busIds } }).select("_id");
+      const ownedIds = ownedBuses.map(b => b._id.toString());
+      const unauthorized = busIds.filter(id => !ownedIds.includes(id));
+      if (unauthorized.length > 0) {
+        return res.status(403).json({ success: false, message: "You do not own all the specified buses" });
+      }
+    }
     
     // In search result, we store bus as {id: string, name: string...}
     // We match the bus.id field in Booking schema

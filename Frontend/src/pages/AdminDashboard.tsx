@@ -85,11 +85,7 @@ const AdminDashboard: React.FC = () => {
             { key: "buses", label: "Buses" },
             { key: "routes", label: "Routes" },
             { key: "users", label: "Users" },
-<<<<<<< HEAD
-            { key: "requests", label: "Seat Requests" },
-=======
             { key: "requests", label: `Bus Requests${pendingRequestCount > 0 ? ` (${pendingRequestCount})` : ""}` },
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
           ].map((tab) => (
             <button
               key={tab.key}
@@ -239,13 +235,8 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* ---------------- Seat Requests ---------------- */}
-      {activeTab === "requests" && <SeatRequestsTab role="admin" />}
-=======
       {/* ---------------- Requests ---------------- */}
       {activeTab === "requests" && <AdminRequestsTab />}
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
 
       {/* ---------------- Modals ---------------- */}
       {showAddRouteModal && (

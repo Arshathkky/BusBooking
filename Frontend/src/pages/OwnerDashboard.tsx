@@ -30,12 +30,8 @@ import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
-<<<<<<< HEAD
-import { useSearchParams } from "react-router-dom";
-import SeatRequestsTab from "../components/SeatRequestsTab";
-=======
 import { useLocation } from "react-router-dom";
->>>>>>> 94a2e1eda1be624aa1affbe63ec689cfac45077a
+import SeatRequestsTab from "../components/SeatRequestsTab";
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -287,11 +283,7 @@ const fetchRecentBookings = async () => {
     ...(canViewSchedule ? ["schedule" as OwnerTab] : []),
     ...(canViewReports ? ["reports" as OwnerTab] : []),
     ...(canAccessConductorPortal ? ["portal" as OwnerTab] : []),
-<<<<<<< HEAD
     "requests" as OwnerTab,
-=======
-    "requests",
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
   ];
 
 
@@ -880,15 +872,9 @@ const fetchRecentBookings = async () => {
             )}
         </div>
       )}
-<<<<<<< HEAD
-
       {/* ---------------- Seat Requests ---------------- */}
       {activeTab === "requests" && (
         <SeatRequestsTab ownerId={effectiveOwnerId} role="owner" />
-=======
-      {activeTab === "requests" && effectiveOwnerId && (
-        <OwnerRequestsTab ownerId={effectiveOwnerId} />
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
       )}
     </div>
     );

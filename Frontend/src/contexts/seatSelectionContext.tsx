@@ -35,6 +35,8 @@ export interface Bus {
   useCustomLayout?: boolean;
   ownerId?: string;
   allowSeatRequest?: boolean;
+  departureTime?: string;
+  arrivalTime?: string;
 }
 
 // Backend response wrapper
@@ -57,6 +59,8 @@ interface BusFromBackend {
   useCustomLayout?: boolean;
   ownerId?: string;
   allowSeatRequest?: boolean;
+  departureTime?: string;
+  arrivalTime?: string;
 }
 
 // -------------------- Context Type --------------------

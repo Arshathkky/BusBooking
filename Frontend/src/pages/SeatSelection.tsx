@@ -630,8 +630,7 @@ const SeatSelection: React.FC = () => {
             </div>
 
             {/* Request Bus Card */}
-            {busSeats.allowSeatRequest && (
-              <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700 mt-6">
                 <h3 className="text-xl font-black italic uppercase tracking-tighter mb-4 text-[#fdc106]">Can't find a seat? Request a Seat</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
                     Share your details and pickup point. Our staff will contact you within 15 minutes for this bus.
@@ -705,7 +704,6 @@ const SeatSelection: React.FC = () => {
                     </form>
                 )}
               </div>
-            )}
         </div>
       </div>
     </div>

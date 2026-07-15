@@ -262,7 +262,7 @@ const BusSearch: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <button
               type="submit"
               disabled={loading}
@@ -270,6 +270,14 @@ const BusSearch: React.FC = () => {
             >
               <Search className="w-5 h-5" />
               <span>{loading ? "Searching..." : "Search Buses"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowRequestModal(true)}
+              className="text-sm font-semibold text-[#fdc106] hover:text-[#e6ad05] underline-offset-4 hover:underline"
+            >
+              Request a seat for this route
             </button>
           </div>
         </form>
@@ -413,7 +421,7 @@ const BusSearch: React.FC = () => {
 
       {/* Request a Seat Modal */}
       {showRequestModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all animate-in zoom-in-95 duration-200">
             <form onSubmit={handleRequestSubmit}>
               <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">

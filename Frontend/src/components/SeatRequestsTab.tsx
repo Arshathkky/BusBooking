@@ -50,12 +50,15 @@ const SeatRequestsTab: React.FC<SeatRequestsTabProps> = ({ ownerId, role }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get<{ data: SeatRequest[] }>("/seat-requests", {
+      const response = await api.get<any>('/seat-requests', {
         params: {
-          ownerId: role === "owner" ? ownerId : undefined
+          ownerId: role === 'owner' ? ownerId : undefined
         }
       });
-      setRequests(response.data.data || []);
+
+      const payload = response?.data?.data ?? response?.data ?? [];
+      const requestList = Array.isArray(payload) ? payload : [];
+      setRequests(requestList);
     } catch (err) {
       console.error("Error fetching seat requests:", err);
       setError("Failed to load seat requests. Please try again.");

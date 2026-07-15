@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
-import axios from "axios";
+import api from "../api/axios";
 
 import { useBus, BusType } from "../contexts/busDataContexts";
 import { useData } from "../contexts/DataContext";
@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchPendingRequestCount = async () => {
     try {
-      const response = await axios.get("/seat-requests");
+      const response = await api.get("/seat-requests");
       if (response.data.success) {
         const count = (response.data.data || []).filter((request: any) => request.status === "pending").length;
         setPendingRequestCount(count);

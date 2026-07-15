@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchPendingRequestCount = async () => {
     try {
-      const response = await axios.get("/bus-requests");
+      const response = await axios.get("/seat-requests");
       if (response.data.success) {
         const count = (response.data.data || []).filter((request: any) => request.status === "pending").length;
         setPendingRequestCount(count);
@@ -85,7 +85,7 @@ const AdminDashboard: React.FC = () => {
             { key: "buses", label: "Buses" },
             { key: "routes", label: "Routes" },
             { key: "users", label: "Users" },
-            { key: "requests", label: `Bus Requests${pendingRequestCount > 0 ? ` (${pendingRequestCount})` : ""}` },
+            { key: "requests", label: `Seat Requests${pendingRequestCount > 0 ? ` (${pendingRequestCount})` : ""}` },
           ].map((tab) => (
             <button
               key={tab.key}

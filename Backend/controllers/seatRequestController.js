@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import SeatRequest from "../models/seatRequestModel.js";
 import Route from "../models/routeModel.js";
 import Bus from "../models/busModel.js";
@@ -73,7 +74,11 @@ export const createSeatRequest = async (req, res) => {
 
     const savedRequest = await seatRequest.save();
 
-    const ownerList = Array.from(ownerIds).filter(Boolean);
+    const ownerList = Array.from(ownerIds)
+      .filter(Boolean)
+      .map((id) => String(id))
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+
     if (ownerList.length > 0) {
       const owners = await Owner.find({ _id: { $in: ownerList } }).select("name phone");
       const smsMessage = `New seat request from ${name} for ${seatCount} seat(s) from ${from} to ${to} on ${date} at ${time}. Contact: ${phone}`;

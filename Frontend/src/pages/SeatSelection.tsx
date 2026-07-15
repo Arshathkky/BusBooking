@@ -377,6 +377,15 @@ const SeatSelection: React.FC = () => {
         ownerId: busSeats.ownerId,
         pickupPlace: requestPickup,
         comments: requestComments,
+        searchData: {
+          from: searchData?.from || "",
+          to: searchData?.to || "",
+          date: searchData?.date || "",
+          passengers: Number(searchData?.passengers) || 1,
+          busId,
+          busName: busSeats.name,
+          ownerId: busSeats.ownerId,
+        },
       });
       if (response.data.success) {
         setRequestSuccess(true);

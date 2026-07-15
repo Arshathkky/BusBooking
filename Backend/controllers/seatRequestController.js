@@ -9,23 +9,35 @@ import { sendSMS } from "../utils/smsService.js";
 // @access  Public
 export const createSeatRequest = async (req, res) => {
   try {
-    const { name, phone, from, to, date, seats, busType, time, busId, busName, ownerId, pickupPlace, comments } = req.body;
+    const payload = req.body || {};
+    const searchData = payload.searchData || {};
 
-    if (!name || !phone || !from || !to || !date || !seats || !busType || !time) {
+    const name = payload.name || "";
+    const phone = payload.phone || "";
+    const from = (payload.from || searchData.from || "").toString().trim();
+    const to = (payload.to || searchData.to || "").toString().trim();
+    const date = (payload.date || searchData.date || "").toString().trim();
+    const seatCount = Number(payload.seats ?? searchData.passengers ?? 1);
+    const busType = (payload.busType || searchData.busType || "Any").toString().trim();
+    const time = (payload.time || searchData.time || "Requested").toString().trim();
+    const busId = payload.busId || searchData.busId || undefined;
+    const busName = payload.busName || searchData.busName || undefined;
+    const ownerId = payload.ownerId || searchData.ownerId || undefined;
+    const pickupPlace = payload.pickupPlace || payload.pickupPlace || undefined;
+    const comments = payload.comments || undefined;
+
+    if (!name || !phone || !from || !to || !date || !seatCount || !busType || !time) {
       return res.status(400).json({ success: false, message: "Please fill all required fields" });
     }
-
-    const normalizedFrom = from.trim();
-    const normalizedTo = to.trim();
 
     // Identify which ownerIds to notify by checking routes and buses running from -> to
     const matchingRoutes = await Route.find({
       $or: [
         {
-          startPoint: { $regex: new RegExp(`^${normalizedFrom}$`, "i") },
-          endPoint: { $regex: new RegExp(`^${normalizedTo}$`, "i") },
+          startPoint: { $regex: new RegExp(`^${from}$`, "i") },
+          endPoint: { $regex: new RegExp(`^${to}$`, "i") },
         },
-        { stops: { $all: [normalizedFrom, normalizedTo] } },
+        { stops: { $all: [from, to] } },
       ],
     });
 
@@ -46,10 +58,10 @@ export const createSeatRequest = async (req, res) => {
     const seatRequest = new SeatRequest({
       name,
       phone,
-      from: normalizedFrom,
-      to: normalizedTo,
+      from,
+      to,
       date,
-      seats: Number(seats),
+      seats: seatCount,
       busType,
       time,
       notifiedOwners: Array.from(ownerIds),
@@ -64,7 +76,7 @@ export const createSeatRequest = async (req, res) => {
     const ownerList = Array.from(ownerIds).filter(Boolean);
     if (ownerList.length > 0) {
       const owners = await Owner.find({ _id: { $in: ownerList } }).select("name phone");
-      const smsMessage = `New seat request from ${name} for ${seats} seat(s) from ${normalizedFrom} to ${normalizedTo} on ${date} at ${time}. Contact: ${phone}`;
+      const smsMessage = `New seat request from ${name} for ${seatCount} seat(s) from ${from} to ${to} on ${date} at ${time}. Contact: ${phone}`;
 
       await Promise.allSettled(
         owners
@@ -80,7 +92,7 @@ export const createSeatRequest = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating seat request:", error);
-    res.status(500).json({ success: false, message: "Server error creating seat request" });
+    res.status(500).json({ success: false, message: error.message || "Server error creating seat request" });
   }
 };
 

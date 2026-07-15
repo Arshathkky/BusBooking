@@ -65,8 +65,14 @@ const BusSearch: React.FC = () => {
         to: searchData.to,
         date: searchData.date,
         seats: searchData.passengers || 1,
-        busType: requestBusType,
+        busType: requestBusType || "Any",
         time: finalTime,
+        searchData: {
+          from: searchData.from,
+          to: searchData.to,
+          date: searchData.date,
+          passengers: searchData.passengers || 1,
+        },
       });
 
       if (response.data.success) {

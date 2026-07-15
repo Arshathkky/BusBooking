@@ -10,6 +10,10 @@ const seatRequestSchema = new mongoose.Schema(
     seats: { type: Number, required: true },
     busType: { type: String, required: true }, // e.g., Luxury, Semi-Luxury, Sleeper, Standard
     time: { type: String, required: true }, // Preferred departure time
+    busId: { type: String },
+    busName: { type: String },
+    pickupPlace: { type: String },
+    comments: { type: String },
     status: {
       type: String,
       enum: ["pending", "approved", "rejected"],

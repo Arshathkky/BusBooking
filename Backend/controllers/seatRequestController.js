@@ -1,31 +1,38 @@
 import SeatRequest from "../models/seatRequestModel.js";
 import Route from "../models/routeModel.js";
 import Bus from "../models/busModel.js";
+import Owner from "../models/ownerModel.js";
+import { sendSMS } from "../utils/smsService.js";
 
 // @desc    Create a new seat request
 // @route   POST /api/seat-requests
 // @access  Public
 export const createSeatRequest = async (req, res) => {
   try {
-    const { name, phone, from, to, date, seats, busType, time } = req.body;
+    const { name, phone, from, to, date, seats, busType, time, busId, busName, ownerId, pickupPlace, comments } = req.body;
 
     if (!name || !phone || !from || !to || !date || !seats || !busType || !time) {
       return res.status(400).json({ success: false, message: "Please fill all required fields" });
     }
 
+    const normalizedFrom = from.trim();
+    const normalizedTo = to.trim();
+
     // Identify which ownerIds to notify by checking routes and buses running from -> to
     const matchingRoutes = await Route.find({
       $or: [
         {
-          startPoint: { $regex: new RegExp(`^${from.trim()}$`, "i") },
-          endPoint: { $regex: new RegExp(`^${to.trim()}$`, "i") },
+          startPoint: { $regex: new RegExp(`^${normalizedFrom}$`, "i") },
+          endPoint: { $regex: new RegExp(`^${normalizedTo}$`, "i") },
         },
-        { stops: { $all: [from.trim(), to.trim()] } },
+        { stops: { $all: [normalizedFrom, normalizedTo] } },
       ],
     });
 
     const routeIds = matchingRoutes.map((r) => r._id);
-    const matchingBuses = await Bus.find({ routeId: { $in: routeIds } });
+    const matchingBuses = await Bus.find({
+      $or: [{ routeId: { $in: routeIds } }, ...(busId ? [{ _id: busId }] : [])],
+    });
 
     const ownerIds = new Set();
     matchingRoutes.forEach((r) => {
@@ -34,20 +41,37 @@ export const createSeatRequest = async (req, res) => {
     matchingBuses.forEach((b) => {
       if (b.ownerId) ownerIds.add(String(b.ownerId));
     });
+    if (ownerId) ownerIds.add(String(ownerId));
 
     const seatRequest = new SeatRequest({
       name,
       phone,
-      from: from.trim(),
-      to: to.trim(),
+      from: normalizedFrom,
+      to: normalizedTo,
       date,
       seats: Number(seats),
       busType,
       time,
       notifiedOwners: Array.from(ownerIds),
+      busId: busId || undefined,
+      busName: busName || undefined,
+      pickupPlace: pickupPlace || undefined,
+      comments: comments || undefined,
     });
 
     const savedRequest = await seatRequest.save();
+
+    const ownerList = Array.from(ownerIds).filter(Boolean);
+    if (ownerList.length > 0) {
+      const owners = await Owner.find({ _id: { $in: ownerList } }).select("name phone");
+      const smsMessage = `New seat request from ${name} for ${seats} seat(s) from ${normalizedFrom} to ${normalizedTo} on ${date} at ${time}. Contact: ${phone}`;
+
+      await Promise.allSettled(
+        owners
+          .filter((owner) => owner.phone)
+          .map((owner) => sendSMS(owner.phone, `${owner.name || "Bus owner"}, ${smsMessage}`))
+      );
+    }
 
     res.status(201).json({
       success: true,

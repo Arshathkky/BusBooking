@@ -129,7 +129,8 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
             />
             <input
               name="phone"
-              placeholder="Phone"
+              type="tel"
+              placeholder="Owner Mobile Number"
               value={formData.phone}
               onChange={handleChange}
               required
@@ -143,6 +144,10 @@ const OwnerModal: React.FC<OwnerModalProps> = ({ onClose, ownerData }) => {
               required
               className="p-2 border rounded-lg dark:bg-gray-800 dark:text-white"
             />
+          </div>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+            Enter the owner mobile number here so seat-request SMS alerts can be sent to them.
           </div>
 
           <textarea

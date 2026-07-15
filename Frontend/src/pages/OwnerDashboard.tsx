@@ -31,7 +31,6 @@ import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
 import { useLocation } from "react-router-dom";
-import SeatRequestsTab from "../components/SeatRequestsTab";
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -872,9 +871,9 @@ const fetchRecentBookings = async () => {
             )}
         </div>
       )}
-      {/* ---------------- Seat Requests ---------------- */}
+      {/* ---------------- Bus Requests ---------------- */}
       {activeTab === "requests" && (
-        <SeatRequestsTab ownerId={effectiveOwnerId} role="owner" />
+        <OwnerRequestsTab ownerId={effectiveOwnerId} />
       )}
     </div>
     );
@@ -1832,9 +1831,11 @@ const OwnerRequestsTab: React.FC<{ ownerId: string }> = ({ ownerId }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/bus-requests");
+      const response = await axios.get("/bus-requests", {
+        params: { ownerId: ownerId || undefined }
+      });
       if (response.data.success) {
-        setRequests(response.data.data);
+        setRequests(response.data.data || []);
       } else {
         setError(response.data.message || "Failed to load requests.");
       }

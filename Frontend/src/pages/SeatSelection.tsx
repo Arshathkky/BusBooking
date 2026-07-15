@@ -363,19 +363,20 @@ const SeatSelection: React.FC = () => {
     setIsSubmittingRequest(true);
     setRequestError(null);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bus-requests`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/seat-requests`, {
         name: requestName,
         phone: requestPhone,
-        pickupPlace: requestPickup,
-        comments: requestComments,
+        from: searchData?.from || "",
+        to: searchData?.to || "",
+        date: searchData?.date || "",
+        seats: Number(searchData?.passengers) || 1,
+        busType: busSeats.type || "Any",
+        time: busSeats.departureTime || "Requested",
         busId,
         busName: busSeats.name,
         ownerId: busSeats.ownerId,
-        searchData: {
-          from: searchData.from,
-          to: searchData.to,
-          date: searchData.date,
-        }
+        pickupPlace: requestPickup,
+        comments: requestComments,
       });
       if (response.data.success) {
         setRequestSuccess(true);

@@ -1,6 +1,7 @@
 import Conductor from "../models/conductorModel.js";
 import Bus from "../models/busModel.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 
 // ✅ Generate JWT Token for Conductor
 const generateToken = (conductor) => {
@@ -11,7 +12,7 @@ const generateToken = (conductor) => {
       role: "conductor",
       name: conductor.name 
     },
-    process.env.JWT_SECRET || "your-secret-key",
+    process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 };
@@ -263,7 +264,8 @@ export const loginConductor = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (conductor.password !== password) {
+    const isMatch = await bcrypt.compare(password, conductor.password);
+    if (!isMatch) {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
@@ -388,7 +390,7 @@ export const getConductorDashboard = async (req, res) => {
         route: bus.route,
         departureTime: bus.departureTime,
       },
-      assignedSeats: seatNumbers,
+      assignedSeats: assignedSeats,
     });
   } catch (err) {
     console.error(err);

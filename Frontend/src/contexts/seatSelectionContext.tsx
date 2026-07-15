@@ -33,6 +33,8 @@ export interface Bus {
   lastRowSeats: LastRowType;
   seatNumberingType: "driver_side" | "door_side";
   useCustomLayout?: boolean;
+  ownerId?: string;
+  allowSeatRequest?: boolean;
 }
 
 // Backend response wrapper
@@ -53,6 +55,8 @@ interface BusFromBackend {
   lastRowSeats?: LastRowType;
   seatNumberingType?: "driver_side" | "door_side";
   useCustomLayout?: boolean;
+  ownerId?: string;
+  allowSeatRequest?: boolean;
 }
 
 // -------------------- Context Type --------------------
@@ -106,6 +110,8 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         lastRowSeats: busData.lastRowSeats ?? 6,
         seatNumberingType: busData.seatNumberingType ?? "driver_side",
         useCustomLayout: busData.useCustomLayout ?? false,
+        ownerId: busData.ownerId,
+        allowSeatRequest: busData.allowSeatRequest ?? false,
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,

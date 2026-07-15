@@ -102,6 +102,7 @@ const busSchema = new mongoose.Schema(
     },
     
     useCustomLayout: { type: Boolean, default: false },
+    allowSeatRequest: { type: Boolean, default: false },
     
     // ✅ Approval System for Conductor Changes
     pendingSeats: { type: [seatSchema], default: [] },

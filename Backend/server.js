@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +42,11 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import genieRoutes from "./routes/genieRoutes.js";
+<<<<<<< HEAD
 import seatRequestRoutes from "./routes/seatRequestRoutes.js";
+=======
+import busRequestRoutes from "./routes/busRequestRoutes.js";
+>>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
 
 // Import encryption middleware
 import { encryptionMiddleware } from "./middleware/encryptionMiddleware.js";
@@ -57,7 +62,9 @@ const app = express();
 const allowedOrigins = [
   "https://mseat.touchmeplus.com",
   "https://bus-booking-nt91.onrender.com",
+  "https://busbooking-development.onrender.com",
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:5000",
   "http://localhost:3000"
 ];
@@ -102,7 +109,11 @@ app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/genie", genieRoutes);
+<<<<<<< HEAD
 app.use("/api/seat-requests", seatRequestRoutes);
+=======
+app.use("/api/bus-requests", busRequestRoutes);
+>>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
 
 // Secure Logout Endpoint
 app.post("/api/logout", (req, res) => {

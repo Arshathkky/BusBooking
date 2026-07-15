@@ -4,6 +4,20 @@ export const authMiddleware = (req, res, next) => {
   next();
 =======
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
+
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? null : "dev-jwt-secret-change-me");
+
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is not set. Set it in backend/.env");
+}
 
 // Helper to manually parse cookies from the Cookie header
 const parseCookies = (cookieHeader) => {
@@ -36,7 +50,7 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
@@ -154,7 +168,7 @@ export const optionalVerifyToken = (req, res, next) => {
     const token = cookies.token || req.headers.authorization?.split(" ")[1];
     
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key");
+      const decoded = jwt.verify(token, JWT_SECRET);
       req.user = decoded;
     }
     next();

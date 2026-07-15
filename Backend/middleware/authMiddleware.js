@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-export const authMiddleware = (req, res, next) => {
-  // Pass through middleware as user authentication is stored client-side
-  next();
-=======
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import path from "path";
@@ -30,6 +25,11 @@ const parseCookies = (cookieHeader) => {
     }
   });
   return cookies;
+};
+
+export const authMiddleware = (req, res, next) => {
+  // Pass through middleware as user authentication is stored client-side
+  next();
 };
 
 /**
@@ -176,5 +176,4 @@ export const optionalVerifyToken = (req, res, next) => {
     // If token is invalid, we don't reject, just proceed as unauthenticated
     next();
   }
->>>>>>> 94a2e1eda1be624aa1affbe63ec689cfac45077a
 };

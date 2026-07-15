@@ -42,11 +42,8 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import ownerRoutes from "./routes/ownerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import genieRoutes from "./routes/genieRoutes.js";
-<<<<<<< HEAD
 import seatRequestRoutes from "./routes/seatRequestRoutes.js";
-=======
 import busRequestRoutes from "./routes/busRequestRoutes.js";
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
 
 // Import encryption middleware
 import { encryptionMiddleware } from "./middleware/encryptionMiddleware.js";
@@ -109,11 +106,8 @@ app.use("/api/search", searchRoutes);
 app.use("/api/owner", ownerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/genie", genieRoutes);
-<<<<<<< HEAD
 app.use("/api/seat-requests", seatRequestRoutes);
-=======
 app.use("/api/bus-requests", busRequestRoutes);
->>>>>>> 8aaed4ac76fb49812b850dd9295f9181d22c371d
 
 // Secure Logout Endpoint
 app.post("/api/logout", (req, res) => {

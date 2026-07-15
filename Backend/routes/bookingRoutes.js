@@ -19,12 +19,6 @@ import { verifyToken, checkBookingAccess, requireRole, optionalVerifyToken } fro
 const router = express.Router();
 router.use(authMiddleware);
 
-<<<<<<< HEAD
-router.post("/", createBooking); // Create new booking
-router.post("/owner-recent", getOwnerRecentBookings); // Recent bookings for owner/dashboard
-router.post("/unblock-all", unblockSeatsAllDays); // Global unblock
-router.patch("/:id/check-in", toggleCheckIn); // Toggle check-in status
-=======
 router.post("/", optionalVerifyToken, createBooking); // Create new booking (public with optional auth)
 router.get("/occupied-seats", getOccupiedSeatsForDate); // Get occupied seats (public)
 router.get("/public/:bookingId", getPublicBookingByNumericId); // Public verification of single booking by numeric ID
@@ -37,6 +31,5 @@ router.patch("/:id/cancel", verifyToken, checkBookingAccess, cancelBooking); // 
 router.post("/owner-recent", verifyToken, requireRole(["admin", "owner"]), getOwnerRecentBookings); // Recent bookings (owner/admin)
 router.post("/unblock-all", verifyToken, requireRole(["admin"]), unblockSeatsAllDays); // Global unblock (admin only)
 router.patch("/:id/check-in", verifyToken, requireRole(["admin", "owner", "conductor"]), toggleCheckIn); // Toggle check-in status (admin/owner/conductor)
->>>>>>> 94a2e1eda1be624aa1affbe63ec689cfac45077a
 
 export default router;

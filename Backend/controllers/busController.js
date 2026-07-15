@@ -32,6 +32,7 @@ export const addBus = async (req, res) => {
       seatLayout = "2x2",
       lastRowSeats= 4,
       useCustomLayout = false,
+      allowSeatRequest = false,
       seats = [], // 👈 Expecting full seat objects from designer
       notifyOwnerOnBooking = false,
       ownerPhoneForSMS = "",
@@ -133,6 +134,7 @@ export const addBus = async (req, res) => {
       seatLayout,
       lastRowSeats,
       useCustomLayout,
+      allowSeatRequest,
       seats: finalSeats,
       notifyOwnerOnBooking,
       ownerPhoneForSMS,
@@ -226,6 +228,9 @@ export const updateBus = async (req, res) => {
     }
     if (req.body.ownerPhoneForSMS !== undefined) {
         bus.ownerPhoneForSMS = req.body.ownerPhoneForSMS;
+    }
+    if (req.body.allowSeatRequest !== undefined) {
+        bus.allowSeatRequest = req.body.allowSeatRequest;
     }
     
     // Only update seats if explicitly provided (usually via updateSeatLayout)

@@ -41,6 +41,7 @@ interface FormData {
   useCustomLayout: boolean; // 👈 NEW
   notifyOwnerOnBooking: boolean;
   ownerPhoneForSMS: string;
+  allowSeatRequest: boolean;
 }
 
 // ------------------------------
@@ -72,6 +73,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus, ownerId 
     useCustomLayout: false, // 👈 NEW
     notifyOwnerOnBooking: false,
     ownerPhoneForSMS: "",
+    allowSeatRequest: false,
   });
 
   const [showLayoutDesigner, setShowLayoutDesigner] = useState(false);
@@ -108,6 +110,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus, ownerId 
         useCustomLayout: editingBus.useCustomLayout || false,
         notifyOwnerOnBooking: editingBus.notifyOwnerOnBooking || false,
         ownerPhoneForSMS: editingBus.ownerPhoneForSMS || "",
+        allowSeatRequest: editingBus.allowSeatRequest || false,
       });
       if (editingBus.seats) {
         setCustomSeats(editingBus.seats);
@@ -215,6 +218,7 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus, ownerId 
       useCustomLayout: formData.useCustomLayout,
       notifyOwnerOnBooking: formData.notifyOwnerOnBooking,
       ownerPhoneForSMS: formData.ownerPhoneForSMS,
+      allowSeatRequest: formData.allowSeatRequest,
     };
 
     // Only update/include seats if creating a new bus or structurally changing layouts
@@ -450,6 +454,28 @@ const AddBusModal: React.FC<AddBusModalProps> = ({ onClose, editingBus, ownerId 
                       <span className="text-sm capitalize">{amenity}</span>
                     </label>
                   ))}
+                </div>
+              </div>
+
+              {/* Seat Request Settings */}
+              <div className="p-6 bg-[#fdc106]/5 rounded-2xl border-2 border-[#fdc106]/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#fdc106] rounded-xl flex items-center justify-center">
+                      <Bus className="w-5 h-5 text-gray-900" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-tight">Enable Seat Request</h4>
+                      <p className="text-[10px] text-gray-500 font-bold">Show the request-a-seat form on this bus during seat selection</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("allowSeatRequest", !formData.allowSeatRequest)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${formData.allowSeatRequest ? 'bg-[#fdc106]' : 'bg-gray-300'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${formData.allowSeatRequest ? 'left-7' : 'left-1'}`} />
+                  </button>
                 </div>
               </div>
 

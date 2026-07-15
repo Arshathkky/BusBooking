@@ -15,7 +15,7 @@ const generateToken = (owner) => {
       role: "owner",
       name: owner.name 
     },
-    process.env.JWT_SECRET || "your-secret-key",
+    process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 };
@@ -142,11 +142,22 @@ export const loginOwner = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ Handle Admin login
-    if (email === "admin@touchmeplus.com" && password === "ArshathHaseen@1654381") {
+    // ✅ Handle Admin login — credentials stored in environment variables
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+
+    if (!adminEmail || !adminPasswordHash) {
+      console.error("FATAL: ADMIN_EMAIL or ADMIN_PASSWORD_HASH not set in environment");
+    }
+
+    if (adminEmail && email === adminEmail) {
+      const isAdminMatch = await bcrypt.compare(password, adminPasswordHash);
+      if (!isAdminMatch) {
+        return res.status(400).json({ success: false, message: "Invalid email or password" });
+      }
       const token = jwt.sign(
         { id: "admin", email, role: "admin", name: "Admin" },
-        process.env.JWT_SECRET || "your-secret-key",
+        process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
       const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";

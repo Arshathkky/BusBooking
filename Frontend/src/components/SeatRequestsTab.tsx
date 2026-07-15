@@ -66,6 +66,10 @@ const SeatRequestsTab: React.FC<SeatRequestsTabProps> = ({ ownerId, role }) => {
 
   useEffect(() => {
     fetchRequests();
+    const interval = window.setInterval(() => {
+      fetchRequests();
+    }, 10000);
+    return () => window.clearInterval(interval);
   }, [ownerId, role]);
 
   const handleOpenReplyModal = (reqId: string, status: "approved" | "rejected") => {

@@ -66,6 +66,7 @@ export const createSeatRequest = async (req, res) => {
       busType,
       time,
       notifiedOwners: Array.from(ownerIds),
+      ownerId: ownerId || undefined,
       busId: busId || undefined,
       busName: busName || undefined,
       pickupPlace: pickupPlace || undefined,
@@ -79,14 +80,34 @@ export const createSeatRequest = async (req, res) => {
       .map((id) => String(id))
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
 
+    const ownerPhonesToNotify = [];
+
     if (ownerList.length > 0) {
       const owners = await Owner.find({ _id: { $in: ownerList } }).select("name phone");
+      owners.forEach((owner) => {
+        if (owner.phone) ownerPhonesToNotify.push({ name: owner.name, phone: owner.phone });
+      });
+    }
+
+    if (ownerId && mongoose.Types.ObjectId.isValid(ownerId)) {
+      const owner = await Owner.findById(ownerId).select("name phone");
+      if (owner?.phone && !ownerPhonesToNotify.some((entry) => entry.phone === owner.phone)) {
+        ownerPhonesToNotify.push({ name: owner.name, phone: owner.phone });
+      }
+    }
+
+    if (busId && ownerPhonesToNotify.length === 0) {
+      const busRecord = await Bus.findById(busId).select("ownerPhoneForSMS ownerId");
+      if (busRecord?.ownerPhoneForSMS) {
+        ownerPhonesToNotify.push({ name: busName || "Bus owner", phone: busRecord.ownerPhoneForSMS });
+      }
+    }
+
+    if (ownerPhonesToNotify.length > 0) {
       const smsMessage = `New seat request from ${name} for ${seatCount} seat(s) from ${from} to ${to} on ${date} at ${time}. Contact: ${phone}`;
 
       await Promise.allSettled(
-        owners
-          .filter((owner) => owner.phone)
-          .map((owner) => sendSMS(owner.phone, `${owner.name || "Bus owner"}, ${smsMessage}`))
+        ownerPhonesToNotify.map((owner) => sendSMS(owner.phone, `${owner.name || "Bus owner"}, ${smsMessage}`))
       );
     }
 
@@ -110,8 +131,13 @@ export const getSeatRequests = async (req, res) => {
 
     let filter = {};
     if (ownerId && ownerId !== "all") {
-      // Owner only sees requests they are notified about
-      filter = { notifiedOwners: ownerId };
+      filter = {
+        $or: [
+          { notifiedOwners: ownerId },
+          { ownerId: String(ownerId) },
+          { notifiedOwners: { $exists: true, $size: 0 } },
+        ],
+      };
     }
 
     const requests = await SeatRequest.find(filter).sort({ createdAt: -1 });

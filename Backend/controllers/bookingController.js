@@ -5,6 +5,8 @@ import Conductor from "../models/conductorModel.js";
 import { Counter } from "../models/counterModal.js";
 import crypto from "crypto";
 import { sendSMS } from "../utils/smsService.js";
+import axios from "axios";
+import { getGenieBaseUrl } from "./genieController.js";
 
 const MUTEX = {};
 
@@ -15,7 +17,23 @@ const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 =========================== */
 export const createBooking = async (req, res) => {
   const { searchData, selectedSeats, bus } = req.body;
-  const lockKey = `${bus.id}-${searchData.date}`;
+
+  if (!bus || !bus.id) {
+    return res.status(400).json({ success: false, message: "Bus ID is required" });
+  }
+  if (!searchData || !searchData.date) {
+    return res.status(400).json({ success: false, message: "Search data with date is required" });
+  }
+  if (!selectedSeats || !Array.isArray(selectedSeats) || selectedSeats.length === 0) {
+    return res.status(400).json({ success: false, message: "Selected seats are required" });
+  }
+
+  const busDb = await Bus.findById(bus.id);
+  if (!busDb) {
+    return res.status(404).json({ success: false, message: "Bus not found" });
+  }
+
+  const lockKey = `${busDb._id.toString()}-${searchData.date}`;
 
   // Acquire Lock
   while (MUTEX[lockKey]) {
@@ -24,18 +42,17 @@ export const createBooking = async (req, res) => {
   MUTEX[lockKey] = true;
 
   try {
-    const isOwnerOverride = searchData.from === 'Owner Override';
+    const isOwnerOrAdmin = req.user && ["owner", "admin"].includes(req.user.role);
+    const isOwnerOverride = isOwnerOrAdmin && searchData.from === 'Owner Override';
 
     // 2️⃣ 🔥 CONCURRENCY CHECK — reject if any seat is already locked
     const seatNumbers = selectedSeats.map(String);
     const conflicting = await Booking.findOne({
-      "bus.id": bus.id,
+      "bus.id": busDb._id,
       "searchData.date": searchData.date,
       selectedSeats: { $in: seatNumbers },
       $or: [
         { paymentStatus: "PAID" },
-        // If it's a customer booking, block if any status exists. 
-        // If it's an owner booking (Override), we might want to allow it, but for now let's just add the statuses to the block list.
         { paymentStatus: "BLOCKED" },
         { paymentStatus: "OFFLINE" },
         { paymentStatus: "PENDING", holdExpiresAt: { $gt: new Date() } }
@@ -53,7 +70,7 @@ export const createBooking = async (req, res) => {
     // If owner override, delete all conflicting non-paid bookings for these seats
     if (isOwnerOverride) {
         await Booking.deleteMany({
-            "bus.id": new mongoose.Types.ObjectId(bus.id),
+            "bus.id": busDb._id,
             "searchData.date": searchData.date,
             selectedSeats: { $in: seatNumbers },
             paymentStatus: { $ne: "PAID" }
@@ -69,22 +86,67 @@ export const createBooking = async (req, res) => {
 
     const bookingId = counter.seq;
 
-    // 4️⃣ Reference ID
-    const referenceId = `${searchData.date}-${selectedSeats.join("")}-${bus.busNumber || bus.name}`;
+    // 4️⃣ Reference ID (using DB values)
+    const referenceId = `${searchData.date}-${selectedSeats.join("")}-${busDb.busNumber || busDb.name}`;
 
     // 5️⃣ Hold & payment expiry (15 mins for customers, far future for owner actions)
-    const isPermanentStatus = ["PAID", "BLOCKED", "OFFLINE"].includes(req.body.paymentStatus) || isOwnerOverride;
+    // Only admins/owners can force a specific payment status; normal users always start as PENDING
+    let targetPaymentStatus = "PENDING";
+    if (req.user && ["admin", "owner"].includes(req.user.role) && req.body.paymentStatus) {
+      targetPaymentStatus = req.body.paymentStatus.toUpperCase();
+    }
+
+    const isPermanentStatus = ["PAID", "BLOCKED", "OFFLINE"].includes(targetPaymentStatus) || isOwnerOverride;
     const expiryTime = new Date(Date.now() + 15 * 60 * 1000);
     const farFuture = new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
 
+    let actualPrice = busDb.price;
+    if (busDb.scheduleMode === "custom") {
+      const customEntry = busDb.customSchedule.find(entry => entry.date === searchData.date);
+      if (customEntry) {
+        actualPrice = customEntry.price || busDb.price;
+      }
+    }
+
+    let computedTotalAmount = 0;
+    if (!isOwnerOverride) {
+      computedTotalAmount = actualPrice * selectedSeats.length;
+    } else if (req.body.totalAmount) {
+      computedTotalAmount = Number(req.body.totalAmount);
+    }
+
+    // Reconstruct sanitized bus object using DB values to prevent tampering
+    const sanitizedBus = {
+      id: busDb._id,
+      name: busDb.name,
+      type: busDb.type,
+      busNumber: busDb.busNumber
+    };
+
     // 6️⃣ Create booking (DATE-WISE)
     const booking = await Booking.create({
-      ...req.body,
       bookingId,
       referenceId,
+      bus: sanitizedBus,
+      searchData: {
+        from: searchData.from,
+        to: searchData.to,
+        date: searchData.date
+      },
+      selectedSeats: seatNumbers,
+      totalAmount: computedTotalAmount,
+      passengerDetails: {
+        name: req.body.passengerDetails?.name || "",
+        phone: req.body.passengerDetails?.phone || "",
+        email: req.body.passengerDetails?.email || "",
+        address: req.body.passengerDetails?.address || "",
+        nic: req.body.passengerDetails?.nic || "",
+      },
       holdExpiresAt: isPermanentStatus ? farFuture : expiryTime,
       paymentExpiresAt: isPermanentStatus ? farFuture : expiryTime,
-      paymentStatus: req.body.paymentStatus || "PENDING",
+      paymentStatus: targetPaymentStatus,
+      pickupLocation: req.body.pickupLocation || "",
+      isCheckedIn: false,
     });
 
     res.status(201).json({ success: true, booking });
@@ -108,10 +170,9 @@ export const createBooking = async (req, res) => {
 
         // 2. ✅ Also send to Owner if enabled
         try {
-            const busDetails = await Bus.findById(booking.bus.id);
-            if (busDetails && busDetails.notifyOwnerOnBooking && busDetails.ownerPhoneForSMS) {
+            if (busDb.notifyOwnerOnBooking && busDb.ownerPhoneForSMS) {
                 const ownerMsg = `[OWNER COPY] ${msg}`;
-                sendSMS(busDetails.ownerPhoneForSMS, ownerMsg);
+                sendSMS(busDb.ownerPhoneForSMS, ownerMsg);
             }
         } catch (err) {
             console.error("Owner SMS failed:", err);
@@ -131,7 +192,51 @@ export const createBooking = async (req, res) => {
 =========================== */
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
+    const { busId, date } = req.query;
+    const filter = {};
+
+    if (busId) {
+      filter["bus.id"] = busId;
+    }
+    if (date) {
+      filter["searchData.date"] = date;
+    }
+
+    // Role-based security checks
+    if (req.user) {
+      const userRole = req.user.role;
+      const userId = req.user.id;
+
+      if (userRole === "owner") {
+        if (busId) {
+          const bus = await Bus.findById(busId);
+          if (!bus || String(bus.ownerId) !== String(userId)) {
+            return res.status(403).json({ success: false, message: "You do not have permission to view bookings for this bus" });
+          }
+        } else {
+          const ownedBuses = await Bus.find({ ownerId: userId }).select("_id");
+          const ownedBusIds = ownedBuses.map(b => b._id.toString());
+          filter["bus.id"] = { $in: ownedBusIds };
+        }
+      } else if (userRole === "conductor") {
+        const conductor = await Conductor.findById(userId);
+        if (!conductor) {
+          return res.status(403).json({ success: false, message: "Conductor profile not found" });
+        }
+        const assignedBusId = conductor.assignedBusId;
+        if (!assignedBusId) {
+          return res.status(403).json({ success: false, message: "No bus assigned to this conductor" });
+        }
+        if (busId && String(busId) !== String(assignedBusId)) {
+          return res.status(403).json({ success: false, message: "You do not have permission to view bookings for this bus" });
+        }
+        filter["bus.id"] = assignedBusId;
+      } else if (userRole !== "admin") {
+        return res.status(403).json({ success: false, message: "Forbidden" });
+      }
+    }
+
+    const bookings = await Booking.find(filter).sort({ createdAt: -1 });
     res.status(200).json({ success: true, bookings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -154,6 +259,35 @@ export const getBookingById = async (req, res) => {
 };
 
 /* ===========================
+   GET PUBLIC BOOKING BY NUMERIC ID
+=========================== */
+export const getPublicBookingByNumericId = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { transactionId } = req.query;
+
+    const booking = await Booking.findOne({ bookingId: Number(bookingId) });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // Role-based verification or transaction ID verification
+    const userRole = req.user?.role;
+    const isAuthorized = userRole === "admin" || userRole === "owner";
+
+    if (!isAuthorized) {
+      if (!transactionId || booking.paymentToken !== transactionId) {
+        return res.status(403).json({ success: false, message: "Access denied. Invalid transaction details." });
+      }
+    }
+
+    res.status(200).json({ success: true, booking });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/* ===========================
    UPDATE PAYMENT STATUS
 =========================== */
 export const updatePaymentStatus = async (req, res) => {
@@ -166,10 +300,16 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
 
     // Already processed
-    if (booking.paymentStatus !== "PENDING") {
+    if (booking.paymentStatus !== "PENDING" && booking.paymentStatus !== "ONLINE") {
+      // If the booking is already cancelled, do not allow payment attempts
+      if (paymentStatus && paymentStatus.toUpperCase() === "CANCELLED") {
+        alert("This booking has been cancelled and cannot be paid.");
+        setProcessing(false);
+        return;
+      }
       return res.status(400).json({
         success: false,
-        message: "Booking already paid or cancelled",
+        message: `Booking is already ${booking.paymentStatus}. Cannot change status.`,
       });
     }
 
@@ -180,8 +320,72 @@ export const updatePaymentStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: "Booking expired" });
     }
 
-    // ✅ Mark booking PAID (NO BUS UPDATE)
-    booking.paymentStatus = paymentStatus.toUpperCase();
+    // ✅ Mark booking PAID - with enhanced Genie payment validation
+    const targetStatus = paymentStatus.toUpperCase();
+    if (targetStatus === "PAID") {
+      // Only verify if this is an online booking with a paymentToken
+      if (booking.paymentToken) {
+        try {
+          const genieUrl = `${getGenieBaseUrl()}/public/v2/transactions/${booking.paymentToken}`;
+          const verifyResponse = await axios.get(genieUrl, {
+            headers: {
+              "Authorization": `Bearer ${process.env.GENIE_API_KEY}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          console.log("--- Payment Status Check Response ---", verifyResponse.data);
+
+          // ✅ Check all possible status fields
+          const isSuccess = verifyResponse.data?.status === "SUCCESS" || 
+                            verifyResponse.data?.data?.status === "SUCCESS" || 
+                            verifyResponse.data?.transactionStatus === "SUCCESS" || 
+                            verifyResponse.data?.paymentStatus === "SUCCESS" ||
+                            verifyResponse.data?.response?.status === "SUCCESS";
+
+          if (!isSuccess) {
+            return res.status(400).json({
+              success: false,
+              message: "Payment verification failed: Transaction not successful on Genie gateway.",
+              details: {
+                bookingId: booking.bookingId,
+                status: verifyResponse.data?.status,
+                paymentStatus: verifyResponse.data?.paymentStatus
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Genie API verification error:", error.response?.data || error.message);
+          
+          // ✅ Check if webhook already set it to PAID in the database
+          if (booking.paymentStatus === "PAID") {
+            console.log("Booking already marked as PAID by webhook");
+            return res.status(200).json({
+              success: true,
+              message: "Booking already confirmed by webhook",
+              booking
+            });
+          }
+          
+          return res.status(400).json({
+            success: false,
+            message: "Could not verify payment with Genie gateway. Please try again.",
+            details: error.response?.data?.message || error.message
+          });
+        }
+      } else {
+        // If it has NO paymentToken, and it was a customer online booking (status PENDING),
+        // we should NOT allow setting it to PAID directly!
+        if (booking.paymentStatus === "PENDING") {
+          return res.status(400).json({
+            success: false,
+            message: "Cannot mark a pending online booking as paid without a valid payment transaction."
+          });
+        }
+      }
+    }
+
+    booking.paymentStatus = targetStatus;
     await booking.save();
 
     // 📩 Send SMS if Paid

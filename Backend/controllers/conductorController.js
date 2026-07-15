@@ -1,5 +1,20 @@
 import Conductor from "../models/conductorModel.js";
 import Bus from "../models/busModel.js";
+import jwt from "jsonwebtoken";
+
+// ✅ Generate JWT Token for Conductor
+const generateToken = (conductor) => {
+  return jwt.sign(
+    { 
+      id: conductor._id.toString(), 
+      email: conductor.email, 
+      role: "conductor",
+      name: conductor.name 
+    },
+    process.env.JWT_SECRET || "your-secret-key",
+    { expiresIn: "7d" }
+  );
+};
 
 
 // ------------------------------------------------------
@@ -72,7 +87,11 @@ export const createConductor = async (req, res) => {
 // ------------------------------------------------------
 export const getAllConductors = async (req, res) => {
   try {
-    const conductors = await Conductor.find().select("-password");
+    const filter = {};
+    if (req.user && req.user.role === "owner") {
+      filter.ownerId = req.user.id;
+    }
+    const conductors = await Conductor.find(filter).select("-password");
     res.status(200).json(conductors);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -252,10 +271,31 @@ export const loginConductor = async (req, res) => {
       return res.status(403).json({ message: "Account is inactive" });
     }
 
-    const responseData = conductor.toObject();
-    delete responseData.password;
+    // Generate JWT Token for Conductor
+    const token = generateToken(conductor);
 
-    res.status(200).json(responseData);
+    // Set JWT in HttpOnly cookie
+    const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: !isLocal,
+      sameSite: isLocal ? "lax" : "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        _id: conductor._id.toString(),
+        name: conductor.name,
+        email: conductor.email,
+        role: "conductor",
+        city: conductor.city,
+        assignedBusId: conductor.assignedBusId,
+        conductorCode: conductor.conductorCode
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message || "Server error" });
   }

@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { CreditCard as Edit, Trash2, Plus, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard as Edit, Trash2, Plus } from "lucide-react";
 import { useOwner, Owner } from "../../contexts/OwnerContext";
 import OwnerModal from "./AddOwnerModal";
 
 const OwnerTab: React.FC = () => {
-  const navigate = useNavigate();
   const { owners, deleteOwner, updateOwner, fetchOwners } = useOwner();
+  const navigate = useNavigate();
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [editingOwner, setEditingOwner] = useState<Owner | undefined>(undefined);
+
+  useEffect(() => {
+    fetchOwners();
+  }, []);
 
   const handleEditOwner = (owner: Owner) => {
     setEditingOwner(owner);
@@ -65,62 +69,65 @@ const OwnerTab: React.FC = () => {
         </button>
       </div>
 
-      <div className="grid gap-4">
-        {owners.map(owner => (
-          <div
-            key={owner._id}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 flex justify-between items-center transition-colors"
-          >
-            <div>
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white">{owner.name}</h4>
-              <p className="text-gray-600 dark:text-gray-400">{owner.email}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {owner.phone} • {owner.address}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Registered: {new Date(owner.createdAt || "").toLocaleDateString()}
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => navigate(`/owner?ownerId=${owner._id}`)}
-                className="mr-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
-              >
-                Manage Fleet
-              </button>
-
-              <span
-                onClick={() => handleStatusChange(owner)}
-                title="Click to change status"
-                className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${getStatusColor(
-                  owner.status
-                )}`}
-              >
-                {owner.status.charAt(0).toUpperCase() + owner.status.slice(1)}
-              </span>
-
-              <button
-                onClick={() => handleEditOwner(owner)}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => deleteOwner(owner._id)}
-                className="p-2 text-gray-400 hover:text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto shadow-md rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+            <tr>
+              <th className="px-6 py-3">Name</th>
+              <th className="px-6 py-3">Contact</th>
+              <th className="px-6 py-3">Address</th>
+              <th className="px-6 py-3">Reg Number</th>
+              <th className="px-6 py-3">Tax ID</th>
+              <th className="px-6 py-3">Status</th>
+              <th className="px-6 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {owners.map((owner) => (
+              <tr key={owner._id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{owner.name}</td>
+                <td className="px-6 py-4">{owner.email}<br/>{owner.phone}</td>
+                <td className="px-6 py-4">{owner.address || 'N/A'}</td>
+                <td className="px-6 py-4">{owner.businessRegistrationNumber || 'N/A'}</td>
+                <td className="px-6 py-4">{owner.taxId || 'N/A'}</td>
+                <td className="px-6 py-4">
+                  <span onClick={() => handleStatusChange(owner)} className={`cursor-pointer px-2 py-1 rounded text-xs font-semibold ${getStatusColor(owner.status)}`}>
+                    {owner.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right flex justify-end gap-2">
+                  <button 
+                    onClick={() => navigate("/owner", { state: { ownerId: owner._id } })} 
+                    title="View Owner Dashboard"
+                    className="text-green-600 hover:text-green-800 bg-green-50 p-1.5 rounded-lg"
+                  >
+                    <LayoutDashboard size={16} />
+                  </button>
+                  <button 
+                    onClick={() => handleEditOwner(owner)} 
+                    title="Edit Owner"
+                    className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-lg"
+                  >
+                    <Edit size={16} />
+                  </button>
+                  <button 
+                    onClick={() => deleteOwner(owner._id)} 
+                    title="Delete Owner"
+                    className="text-red-600 hover:text-red-800 bg-red-50 p-1.5 rounded-lg"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {showOwnerModal && (
         <OwnerModal
           ownerData={editingOwner}
-          onClose={handleModalClose} // Refresh owners
+          onClose={handleModalClose}
         />
       )}
     </div>

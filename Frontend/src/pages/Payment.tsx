@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useBooking } from "../contexts/BookingContext";
+import api from "../api/axios";
 
 declare global {
   interface Window {
-    payhere: any;
+    payhere?: Record<string, unknown>;
   }
 }
 
 const Payment: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addBooking, updatePaymentStatus } = useBooking();
+  const { addBooking } = useBooking();
 
   const {
     bus,
     selectedSeats,
     searchData,
     totalAmount,
-    busNumber,
     passengerDetails,
     pickupLocation,
+    paymentStatus,
   } = location.state || {};
 
   const [processing, setProcessing] = useState(false);
@@ -50,41 +51,50 @@ const Payment: React.FC = () => {
         setExistingBookingId(currentBookingId);
       }
 
-      const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
-
-      // 2. Initiate Genie Payment via Backend
-      const response = await fetch(`${baseUrl}/genie/pay`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // 2. Initiate Genie Payment via Backend (using axios for proper auth/encryption)
+      const { data } = await api.post("/genie/pay", {
+        bookingId: currentBookingId,
+        amount: totalAmount,
+        customerDetails: {
+          name: passengerDetails.name,
+          phone: passengerDetails.phone,
+          email: passengerDetails.email || "passenger@example.com"
         },
-        body: JSON.stringify({
-          bookingId: currentBookingId,
-          amount: totalAmount,
-          customerDetails: {
-            name: passengerDetails.name,
-            phone: passengerDetails.phone,
-            email: passengerDetails.email || "passenger@example.com"
-          },
-          paymentMethod: method
-        }),
+        paymentMethod: method
       });
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Failed to initiate Genie payment");
-      }
+      console.log("Genie API Response:", data);
 
       // 3. Redirect to Genie Payment URL
-      if (data.payment_url) {
+      if (data?.success && data?.payment_url) {
         window.location.href = data.payment_url;
+      } else if (data?.success && data?.url) {
+        window.location.href = data.url;
       } else {
-        throw new Error("Genie payment URL not found in response");
+        console.error("Response data:", data);
+        throw new Error(data?.message || "Genie payment URL not found in response");
       }
-    } catch (error: any) {
-      console.error("Genie Payment failed:", error);
-      alert(error.message || "Could not start payment. Please try again.");
+    } catch (error) {
+      console.error("Genie Payment Error - Full Details:");
+      if (error instanceof Error) {
+        console.error("Message:", error.message);
+      } else if (typeof error === "object" && error !== null) {
+        const err = error as { response?: { status?: number; data?: Record<string, unknown> } };
+        console.error("Status:", err.response?.status);
+        console.error("Data:", err.response?.data);
+      }
+      
+      let errorMsg = "Could not start payment. Please try again.";
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === "object" && error !== null) {
+        const err = error as { response?: { data?: Record<string, unknown> } };
+        const data = err.response?.data;
+        if (data && typeof data === "object") {
+          errorMsg = (data.message as string) || errorMsg;
+        }
+      }
+      alert(errorMsg);
       setProcessing(false);
     }
   };
@@ -173,18 +183,23 @@ const Payment: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={() => handlePayment("genie")}
-            disabled={processing}
-            className={`w-full py-4 rounded-lg font-bold transition-colors ${
-              !processing
-                ? "bg-[#fdc106] hover:bg-[#e6ad05]"
-                : "bg-gray-300 cursor-not-allowed"
-            }`}
-          >
-            {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
-          </button>
-
+            { (paymentStatus && (paymentStatus.toUpperCase() === "PAID" || paymentStatus.toUpperCase() === "CANCELLED")) ? (
+              <div className="text-center text-red-600 font-semibold">
+                {paymentStatus.toUpperCase() === "PAID" ? "Booking already paid." : "Booking has been cancelled; payment not allowed."}
+              </div>
+            ) : (
+              <button
+                onClick={() => handlePayment("genie")}
+                disabled={processing}
+                className={`w-full py-4 rounded-lg font-bold transition-colors ${
+                  !processing
+                    ? "bg-[#fdc106] hover:bg-[#e6ad05]"
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                {processing ? "Redirecting..." : `Pay LKR ${totalAmount} with Genie`}
+              </button>
+            ) }
 
         </div>
       </div>

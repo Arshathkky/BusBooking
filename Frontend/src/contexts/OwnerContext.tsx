@@ -67,6 +67,11 @@ export const OwnerProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const fetchOwners = async (): Promise<void> => {
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return;
+    const userObj = JSON.parse(userStr);
+    if (userObj.role !== "admin") return;
+
     setLoading(true);
     setError(null);
     try {

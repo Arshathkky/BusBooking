@@ -23,48 +23,84 @@ const BookingConfirmation: React.FC = () => {
   const status = searchParams.get("status");
   const stateParam = searchParams.get("state");
   const orderId = searchParams.get("order_id");
+  const transactionId = searchParams.get("transactionId");
 
   useEffect(() => {
     const fetchBookingByNumericId = async (id: string) => {
       try {
         setLoading(true);
-        // Parse the booking ID (it might have a timestamp suffix)
         const cleanId = id.split("_")[0];
         const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
-        // We need a backend route to fetch by numeric bookingId or we search all and filter
-        const { data } = await axios.get(`${baseUrl}/bookings`);
+        // First fetch to get initial booking status from public endpoint with transactionId verification
+        const { data } = await axios.get(`${baseUrl}/bookings/public/${cleanId}?transactionId=${transactionId || ""}`);
         if (data.success) {
-          const found = data.bookings.find((b: any) => String(b.bookingId) === cleanId);
-          if (found) {
-            // Check if redirect parameters confirm payment but database is still PENDING
-            const isConfirmed = stateParam === "CONFIRMED" || status === "SUCCESS";
-            
-            if (isConfirmed && found.paymentStatus === "PENDING") {
-              try {
-                const { data: updateRes } = await axios.put(`${baseUrl}/bookings/${found._id}/payment`, {
-                  paymentStatus: "PAID"
-                });
-                if (updateRes.success) {
-                  setBooking(updateRes.booking);
-                } else {
-                  setBooking(found);
-                }
-              } catch (updateErr) {
-                console.error("Auto-updating payment status failed:", updateErr);
-                setBooking(found);
-              }
-            } else {
-              setBooking(found);
-            }
-          } else {
+          const found = data.booking;
+          if (!found) {
             setError("Booking not found.");
+            setLoading(false);
+            return;
+          }
+
+          // If payment status is already confirmed, show it
+          if (["PAID", "OFFLINE"].includes(found.paymentStatus)) {
+            setBooking(found);
+            setLoading(false);
+            return;
+          }
+
+          // If status is PENDING and user was redirected (suggesting payment attempt)
+          // Wait for webhook to process and poll backend
+          if (found.paymentStatus === "PENDING" && (stateParam === "CONFIRMED" || status === "SUCCESS")) {
+            console.log("⏳ Payment processing - waiting for webhook confirmation...");
+            
+            // Poll backend up to 10 times (30 seconds total)
+            let attempts = 0;
+            const maxAttempts = 10;
+            const pollInterval = 3000; // 3 seconds between polls
+
+            const pollBookingStatus = async () => {
+              while (attempts < maxAttempts) {
+                attempts++;
+                
+                // Wait before polling
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+                
+                try {
+                  const { data: pollData } = await axios.get(`${baseUrl}/bookings/public/${cleanId}?transactionId=${transactionId || ""}`);
+                  const polledBooking = pollData.booking;
+                  
+                  if (polledBooking?.paymentStatus === "PAID") {
+                    setBooking(polledBooking);
+                    console.log("✅ Payment confirmed by webhook");
+                    return;
+                  }
+                  
+                  if (polledBooking?.paymentStatus === "FAILED" || polledBooking?.paymentStatus === "CANCELLED") {
+                    setError("Payment was not processed. Please try again.");
+                    return;
+                  }
+                } catch (pollErr) {
+                  console.error("Poll attempt failed:", pollErr);
+                }
+              }
+              
+              // After max polls, show pending message
+              setError("Payment processing taking longer than expected. Your confirmation email will be sent once verified. Check your email or refresh this page.");
+            };
+
+            pollBookingStatus();
+          } else if (found.paymentStatus === "CANCELLED" || found.paymentStatus === "FAILED") {
+            setError(`Payment was ${found.paymentStatus.toLowerCase()}. Please try booking again.`);
+            setLoading(false);
+          } else {
+            setError(`Booking status is ${found.paymentStatus}. A confirmed ticket cannot be generated.`);
+            setLoading(false);
           }
         }
       } catch (err) {
         console.error("Error fetching booking:", err);
         setError("Failed to load booking details.");
-      } finally {
         setLoading(false);
       }
     };

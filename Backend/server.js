@@ -43,6 +43,9 @@ import reportRoutes from "./routes/reportRoutes.js";
 import genieRoutes from "./routes/genieRoutes.js";
 import seatRequestRoutes from "./routes/seatRequestRoutes.js";
 
+// Import encryption middleware
+import { encryptionMiddleware } from "./middleware/encryptionMiddleware.js";
+
 // Import Background Tasks
 import { startReleaseInterval } from "./utils/releasePendingBookings.js";
 import { startExpireCron } from "./expireBooking.js";
@@ -50,9 +53,39 @@ import { startExpireCron } from "./expireBooking.js";
 // Initialize express app
 const app = express();
 
-// Middleware
-app.use(cors());
+// Secure CORS configuration
+const allowedOrigins = [
+  "https://mseat.touchmeplus.com",
+  "https://bus-booking-nt91.onrender.com",
+  "http://localhost:5173",
+  "http://localhost:5000",
+  "http://localhost:3000"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("CORS Policy Violation"), false);
+  },
+  credentials: true,
+  exposedHeaders: ["X-Payload-Encrypted"]
+}));
+
 app.use(express.json());
+app.use(encryptionMiddleware);
+
+// Security Headers Middleware
+app.use((req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  next();
+});
 
 // Request Logging
 app.use((req, res, next) => {
@@ -70,6 +103,17 @@ app.use("/api/owner", ownerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/genie", genieRoutes);
 app.use("/api/seat-requests", seatRequestRoutes);
+
+// Secure Logout Endpoint
+app.post("/api/logout", (req, res) => {
+  const isLocal = req.hostname === "localhost" || req.hostname === "127.0.0.1";
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: isLocal ? "lax" : "none",
+  });
+  res.json({ success: true, message: "Logged out successfully" });
+});
 
 // Health Check Endpoint
 app.get("/", (req, res) => {

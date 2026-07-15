@@ -111,6 +111,14 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
 
   const fetchBookings = async () => {
     try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) return;
+      
+      const userObj = JSON.parse(userStr);
+      if (!["admin", "owner", "conductor"].includes(userObj.role)) {
+        return;
+      }
+
       setLoading(true);
       const { data } = await axios.get<{
         success: boolean;
@@ -174,14 +182,18 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   /* -------------------- Update Payment Status -------------------- */
-
+  // ⚠️ DEPRECATED: Backend webhook is now the single source of truth
+  // Frontend should NOT update payment status directly
+  // This function is kept for backward compatibility but should not be used
   const updatePaymentStatus = async (
     id: string,
     status: PaymentStatus
   ) => {
     try {
       setLoading(true);
-
+      console.warn("⚠️ updatePaymentStatus is deprecated. Backend webhook handles payment confirmation.");
+      
+      // Backend endpoint removed - this will fail
       const { data } = await axios.put<{
         success: boolean;
         booking: Booking;
@@ -195,6 +207,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({
         );
       }
     } catch (err) {
+      console.error("This endpoint has been removed. Payment status is now handled by backend webhook.", err);
       handleError(err);
     } finally {
       setLoading(false);

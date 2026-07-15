@@ -30,21 +30,55 @@ import AddRouteModal from "../components/AddRouteModal";
 import AssignConductorTab from "./ownerDashboard/AssignTab";
 import ScheduleTab from "./ownerDashboard/ScheduleTab";
 import ReportsTab from "./ownerDashboard/ReportsTab";
+<<<<<<< HEAD
 import { useSearchParams } from "react-router-dom";
 import SeatRequestsTab from "../components/SeatRequestsTab";
+=======
+import { useLocation } from "react-router-dom";
+>>>>>>> 94a2e1eda1be624aa1affbe63ec689cfac45077a
 import { useOwner } from "../contexts/OwnerContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import axios from "axios";
+
 const BASE_URL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 const API_URL = `${BASE_URL}/owner`;
 const BOOKING_API = `${BASE_URL}/bookings`;
 
 type OwnerTab = "overview" | "buses" | "conductors" | "routes" | "assignConductor" | "schedule" | "reports" | "portal" | "requests";
 
+
+const fetchWithAuth = async (url: string, options: any = {}) => {
+  const method = (options.method || 'GET').toUpperCase();
+  let headers = options.headers || {};
+  let data = undefined;
+
+  if (options.body) {
+    try {
+      data = JSON.parse(options.body);
+    } catch {
+      data = options.body;
+    }
+  }
+
+  const response = await axios({
+    url,
+    method,
+    headers,
+    data
+  });
+
+  return {
+    ok: response.status >= 200 && response.status < 300,
+    status: response.status,
+    json: async () => response.data
+  };
+};
+
 const OwnerDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const queryOwnerId = searchParams.get("ownerId");
+  const location = useLocation();
+  const queryOwnerId = location.state?.ownerId;
   const { owners, fetchOwners } = useOwner();
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>(queryOwnerId || "");
 
@@ -107,9 +141,7 @@ const OwnerDashboard: React.FC = () => {
 
 
   const today = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<string>(
-    `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}`
-  );
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
     `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`
   );
@@ -129,12 +161,28 @@ const OwnerDashboard: React.FC = () => {
     }
   }, [ownerBuses.length]);
 
+  const ownerBusesRef = React.useRef(ownerBuses);
+  useEffect(() => {
+      ownerBusesRef.current = ownerBuses;
+  }, [ownerBuses]);
+
   // Real-time polling
   useEffect(() => {
     const interval = setInterval(() => {
         if (effectiveOwnerId && activeTab === "overview") {
             fetchOverview(selectedMonth, selectedDate, selectedBus);
-            fetchRecentBookings();
+            if (ownerBusesRef.current.length > 0) {
+                const busIds = ownerBusesRef.current.map(b => b.id);
+                const token = localStorage.getItem("token");
+                fetchWithAuth(`${BOOKING_API}/owner-recent`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                    body: JSON.stringify({ busIds })
+                })
+                .then(res => res.json())
+                .then(data => { if (data.success) setRecentBookings(data.bookings); })
+                .catch(err => console.error(err));
+            }
         }
     }, 15000); // 15 seconds
     return () => clearInterval(interval);
@@ -155,7 +203,12 @@ const OwnerDashboard: React.FC = () => {
 
     if (bus && bus !== "all") url += `&busId=${bus}`;
 
-    const res = await fetch(url);
+    const token = localStorage.getItem("token");
+    const res = await fetchWithAuth(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
     const data = await res.json();
 
     if (data.success && data.data) {
@@ -168,8 +221,8 @@ const OwnerDashboard: React.FC = () => {
         activeRoutes: data.data.activeRoutes ?? 0,
 
         // Show bookings/earnings depending on selection
-        todayBookings: date && !month ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
-        todayEarnings: date && !month ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
+        todayBookings: (date || month) ? data.data.filteredBookings ?? 0 : data.data.todayBookings ?? 0,
+        todayEarnings: (date || month) ? data.data.filteredEarnings ?? 0 : data.data.todayEarnings ?? 0,
 
         // Monthly earnings will always update based on selected month
         monthlyEarnings: data.data.filteredEarnings ?? 0,
@@ -191,9 +244,13 @@ const fetchRecentBookings = async () => {
     if (ownerBuses.length === 0) return;
     try {
         const busIds = ownerBuses.map(b => b.id);
-        const res = await fetch(`${BOOKING_API}/owner-recent`, {
+        const token = localStorage.getItem("token");
+        const res = await fetchWithAuth(`${BOOKING_API}/owner-recent`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
             body: JSON.stringify({ busIds })
         });
         const data = await res.json();
@@ -266,17 +323,23 @@ const fetchRecentBookings = async () => {
               <p className="text-[9px] font-black uppercase text-[#fdc106] tracking-widest mb-1">Global Operational Date</p>
               <div className="flex items-center gap-3">
                  <Calendar className="w-5 h-5 text-gray-400" />
-                 <input 
+               <input 
                     type="date" 
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setSelectedMonth("");
+                    }}
                     className="bg-transparent text-gray-900 dark:text-white font-black uppercase text-sm tracking-tighter outline-none cursor-pointer"
                  />
-              </div>
-           </div>
-           <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
-           <button 
-             onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+               </div>
+            </div>
+            <div className="h-10 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+            <button 
+              onClick={() => {
+                fetchOverview(selectedMonth, selectedDate, selectedBus);
+                fetchRecentBookings();
+              }}
              className="bg-[#fdc106] text-gray-900 p-4 rounded-[1.5rem] hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#fdc106]/20"
            >
              <RefreshCw className="w-5 h-5" />
@@ -311,7 +374,7 @@ const fetchRecentBookings = async () => {
                 <span className="text-xs font-black uppercase tracking-[0.2em]">Fleet Intelligence Hub</span>
               </div>
               <h2 className="text-4xl font-black tracking-tighter">FLEET OPERATIONS</h2>
-              <p className="text-blue-100 opacity-80 text-sm font-medium mt-1">Surena Travels Batticaloa • LIVE MONITORING ENABLED</p>
+              <p className="text-blue-100 opacity-80 text-sm font-medium mt-1">Bus Travels Batticaloa • LIVE MONITORING ENABLED</p>
             </div>
             <div className="relative z-10 flex bg-black/20 backdrop-blur-xl rounded-[2rem] p-4 border border-white/10 items-center space-x-1">
               <div className="text-center px-6 border-r border-white/10">
@@ -361,7 +424,12 @@ const fetchRecentBookings = async () => {
               <Calendar className="w-4 h-4 text-gray-400" />
               <select 
                 value={selectedMonth} 
-                onChange={(e) => { setSelectedMonth(e.target.value); }} 
+                onChange={(e) => { 
+                  setSelectedMonth(e.target.value); 
+                  if (e.target.value) {
+                    setSelectedDate("");
+                  }
+                }} 
                 className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer w-full uppercase"
               >
                 <option value="">Month-wise Trend</option>
@@ -391,7 +459,10 @@ const fetchRecentBookings = async () => {
             </div>
 
             <button 
-                onClick={() => fetchOverview(selectedMonth, selectedDate, selectedBus)}
+                onClick={() => {
+                  fetchOverview(selectedMonth, selectedDate, selectedBus);
+                  fetchRecentBookings();
+                }}
                 className="bg-[#fdc106] hover:bg-black hover:text-[#fdc106] px-8 py-3 rounded-2xl transition-all active:scale-95 shadow-lg shadow-[#fdc106]/20 font-black text-xs uppercase tracking-widest"
             >
                 Generate Report
@@ -926,7 +997,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         const fetchAll = async () => {
             try {
                 // 1. Fetch Manifest
-                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+                const res2 = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
                 const data = await res2.json();
                 if (data.success) {
                     const filtered = data.bookings.filter((b: any) => 
@@ -938,7 +1009,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 }
 
                 // 2. Fetch Bus State (for blocks)
-                const resBus = await fetch(`${BASE_URL}/buses/${busId}`);
+                const resBus = await fetchWithAuth(`${BASE_URL}/buses/${busId}`);
                 const busData = await resBus.json();
                 if (busData.success) {
                     setBusInfo(busData.data);
@@ -956,7 +1027,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const handleQuickSave = async (updatedSeats: any[]) => {
         setUpdating(true);
         try {
-            await fetch(`${BASE_URL}/buses/${busId}/seats`, {
+            await fetchWithAuth(`${BASE_URL}/buses/${busId}/seats`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ seats: updatedSeats, role: "owner" })
@@ -972,7 +1043,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
     const handleCheckIn = async (bookingId: string) => {
         try {
-            const res = await fetch(`${BOOKING_API}/${bookingId}/check-in`, { method: "PATCH" });
+            const res = await fetchWithAuth(`${BOOKING_API}/${bookingId}/check-in`, { method: "PATCH" });
             const data = await res.json();
             if (data.success) {
                 setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, isCheckedIn: data.isCheckedIn } : b));
@@ -986,7 +1057,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
     const handleApprove = async () => {
         setUpdating(true);
         try {
-            const res = await fetch(`${BASE_URL}/buses/${busId}/approve-changes`, { method: "PATCH" });
+            const res = await fetchWithAuth(`${BASE_URL}/buses/${busId}/approve-changes`, { method: "PATCH" });
             const data = await res.json();
             if (data.success) {
                 setLocalSeats(data.data.seats);
@@ -1015,7 +1086,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             });
 
             // Save global changes to bus model
-            await fetch(`${BASE_URL}/buses/${busId}/seats`, {
+            await fetchWithAuth(`${BASE_URL}/buses/${busId}/seats`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ seats: updatedGlobal, role: "owner" })
@@ -1024,7 +1095,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             setLocalSeats(updatedGlobal);
             
             // 2. Clear Date-Specific Blocks/Offline (Global Unblock)
-            const resUnblock = await fetch(`${BOOKING_API}/unblock-all`, {
+            const resUnblock = await fetchWithAuth(`${BOOKING_API}/unblock-all`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ busId, seatNumbers: selectedManualSeats })
@@ -1037,7 +1108,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             }
             
             // Refresh manifest for current date
-            const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const res2 = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
             const data2 = await res2.json();
             if (data2.success) {
                 const filtered = data2.bookings.filter((b: any) => 
@@ -1071,7 +1142,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
             // Delete them one by one
             for (const b of toDelete) {
-                await fetch(`${BASE_URL}/bookings/${b._id}/cancel`, {
+                await fetchWithAuth(`${BASE_URL}/bookings/${b._id}/cancel`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1083,7 +1154,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
 
             alert(`✅ Successfully reset all seats for ${travelDate}`);
             // Refresh
-            const res = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const res = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
             const data = await res.json();
             if (data.success) {
                 const filtered = data.bookings.filter((b: any) => 
@@ -1114,7 +1185,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             );
 
             for (const b of toDelete) {
-                 await fetch(`${BASE_URL}/bookings/${b._id}/cancel`, {
+                 await fetchWithAuth(`${BASE_URL}/bookings/${b._id}/cancel`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1125,7 +1196,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             }
 
             alert(`✅ Successfully unblocked selected seats for ${travelDate}`);
-            const res = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const res = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
             const data = await res.json();
             if (data.success) {
                 const filtered = data.bookings.filter((b: any) => 
@@ -1148,7 +1219,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         setUpdating(true);
         try {
             // Find current bus metadata
-            const resBus = await fetch(`${BASE_URL}/buses/${busId}`);
+            const resBus = await fetchWithAuth(`${BASE_URL}/buses/${busId}`);
             const bD = await resBus.json();
             if (!bD.success) throw new Error("Bus not found");
             const busInfo = bD.data;
@@ -1166,7 +1237,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     return s;
                 });
                 
-                await fetch(`${BASE_URL}/buses/${busId}/seats`, {
+                await fetchWithAuth(`${BASE_URL}/buses/${busId}/seats`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ seats: updatedSeats, role: "owner" })
@@ -1177,7 +1248,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             } else {
                 promises = datesToProcess.map(async (date) => {
                     // Check if seats are already booked for this specific date
-                    const resOcc = await fetch(`${BOOKING_API}/occupied-seats?busId=${busId}&date=${date}`);
+                    const resOcc = await fetchWithAuth(`${BOOKING_API}/occupied-seats?busId=${busId}&date=${date}`);
                     const occData = await resOcc.json();
                     let seatsToProcess = [...selectedManualSeats.map(String)];
                     
@@ -1199,7 +1270,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                     if (actionModal.type === "OFFLINE") pStatus = "OFFLINE";
                     if (actionModal.type === "ONLINE") pStatus = "ONLINE";
 
-                    return fetch(`${BOOKING_API}`, {
+                    return fetchWithAuth(`${BOOKING_API}`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -1245,7 +1316,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
             setSendSMS(false);
             
             // Refresh manifest
-            const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+            const res2 = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
             const data2 = await res2.json();
             if (data2.success) {
                 const filtered = data2.bookings.filter((b: any) => 
@@ -1266,7 +1337,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
         if (!window.confirm(`Are you sure you want to cancel booking for seats: ${seatNumbers.join(", ")}?`)) return;
         setUpdating(true);
         try {
-            const res = await fetch(`${BOOKING_API}/${bookingId}/cancel`, {
+            const res = await fetchWithAuth(`${BOOKING_API}/${bookingId}/cancel`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ remark: "Owner Manual Cancellation", cancelledBy: 'admin' })
@@ -1276,7 +1347,7 @@ const ManifestTable: React.FC<{ busId: string; travelDate: string }> = ({ busId,
                 // 1. Unblock seats (nothing to do in bus layout anymore as it's booking base)
                 alert("Booking cancelled successfully!");
                 // 2. Refresh manifest
-                const res2 = await fetch(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
+                const res2 = await fetchWithAuth(`${BOOKING_API}?busId=${busId}&date=${travelDate}`);
                 const data2 = await res2.json();
                 if (data2.success) {
                     const filtered = data2.bookings.filter((b: any) => 

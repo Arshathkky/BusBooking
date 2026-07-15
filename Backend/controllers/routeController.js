@@ -3,7 +3,13 @@ import Route from "../models/routeModel.js";
 // ✅ Get all routes (filtered by owner if provided)
 export const getRoutes = async (req, res) => {
   try {
-    const { ownerId } = req.query;
+    let { ownerId } = req.query;
+    
+    // If the user is an owner, force the ownerId to be their own ID
+    if (req.user && req.user.role === "owner") {
+      ownerId = req.user.id;
+    }
+
     const filter = ownerId ? { ownerId } : {};
     const routes = await Route.find(filter).sort({ createdAt: -1 });
     res.json(routes);
@@ -26,7 +32,12 @@ export const getRouteById = async (req, res) => {
 // ✅ Create a new route
 export const createRoute = async (req, res) => {
   try {
-    const { name, startPoint, endPoint, stops, distance, duration, status, ownerId } = req.body;
+    let { name, startPoint, endPoint, stops, distance, duration, status, ownerId } = req.body;
+
+    // If the user is an owner, force the ownerId to be their own ID
+    if (req.user && req.user.role === "owner") {
+      ownerId = req.user.id;
+    }
 
     if (!ownerId) {
       return res.status(400).json({ message: "Owner ID is required" });

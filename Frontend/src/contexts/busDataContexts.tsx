@@ -60,6 +60,7 @@ export interface BusType {
   useCustomLayout?: boolean; // 👈 NEW
   notifyOwnerOnBooking?: boolean;
   ownerPhoneForSMS?: string;
+  allowSeatRequest?: boolean;
 }
 
 interface BusFromDB extends Omit<BusType, "id"> {
@@ -110,7 +111,7 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = `${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/buses`;
+  const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
 
   // ------------------------------
   // Map _id to id
@@ -119,6 +120,7 @@ export const BusProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     ...bus,
     id: bus._id,
     lastRowSeats: bus.lastRowSeats ?? undefined,
+    allowSeatRequest: bus.allowSeatRequest ?? false,
   });
 
   // ------------------------------

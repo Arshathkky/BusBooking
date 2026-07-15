@@ -30,7 +30,7 @@ const BookingConfirmation: React.FC = () => {
       try {
         setLoading(true);
         const cleanId = id.split("_")[0];
-        const baseUrl = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
+        const baseUrl = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
         
         // First fetch to get initial booking status from public endpoint with transactionId verification
         const { data } = await axios.get(`${baseUrl}/bookings/public/${cleanId}?transactionId=${transactionId || ""}`);

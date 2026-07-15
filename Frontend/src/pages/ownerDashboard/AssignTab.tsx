@@ -70,7 +70,7 @@ const AssignConductorTab: React.FC<AssignConductorTabProps> = ({ ownerId }) => {
     }
 
     setAssigning(true);
-    const API_URL = `${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/buses`;
+    const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
     try {
       await axios.put(`${API_URL}/${selectedBusId}/conductor-seats`, {
         conductorId: selectedConductorId,
@@ -96,7 +96,7 @@ const AssignConductorTab: React.FC<AssignConductorTabProps> = ({ ownerId }) => {
     }
 
     setRemoving(true);
-    const API_URL = `${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/buses`;
+    const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
     try {
       await axios.patch(`${API_URL}/${selectedBusId}/conductor-seats/remove`, {
         seatNumbers: selectedSeats,

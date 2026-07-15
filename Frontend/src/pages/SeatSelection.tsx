@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, User, UserX, CircleDot as Steering, CheckCircle2 } from "lucide-react";
 import { useSeat, Seat, SeatLayoutType, LastRowType } from "../contexts/seatSelectionContext";
-import { useBooking } from "../contexts/BookingContext";
 import axios from "axios";
 
 // -------------------- Types --------------------
@@ -340,8 +339,6 @@ const SeatSelection: React.FC = () => {
     clearSelection,
   } = useSeat();
 
-  const { addBooking } = useBooking();
-
   const [occupiedSeats, setOccupiedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [reservedSeats, setReservedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
   const [blockedSeats, setBlockedSeats] = useState<Map<string | number, OccupiedSeatInfo>>(new Map());
@@ -366,7 +363,7 @@ const SeatSelection: React.FC = () => {
     setIsSubmittingRequest(true);
     setRequestError(null);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/bus-requests`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/bus-requests`, {
         name: requestName,
         phone: requestPhone,
         pickupPlace: requestPickup,
@@ -402,7 +399,7 @@ const SeatSelection: React.FC = () => {
   const fetchOccupied = useCallback(async () => {
     if (!busId || !searchData?.date) return;
 
-    const API_BASE = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
+    const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
     const res = await axios.get<OccupiedSeatsResponse>(
       `${API_BASE}/bookings/occupied-seats`,
       { params: { busId, date: searchData.date } }
@@ -623,10 +620,11 @@ const SeatSelection: React.FC = () => {
             </div>
 
             {/* Request Bus Card */}
-            <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
-                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-4 text-[#fdc106]">Can't find a seat? Request a Bus</h3>
+            {busSeats.allowSeatRequest && (
+              <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-gray-700">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter mb-4 text-[#fdc106]">Can't find a seat? Request a Seat</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-                    Submit a quick request for this bus or timing. Our agent will verify availability and get back to you!
+                    Share your details and pickup point. Our staff will contact you within 15 minutes for this bus.
                 </p>
 
                 {requestSuccess ? (
@@ -696,7 +694,8 @@ const SeatSelection: React.FC = () => {
                         </button>
                     </form>
                 )}
-            </div>
+              </div>
+            )}
         </div>
       </div>
     </div>

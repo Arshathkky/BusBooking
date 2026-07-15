@@ -2,7 +2,7 @@ import axios from "axios";
 import { encryptPayload, decryptPayload } from "../utils/cryptoUtils";
 
 // Configure default base URL and credentials
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 axios.defaults.withCredentials = true;
 
 // Request Interceptor (Encrypt Request Payloads)

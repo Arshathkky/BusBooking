@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     password: string
   ): Promise<User | null> => {
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
+      const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
 
       /* ===== 1️⃣ OWNER / ADMIN LOGIN (same endpoint, role returned from backend) ===== */
       try {
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   /* ===================== LOGOUT ===================== */
   const logout = async () => {
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api";
+      const API_BASE = import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api";
       await axios.post(`${API_BASE}/logout`);
     } catch (err) {
       console.error("Failed to call logout on backend:", err);

@@ -34,6 +34,7 @@ export interface Bus {
   seatNumberingType: "driver_side" | "door_side";
   useCustomLayout?: boolean;
   ownerId?: string;
+  allowSeatRequest?: boolean;
 }
 
 // Backend response wrapper
@@ -55,6 +56,7 @@ interface BusFromBackend {
   seatNumberingType?: "driver_side" | "door_side";
   useCustomLayout?: boolean;
   ownerId?: string;
+  allowSeatRequest?: boolean;
 }
 
 // -------------------- Context Type --------------------
@@ -87,7 +89,7 @@ export const useSeat = (): SeatContextType => {
 export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [busSeats, setBusSeats] = useState<Bus | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<(string | number)[]>([]);
-  const API_URL = `${import.meta.env.VITE_API_URL || "https://busbooking-backend-development.onrender.com/api"}/buses`;
+  const API_URL = `${import.meta.env.VITE_API_URL || "https://bus-booking-nt91.onrender.com/api"}/buses`;
 
   // -------------------- Fetch bus seats --------------------
   const fetchBusSeats = useCallback(async (busId: string) => {
@@ -109,6 +111,7 @@ export const SeatProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         seatNumberingType: busData.seatNumberingType ?? "driver_side",
         useCustomLayout: busData.useCustomLayout ?? false,
         ownerId: busData.ownerId,
+        allowSeatRequest: busData.allowSeatRequest ?? false,
         seats: busData.seats.map((s) => ({
           seatNumber: s.seatNumber,
           isLadiesOnly: s.isLadiesOnly,

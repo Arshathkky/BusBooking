@@ -15,6 +15,7 @@ type TabKey = "overview" | "owners" | "buses" | "routes" | "users" | "requests";
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
   // -------- Modals --------
   const [showAddRouteModal, setShowAddRouteModal] = useState(false);
@@ -27,6 +28,24 @@ const AdminDashboard: React.FC = () => {
   const { buses, toggleBusStatus, deleteBus } = useBus();
   const { users, deleteUser } = useData();
   const { routes, toggleRouteStatus, deleteRoute } = useRouteData();
+
+  const fetchPendingRequestCount = async () => {
+    try {
+      const response = await axios.get("/bus-requests");
+      if (response.data.success) {
+        const count = (response.data.data || []).filter((request: any) => request.status === "pending").length;
+        setPendingRequestCount(count);
+      }
+    } catch (err) {
+      console.error("Failed to fetch pending seat requests", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingRequestCount();
+    const interval = window.setInterval(fetchPendingRequestCount, 10000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   // -------- Helpers --------
   const getStatusColor = (status: string) => {
@@ -65,7 +84,7 @@ const AdminDashboard: React.FC = () => {
             { key: "buses", label: "Buses" },
             { key: "routes", label: "Routes" },
             { key: "users", label: "Users" },
-            { key: "requests", label: "Bus Requests" },
+            { key: "requests", label: `Bus Requests${pendingRequestCount > 0 ? ` (${pendingRequestCount})` : ""}` },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -268,6 +287,8 @@ const AdminRequestsTab: React.FC = () => {
 
   useEffect(() => {
     fetchRequests();
+    const interval = window.setInterval(fetchRequests, 10000);
+    return () => window.clearInterval(interval);
   }, []);
 
   const handleUpdateStatus = async (id: string, currentStatus: string) => {

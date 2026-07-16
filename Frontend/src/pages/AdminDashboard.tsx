@@ -272,7 +272,7 @@ const AdminRequestsTab: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get("/bus-requests");
+      const response = await api.get("/bus-requests");
       if (response.data.success) {
         setRequests(response.data.data);
       } else {
@@ -295,7 +295,7 @@ const AdminRequestsTab: React.FC = () => {
   const handleUpdateStatus = async (id: string, currentStatus: string) => {
     const nextStatus = currentStatus === "pending" ? "processed" : "pending";
     try {
-      const response = await axios.patch(`/bus-requests/${id}/status`, { status: nextStatus });
+      const response = await api.patch(`/bus-requests/${id}/status`, { status: nextStatus });
       if (response.data.success) {
         setRequests(prev => prev.map(r => r._id === id ? { ...r, status: nextStatus } : r));
       }
@@ -307,7 +307,7 @@ const AdminRequestsTab: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this request?")) return;
     try {
-      const response = await axios.delete(`/bus-requests/${id}`);
+      const response = await api.delete(`/bus-requests/${id}`);
       if (response.data.success) {
         setRequests(prev => prev.filter(r => r._id !== id));
       }

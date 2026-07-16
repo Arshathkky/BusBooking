@@ -370,9 +370,9 @@ const AdminRequestsTab: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">{request.busName}</td>
                   <td className="px-6 py-4">
-                    {request.searchData.from} → {request.searchData.to}
+                    {request.searchData?.from || "N/A"} → {request.searchData?.to || "N/A"}
                   </td>
-                  <td className="px-6 py-4 font-bold">{request.searchData.date}</td>
+                  <td className="px-6 py-4 font-bold">{request.searchData?.date || "N/A"}</td>
                   <td className="px-6 py-4">{request.pickupPlace}</td>
                   <td className="px-6 py-4 italic text-xs max-w-xs truncate" title={request.comments}>{request.comments || "-"}</td>
                   <td className="px-6 py-4 text-xs font-semibold">{request.ownerId || "System"}</td>

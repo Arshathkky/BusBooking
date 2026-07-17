@@ -360,6 +360,13 @@ const SeatSelection: React.FC = () => {
   const handleRequestBusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!busSeats || !busId) return;
+
+    const slPhoneRegex = /^(?:\+94|94|0)?7[0-9]{8}$/;
+    if (!slPhoneRegex.test(requestPhone.trim())) {
+      setRequestError("Please enter a valid Sri Lankan phone number (e.g. 07XXXXXXXX).");
+      return;
+    }
+
     setIsSubmittingRequest(true);
     setRequestError(null);
     try {

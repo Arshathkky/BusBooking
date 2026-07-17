@@ -31,6 +31,11 @@ export const createSeatRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: "Please fill all required fields" });
     }
 
+    const slPhoneRegex = /^(?:\+94|94|0)?7[0-9]{8}$/;
+    if (!slPhoneRegex.test(phone.toString().trim())) {
+      return res.status(400).json({ success: false, message: "Please provide a valid Sri Lankan phone number (e.g. 07XXXXXXXX)" });
+    }
+
     // Identify which ownerIds to notify by checking routes and buses running from -> to
     const matchingRoutes = await Route.find({
       $or: [
@@ -175,6 +180,17 @@ export const updateSeatRequest = async (req, res) => {
     }
 
     const updatedRequest = await request.save();
+
+    // Send SMS notification to the passenger if approved or rejected
+    if (status === "approved" || status === "rejected") {
+      const statusText = status.toUpperCase();
+      const replyPart = replyMessage ? ` Reply: ${replyMessage}` : "";
+      const smsMessage = `TouchMe+: Your seat request from ${request.from} to ${request.to} on ${request.date} is ${statusText}.${replyPart}`;
+      
+      sendSMS(request.phone, smsMessage).catch((smsErr) => {
+        console.error("Failed to send status update SMS to passenger:", smsErr);
+      });
+    }
 
     res.status(200).json({
       success: true,

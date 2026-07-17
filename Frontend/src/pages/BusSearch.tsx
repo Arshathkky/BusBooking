@@ -49,6 +49,13 @@ const BusSearch: React.FC = () => {
     setRequestError(null);
     setSubmittingRequest(true);
 
+    const slPhoneRegex = /^(?:\+94|94|0)?7[0-9]{8}$/;
+    if (!slPhoneRegex.test(requestPhone.trim())) {
+      setRequestError("Please enter a valid Sri Lankan phone number (e.g. 07XXXXXXXX).");
+      setSubmittingRequest(false);
+      return;
+    }
+
     const finalTime = requestTime === "other" ? customTime : requestTime;
 
     if (!finalTime) {

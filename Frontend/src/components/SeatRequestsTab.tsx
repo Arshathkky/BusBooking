@@ -27,6 +27,9 @@ interface SeatRequest {
   status: "pending" | "approved" | "rejected";
   replyMessage: string;
   createdAt: string;
+  pickupPlace?: string;
+  comments?: string;
+  busName?: string;
 }
 
 interface SeatRequestsTabProps {
@@ -258,9 +261,9 @@ const SeatRequestsTab: React.FC<SeatRequestsTabProps> = ({ ownerId, role }) => {
 
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
-                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Bus Type</span>
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Bus Type / Name</span>
                       <span className="text-xs font-bold text-gray-700 dark:text-gray-300 block mt-0.5">
-                        {req.busType}
+                        {req.busName ? `${req.busName} (${req.busType})` : req.busType}
                       </span>
                     </div>
                     <div>
@@ -270,6 +273,27 @@ const SeatRequestsTab: React.FC<SeatRequestsTabProps> = ({ ownerId, role }) => {
                       </span>
                     </div>
                   </div>
+
+                  {(req.pickupPlace || req.comments) && (
+                    <div className="pt-2 border-t border-gray-100 dark:border-gray-700/50 mt-2 space-y-2">
+                      {req.pickupPlace && (
+                        <div>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Pickup Place</span>
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 block mt-0.5">
+                            {req.pickupPlace}
+                          </span>
+                        </div>
+                      )}
+                      {req.comments && (
+                        <div>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Comments</span>
+                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 block mt-0.5 italic">
+                            {req.comments}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

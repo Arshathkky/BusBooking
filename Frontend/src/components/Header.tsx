@@ -3,14 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Sun, Moon, User, LogOut, Menu, X, Bus, LayoutDashboard } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import GlobalSeatRequestModal from './GlobalSeatRequestModal';
 
 const Header: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -54,12 +52,6 @@ const Header: React.FC = () => {
               <Bus className="w-4 h-4" />
               <span className="font-medium">Search Buses</span>
             </Link>
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-[#fdc106] transition-colors font-medium"
-            >
-              Request Seat
-            </button>
 
             {user && (
               <Link
@@ -143,16 +135,6 @@ const Header: React.FC = () => {
               <span className="text-sm font-medium">Search Buses</span>
             </Link>
 
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                setShowRequestModal(true);
-              }}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-[#fdc106] hover:text-gray-900 transition text-sm font-medium text-left"
-            >
-              Request Seat
-            </button>
-
             {user && (
               <Link
                 to={getDashboardLink()}
@@ -186,10 +168,6 @@ const Header: React.FC = () => {
           </div>
         )}
       </div>
-
-      {showRequestModal && (
-        <GlobalSeatRequestModal onClose={() => setShowRequestModal(false)} />
-      )}
     </header>
   );
 };

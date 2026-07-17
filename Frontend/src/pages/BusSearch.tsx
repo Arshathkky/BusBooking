@@ -271,14 +271,6 @@ const BusSearch: React.FC = () => {
               <Search className="w-5 h-5" />
               <span>{loading ? "Searching..." : "Search Buses"}</span>
             </button>
-
-            <button
-              type="button"
-              onClick={() => setShowRequestModal(true)}
-              className="text-sm font-semibold text-[#fdc106] hover:text-[#e6ad05] underline-offset-4 hover:underline"
-            >
-              Request a seat for this route
-            </button>
           </div>
         </form>
       </div>

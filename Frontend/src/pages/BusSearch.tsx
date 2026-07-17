@@ -284,24 +284,9 @@ const BusSearch: React.FC = () => {
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                 No buses found
               </h3>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-gray-650 dark:text-gray-400">
                 No buses available for the selected route and date
               </p>
-
-              {/* Option to request a seat */}
-              <div className="mt-8 max-w-md mx-auto bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 p-6 rounded-2xl transition-colors">
-                <h4 className="font-bold text-gray-900 dark:text-white mb-2">Can't find your bus?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Request a seat now and we will check with available bus operators and reply to you in 15 minutes!
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestModal(true)}
-                  className="bg-[#fdc106] hover:bg-[#e6ad05] text-gray-900 font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg"
-                >
-                  Request a Seat
-                </button>
-              </div>
             </div>
           ) : (
             <>

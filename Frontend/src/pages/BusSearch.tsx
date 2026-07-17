@@ -27,7 +27,29 @@ const BusSearch: React.FC = () => {
   const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
 
+  const [selectedBusId, setSelectedBusId] = useState("");
+  const [selectedBusName, setSelectedBusName] = useState("");
+  const [selectedBusOwnerId, setSelectedBusOwnerId] = useState("");
+
   const availableBuses = results.buses || [];
+
+  useEffect(() => {
+    if (showRequestModal && availableBuses.length > 0) {
+      if (availableBuses.length === 1) {
+        const bus = availableBuses[0];
+        setSelectedBusId(bus.id);
+        setSelectedBusName(bus.name);
+        setSelectedBusOwnerId(bus.ownerId ?? "");
+        if (bus.departureTime) setRequestTime(bus.departureTime);
+        if (bus.type) setRequestBusType(bus.type);
+      } else {
+        setSelectedBusId("");
+        setSelectedBusName("");
+        setSelectedBusOwnerId("");
+      }
+    }
+  }, [showRequestModal, availableBuses]);
+
   const companies = Object.keys(results.busesByCompany || {});
 
   const departureTimes = Array.from(
@@ -74,11 +96,17 @@ const BusSearch: React.FC = () => {
         seats: searchData.passengers || 1,
         busType: requestBusType || "Any",
         time: finalTime,
+        busId: selectedBusId || undefined,
+        busName: selectedBusName || undefined,
+        ownerId: selectedBusOwnerId || undefined,
         searchData: {
           from: searchData.from,
           to: searchData.to,
           date: searchData.date,
           passengers: searchData.passengers || 1,
+          busId: selectedBusId || undefined,
+          busName: selectedBusName || undefined,
+          ownerId: selectedBusOwnerId || undefined,
         },
       });
 
@@ -458,6 +486,38 @@ const BusSearch: React.FC = () => {
 
                 {!requestSuccess && (
                   <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                        Select Bus
+                      </label>
+                      <select
+                        value={selectedBusId}
+                        onChange={(e) => {
+                          const bId = e.target.value;
+                          setSelectedBusId(bId);
+                          const bus = availableBuses.find((b: any) => b.id === bId);
+                          if (bus) {
+                            setSelectedBusName(bus.name);
+                            setSelectedBusOwnerId(bus.ownerId ?? "");
+                            if (bus.departureTime) setRequestTime(bus.departureTime);
+                            if (bus.type) setRequestBusType(bus.type);
+                          } else {
+                            setSelectedBusName("");
+                            setSelectedBusOwnerId("");
+                          }
+                        }}
+                        className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#fdc106] transition-all font-semibold"
+                        required
+                      >
+                        <option value="">-- Choose a Bus --</option>
+                        {availableBuses.map((bus: any) => (
+                          <option key={bus.id} value={bus.id}>
+                            {bus.name} ({bus.companyName}) - {bus.departureTime}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                         Passenger Name

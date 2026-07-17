@@ -36,30 +36,18 @@ export const createSeatRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: "Please provide a valid Sri Lankan phone number (e.g. 07XXXXXXXX)" });
     }
 
-    // Identify which ownerIds to notify by checking routes and buses running from -> to
-    const matchingRoutes = await Route.find({
-      $or: [
-        {
-          startPoint: { $regex: new RegExp(`^${from}$`, "i") },
-          endPoint: { $regex: new RegExp(`^${to}$`, "i") },
-        },
-        { stops: { $all: [from, to] } },
-      ],
-    });
-
-    const routeIds = matchingRoutes.map((r) => r._id);
-    const matchingBuses = await Bus.find({
-      $or: [{ routeId: { $in: routeIds } }, ...(busId ? [{ _id: busId }] : [])],
-    });
-
+    // Identify which ownerIds to notify
     const ownerIds = new Set();
-    matchingRoutes.forEach((r) => {
-      if (r.ownerId) ownerIds.add(String(r.ownerId));
-    });
-    matchingBuses.forEach((b) => {
-      if (b.ownerId) ownerIds.add(String(b.ownerId));
-    });
-    if (ownerId) ownerIds.add(String(ownerId));
+
+    if (busId) {
+      // If a specific bus is selected, notify ONLY that specific bus owner
+      const selectedBus = await Bus.findById(busId);
+      if (selectedBus && selectedBus.ownerId) {
+        ownerIds.add(String(selectedBus.ownerId));
+      } else if (ownerId) {
+        ownerIds.add(String(ownerId));
+      }
+    }
 
     const seatRequest = new SeatRequest({
       name,

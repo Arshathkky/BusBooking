@@ -22,6 +22,7 @@ export interface BusInfo {
   seatsAvailable: number;
   totalSeats: number;
   stops: string[];
+  ownerId?: string;
 }
 
 export interface SearchResults {
